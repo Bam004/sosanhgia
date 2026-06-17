@@ -47,6 +47,8 @@ Tên đầy đủ của hệ thống là **SoSanhGia - Website tổng hợp và 
 
 ### 4.1. Chạy Backend FastAPI
 
+- Tại thư mục đồ án **C:\Workspace\SCHOOL\Đồ án tốt nghiệp 2026\Source\sosanhgia>**
+
 # Kích hoạt môi trường ảo:
 
 ```cmd
@@ -71,7 +73,11 @@ python -m uvicorn backend.app.main:app --reload
 http://localhost:8000/docs
 ```
 
-# Khi trang Swagger hiển thị, Backend FastAPI đã chạy thành công.
+- Khi trang Swagger hiển thị, Backend FastAPI đã chạy thành công.
+
+# Dừng chương trình
+
+Ctrl + C
 
 ### 4.2. Kiểm tra module Scrapy
 
