@@ -2,13 +2,20 @@ from fastapi import FastAPI
 
 app = FastAPI(
     title="SoSanhGia API",
-    description="Backend API cho hệ thống tổng hợp và so sánh giá sản phẩm từ các sàn thương mại điện tử",
+    description="Backend API cho hệ thống tổng hợp và so sánh giá sản phẩm từ các sàn TMĐT",
     version="1.0.0"
 )
 
+
 @app.get("/")
-def read_root():
-    return{
-        "message":"Welcom to SoSanhGia API",
-        "status": "running"
+def root():
+    return {
+        "message": "SoSanhGia API is running"
+    }
+
+
+@app.get("/health")
+def health_check():
+    return {
+        "status": "ok"
     }
