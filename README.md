@@ -47,31 +47,42 @@ Tên đầy đủ của hệ thống là **SoSanhGia - Website tổng hợp và 
 
 ### 4.1. Chạy Backend FastAPI
 
-- Tại thư mục đồ án **C:\Workspace\SCHOOL\Đồ án tốt nghiệp 2026\Source\sosanhgia>**
-
-# Kích hoạt môi trường ảo:
+#### Bước 1: Mở thư mục dự án
 
 ```cmd
+cd sosanhgia
+```
+
+#### Bước 2: Tạo môi trường ảo
+
+
+python -m venv backend\.venv
+
+
+#### Bước 3: Kích hoạt môi trường ảo:
+
+
 backend\.venv\Scripts\activate.bat
-```
 
-# Cài đặt thư viện:
 
-```cmd
+#### Bước 4: Cài đặt thư viện:
+
+
+python -m pip install --upgrade pip
 python -m pip install -r backend\requirements.txt
-```
 
-# Chạy FastAPI:
 
-```cmd
+#### Bước 5: Chạy Backend FastAPI:
+
+
 python -m uvicorn backend.app.main:app --reload
-```
+
 
 # Truy cập Swagger:
 
-```text
+
 http://localhost:8000/docs
-```
+
 
 - Khi trang Swagger hiển thị, Backend FastAPI đã chạy thành công.
 
