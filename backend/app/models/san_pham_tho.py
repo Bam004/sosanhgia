@@ -20,7 +20,7 @@ class SanPhamTho(Base):
     hinhAnh = Column(String(500), nullable=True)
 
     danhGia = Column(Float, nullable=True)
-    soLuongDanhGia = Column(Integer, nullable=False, default=0)
+    soLuongDanhGia = Column(Integer, nullable=False, default=0, server_default="0")
 
     attributes = Column(JSONB, nullable=True)
     ngayCapNhat = Column(DateTime, nullable=False, default=datetime.utcnow)
