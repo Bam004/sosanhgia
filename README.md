@@ -97,3 +97,111 @@ Ctrl + C
 ```cmd
 python -m scrapy list
 ```
+
+## 5. Lưu ý cho thành viên khi pull code mới nhất
+
+Sau khi pull code mới nhất từ GitHub về máy, thành viên trong nhóm cần kiểm tra và cập nhật môi trường backend để tránh lỗi khi chạy dự án.
+
+### 5.1. Cập nhật source code mới nhất
+
+Nếu code đã được merge vào nhánh `develop`, chạy:
+
+```cmd
+git checkout develop
+git pull origin develop
+```
+
+Nếu muốn lấy trực tiếp từ nhánh backend CRUD, chạy:
+
+```cmd
+git checkout feature/backend-crud
+git pull origin feature/backend-crud
+```
+
+### 5.2. Kích hoạt môi trường ảo Python
+
+Nếu đã có sẵn môi trường ảo `backend\.venv`, chỉ cần kích hoạt lại:
+
+```cmd
+backend\.venv\Scripts\activate.bat
+```
+
+Nếu chưa có môi trường ảo, tạo mới bằng lệnh:
+
+```cmd
+python -m venv backend\.venv
+backend\.venv\Scripts\activate.bat
+```
+
+### 5.3. Cài đặt hoặc cập nhật thư viện backend
+
+Sau khi pull code mới, cần chạy lại lệnh cài thư viện để cập nhật các package mới trong `requirements.txt`:
+
+```cmd
+python -m pip install -r backend\requirements.txt
+```
+
+Lệnh này giúp cài thêm các thư viện cần thiết như FastAPI, SQLAlchemy, Alembic, psycopg2-binary, python-dotenv và các thư viện liên quan.
+
+### 5.4. Tạo file cấu hình `.env`
+
+Mỗi thành viên cần tự tạo file `.env` trong thư mục `backend`:
+
+```text
+backend/.env
+```
+
+Nội dung mẫu:
+
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=sosanhgia_db
+DB_USER=postgres
+DB_PASSWORD=your_postgres_password
+```
+
+Trong đó, `your_postgres_password` là mật khẩu PostgreSQL trên máy cá nhân của từng thành viên.
+
+Lưu ý: file `.env` không được đưa lên GitHub.
+
+### 5.5. Tạo database PostgreSQL
+
+Trên máy cá nhân, cần tạo database PostgreSQL với tên:
+
+```text
+sosanhgia_db
+```
+
+Chỉ cần tạo database, không tạo bảng thủ công.
+
+### 5.6. Chạy migration để tạo bảng
+
+Sau khi đã có database và file `.env`, chạy lệnh sau tại thư mục gốc của dự án:
+
+```cmd
+python -m alembic upgrade head
+```
+
+Lệnh này sẽ tự động tạo các bảng cần thiết trong database, ví dụ:
+
+```text
+alembic_version
+san_pham_tho
+```
+
+### 5.7. Chạy backend để kiểm tra
+
+Chạy FastAPI server:
+
+```cmd
+python -m uvicorn backend.app.main:app --reload
+```
+
+Mở trình duyệt kiểm tra Swagger:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+Nếu Swagger hiển thị danh sách API thì backend đã chạy thành công.
