@@ -1,3 +1,5 @@
+import re
+from decimal import Decimal, InvalidOperation
 from fastapi import APIRouter, Depends, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
@@ -11,6 +13,7 @@ from backend.app.schemas import (
     SanPhamThoResponse,
     SanPhamThoUpdate,
 )
+from backend.app.schemas.san_pham_tho import SanPhamThoBulkCreate
 
 router = APIRouter(
     prefix="/api/items",
@@ -21,6 +24,24 @@ router = APIRouter(
 def item_to_response(item: SanPhamTho) -> dict:
     return jsonable_encoder(SanPhamThoResponse.model_validate(item))
 
+
+def normalize_price(raw_price) -> Decimal:
+    price_text = str(raw_price).strip()
+
+    price_text = price_text.replace("₫", "")
+    price_text = price_text.replace("VNĐ", "")
+    price_text = price_text.replace("vnđ", "")
+    price_text = price_text.replace(",", "")
+    price_text = price_text.replace(".", "")
+    price_text = re.sub(r"\s+", "", price_text)
+
+    if not price_text.isdigit():
+        raise ValueError("Invalid price format")
+
+    try:
+        return Decimal(price_text)
+    except InvalidOperation:
+        raise ValueError("Invalid price format")
 
 def not_found_response() -> JSONResponse:
     return JSONResponse(
@@ -167,6 +188,77 @@ def delete_item(
             "success": True,
             "message": "Deleted successfully"
         }
+
+    except SQLAlchemyError as error:
+        db.rollback()
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "success": False,
+                "error": f"Database error: {str(error)}"
+            }
+        )
+    
+@router.post("/bulk", status_code=status.HTTP_201_CREATED)
+def create_items_bulk(
+    payload: list[SanPhamThoBulkCreate],
+    db: Session = Depends(get_db)
+):
+    if len(payload) == 0:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "success": False,
+                "error": "Validation failed: Payload must not be empty"
+            }
+        )
+
+    created_items = []
+
+    try:
+        for raw_item in payload:
+            clean_title = re.sub(r"\s+", " ", raw_item.raw_title).strip()
+            clean_price = normalize_price(raw_item.current_price)
+
+            item = SanPhamTho(
+                maSPCH=raw_item.standardized_product_id,
+                tenSanPham=clean_title,
+                sanTMDT=raw_item.merchant_name.strip(),
+                giaHienTai=clean_price,
+                linkGoc=raw_item.origin_url.strip(),
+                hinhAnh=raw_item.image_url,
+                danhGia=raw_item.rating,
+                soLuongDanhGia=raw_item.review_count,
+                attributes=raw_item.attributes
+            )
+
+            db.add(item)
+            created_items.append(item)
+
+        db.commit()
+
+        for item in created_items:
+            db.refresh(item)
+
+        return JSONResponse(
+            status_code=status.HTTP_201_CREATED,
+            content={
+                "success": True,
+                "message": "Bulk created successfully",
+                "total": len(created_items),
+                "ids": [item.maSPTho for item in created_items]
+            }
+        )
+
+    except ValueError as error:
+        db.rollback()
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "success": False,
+                "error": f"Validation failed: {str(error)}"
+            }
+        )
 
     except SQLAlchemyError as error:
         db.rollback()
