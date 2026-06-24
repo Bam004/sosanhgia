@@ -3,6 +3,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from backend.app.api.items import router as items_router
+from backend.app.api.products import router as products_router
 
 app = FastAPI(
     title="SoSanhGia API",
@@ -36,7 +37,7 @@ async def validation_exception_handler(
 
 
 app.include_router(items_router)
-
+app.include_router(products_router)
 
 @app.get("/")
 def root():

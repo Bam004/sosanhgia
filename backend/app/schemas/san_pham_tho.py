@@ -38,3 +38,14 @@ class SanPhamThoResponse(SanPhamThoBase):
     ngayCapNhat: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+class SanPhamThoBulkCreate(BaseModel):
+    raw_title: str = Field(..., max_length=255)
+    standardized_product_id: int | None = None
+    merchant_name: str = Field(..., max_length=50)
+    current_price: str | int | float | Decimal
+    origin_url: str = Field(..., max_length=500)
+    image_url: str | None = None
+    rating: float | None = None
+    review_count: int = Field(default=0, ge=0)
+    attributes: dict[str, Any] | None = None
