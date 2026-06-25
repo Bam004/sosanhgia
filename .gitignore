@@ -216,15 +216,3 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
-
-# Scrapy output test files
-output*.json
-*.jl
-
-# Python cache
-__pycache__/
-*.pyc
-
-# Virtual environment
-.venv/
-backend/.venv/
