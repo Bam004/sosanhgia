@@ -228,3 +228,8 @@ __pycache__/
 # Virtual environment
 .venv/
 backend/.venv/
+
+# Scrapy output files
+*.json
+*.jsonl
+*.csv
