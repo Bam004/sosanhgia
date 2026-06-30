@@ -10,6 +10,12 @@ class ScraperService:
         self.project_root = Path(__file__).resolve().parents[3]
 
     def search_fptshop(self, keyword: str):
+        return self._run_spider("fptshop", keyword)
+
+    def search_cellphones(self, keyword: str):
+        return self._run_spider("cellphones", keyword)
+
+    def _run_spider(self, spider_name: str, keyword: str):
         keyword = self._clean_keyword(keyword)
 
         if not keyword:
@@ -18,7 +24,7 @@ class ScraperService:
         output_file = tempfile.NamedTemporaryFile(
             mode="w",
             suffix=".json",
-            prefix="fptshop_search_",
+            prefix=f"{spider_name}_search_",
             delete=False,
             encoding="utf-8",
             dir=self.project_root
@@ -31,7 +37,7 @@ class ScraperService:
             "-m",
             "scrapy",
             "crawl",
-            "fptshop",
+            spider_name,
             "-a",
             f"keyword={keyword}",
             "-O",
@@ -49,7 +55,7 @@ class ScraperService:
 
             if result.returncode != 0:
                 raise RuntimeError(
-                    "Không thể chạy FPT Shop spider. "
+                    f"Không thể chạy {spider_name} spider. "
                     f"Chi tiết lỗi: {result.stderr}"
                 )
 
@@ -70,4 +76,5 @@ class ScraperService:
             return ""
 
         return " ".join(keyword.strip().split())
+
 
