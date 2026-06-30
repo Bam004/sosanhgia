@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from fastapi import APIRouter, Query, status
 from fastapi.responses import JSONResponse
 
@@ -16,9 +17,16 @@ def search_products(
     keyword: str = Query(..., min_length=1)
 ):
     try:
-        # Gọi spider để cào dữ liệu thật từ FPT Shop theo từ khóa người dùng nhập.
         scraper_service = ScraperService()
-        items = scraper_service.search_fptshop(keyword)
+
+        # Gọi các spider để cào dữ liệu song song từ FPT Shop và CellphoneS theo từ khóa.
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            future_fpt = executor.submit(scraper_service.search_fptshop, keyword)
+            future_cps = executor.submit(scraper_service.search_cellphones, keyword)
+            items_fpt = future_fpt.result()
+            items_cps = future_cps.result()
+
+        items = items_fpt + items_cps
 
         # Gom nhóm các sản phẩm tương đồng bằng Text Matching.
         text_matching_service = TextMatchingService()
@@ -61,4 +69,5 @@ def search_products(
                 "error": str(error)
             }
         )
+
 
