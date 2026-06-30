@@ -19,14 +19,17 @@ def search_products(
     try:
         scraper_service = ScraperService()
 
-        # Gọi các spider để cào dữ liệu song song từ FPT Shop và CellphoneS theo từ khóa.
-        with ThreadPoolExecutor(max_workers=2) as executor:
+        # Gọi các spider để cào dữ liệu song song từ FPT Shop, CellPhoneS và Hoàng Hà Mobile theo từ khóa.
+        with ThreadPoolExecutor(max_workers=3) as executor:
             future_fpt = executor.submit(scraper_service.search_fptshop, keyword)
             future_cps = executor.submit(scraper_service.search_cellphones, keyword)
+            future_hhm = executor.submit(scraper_service.search_hoanghamobile, keyword)
+
             items_fpt = future_fpt.result()
             items_cps = future_cps.result()
+            items_hhm = future_hhm.result()
 
-        items = items_fpt + items_cps
+        items = items_fpt + items_cps + items_hhm
 
         # Gom nhóm các sản phẩm tương đồng bằng Text Matching.
         text_matching_service = TextMatchingService()

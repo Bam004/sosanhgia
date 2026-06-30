@@ -42,6 +42,31 @@ class TextMatchingService:
         "rom",
     }
 
+    ACCESSORY_KEYWORDS = {
+        "op",
+        "lung",
+        "oplung",
+        "dan",
+        "kinh",
+        "cuong",
+        "luc",
+        "mieng",
+        "miengdan",
+        "bao",
+        "da",
+        "case",
+        "cover",
+        "magsafe",
+        "sac",
+        "cap",
+        "tai",
+        "nghe",
+        "adapter",
+        "pin",
+        "du",
+        "phong",
+    }
+
     # Ngưỡng điểm để quyết định hai sản phẩm có thuộc cùng nhóm hay không.
     MATCH_THRESHOLD = 0.82
 
@@ -79,6 +104,7 @@ class TextMatchingService:
         tokens = self._tokenize(normalized_name)
         brand = self._extract_brand(normalized_name)
         storage = self._extract_storage(normalized_name)
+        is_accessory = self._is_accessory(normalized_name)
 
         model_key = self._extract_model_key(
             normalized_name=normalized_name,
@@ -93,7 +119,8 @@ class TextMatchingService:
             "tokens": tokens,
             "brand": brand,
             "storage": storage,
-            "model_key": model_key
+            "model_key": model_key,
+            "is_accessory": is_accessory
         }
 
         return enriched_item
@@ -128,6 +155,8 @@ class TextMatchingService:
     ) -> float:
         data_a = item_a["_matching"]
         data_b = item_b["_matching"]
+        if data_a.get("is_accessory") != data_b.get("is_accessory"):
+            return 0.0
 
         brand_a = data_a["brand"]
         brand_b = data_b["brand"]
@@ -332,6 +361,29 @@ class TextMatchingService:
 
         storage = match.group(0)
         return storage.replace(" ", "")
+
+    def _is_accessory(self, normalized_name: str) -> bool:
+        tokens = set(normalized_name.split())
+
+        if tokens.intersection(self.ACCESSORY_KEYWORDS):
+            return True
+
+        accessory_patterns = [
+            r"\bop\s+lung\b",
+            r"\bdan\s+kinh\b",
+            r"\bcuong\s+luc\b",
+            r"\bmieng\s+dan\b",
+            r"\bbao\s+da\b",
+            r"\bcase\b",
+            r"\bcover\b",
+            r"\bmagsafe\b",
+        ]
+
+        for pattern in accessory_patterns:
+            if re.search(pattern, normalized_name):
+                return True
+
+        return False
 
     # Hàm này chuẩn hóa tên sản phẩm trước khi so khớp.
     def _normalize_text(self, text: str) -> str:
