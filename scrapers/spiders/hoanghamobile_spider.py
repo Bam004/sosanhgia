@@ -2,6 +2,7 @@
 
 import json
 import re
+import unicodedata
 import scrapy
 from datetime import datetime
 from urllib.parse import quote_plus
@@ -46,16 +47,84 @@ class HoangHaMobileSpider(scrapy.Spider):
             callback=self.parse_search_results
         )
 
+    def extract_listing_items_from_script(self, response):
+        match = re.search(
+            r"window\.insider_object\.listing\s*=\s*(\{.*?\});",
+            response.text,
+            re.S
+        )
+
+        if not match:
+            return []
+
+        try:
+            listing_data = json.loads(match.group(1))
+        except json.JSONDecodeError:
+            return []
+
+        items = listing_data.get("items", [])
+
+        if not isinstance(items, list):
+            return []
+
+        return items
+
     def parse_search_results(self, response):
         self.logger.info(f"Đang cào trang kết quả tìm kiếm: {response.url}")
         self.logger.info(f"Status code: {response.status}")
 
-        product_links = response.css("a[href*='/dien-thoai/']::attr(href)").getall()
+        if "samsung" in self.keyword or "sam sung" in self.keyword:
+            with open("debug_hoangha_samsung_a56.html", "w", encoding="utf-8") as file:
+                file.write(response.text)
 
+        candidates = []
         seen_links = set()
-        total_requests = 0
 
-        for link in product_links:
+        listing_items = self.extract_listing_items_from_script(response)
+
+        for listing_item in listing_items:
+            title = self.clean_text(listing_item.get("name"))
+            link = listing_item.get("url")
+
+            if not title or not link:
+                continue
+
+            full_url = response.urljoin(link).split("?")[0].rstrip("/")
+
+            if full_url in seen_links:
+                continue
+
+            if not self.is_valid_product_url(full_url):
+                continue
+
+            if not self.is_keyword_related_product(title):
+                continue
+
+            seen_links.add(full_url)
+
+            candidates.append({
+                "url": full_url,
+                "title": title,
+                "price": self.parse_price(
+                    listing_item.get("unit_sale_price")
+                    or listing_item.get("unit_price")
+                ),
+                "image": listing_item.get("product_image_url"),
+                "priority": self.get_candidate_priority(title, full_url),
+            })
+
+        product_anchors = response.css("a[title][href]")
+
+        for anchor in product_anchors:
+            link = anchor.css("::attr(href)").get()
+            title = self.clean_text(
+                anchor.css("::attr(title)").get()
+                or " ".join(anchor.css("::text").getall())
+            )
+
+            if not link or not title:
+                continue
+
             full_url = response.urljoin(link.replace("&amp;", "&"))
             full_url = full_url.split("?")[0].rstrip("/")
 
@@ -65,21 +134,38 @@ class HoangHaMobileSpider(scrapy.Spider):
             if not self.is_valid_product_url(full_url):
                 continue
 
+            if not self.is_keyword_related_product(title):
+                continue
+
             seen_links.add(full_url)
 
-            if total_requests >= self.limit:
-                break
+            candidates.append({
+                "url": full_url,
+                "title": title,
+                "priority": self.get_candidate_priority(title, full_url),
+            })
 
-            total_requests += 1
+        candidates = sorted(
+            candidates,
+            key=lambda candidate: candidate["priority"]
+        )
 
+        selected_candidates = candidates[:self.limit]
+
+        for candidate in selected_candidates:
             yield scrapy.Request(
-                url=full_url,
-                callback=self.parse_product_detail
+                url=candidate["url"],
+                callback=self.parse_product_detail,
+                meta={
+                    "fallback_title": candidate.get("title"),
+                    "fallback_price": candidate.get("price"),
+                    "fallback_image": candidate.get("image"),
+                }
             )
 
         self.logger.info(
-            f"Hoàng Hà Mobile: tìm thấy {len(seen_links)} link sản phẩm hợp lệ, "
-            f"đã gửi {total_requests} request chi tiết"
+            f"Hoàng Hà Mobile: tìm thấy {len(candidates)} sản phẩm khớp keyword, "
+            f"ưu tiên và gửi {len(selected_candidates)} request chi tiết"
         )
 
     def parse_product_detail(self, response):
@@ -88,14 +174,20 @@ class HoangHaMobileSpider(scrapy.Spider):
         page_text = " ".join(response.css("body *::text").getall())
         structured_data = self.extract_structured_product_data(response)
 
+        fallback_title = self.clean_text(response.meta.get("fallback_title"))
+        fallback_price = response.meta.get("fallback_price")
+        fallback_image = response.meta.get("fallback_image")
+
         ten_san_pham = self.clean_text(
-            response.css("h1::text").get()
+            fallback_title
+            or response.css("h1::text").get()
             or response.css("meta[property='og:title']::attr(content)").get()
             or response.css("title::text").get()
         )
 
         hinh_anh = (
             response.css("meta[property='og:image']::attr(content)").get()
+            or fallback_image
             or response.css("img::attr(src)").get()
         )
 
@@ -104,9 +196,18 @@ class HoangHaMobileSpider(scrapy.Spider):
             or response.url
         )
 
-        gia_hien_tai = self.extract_price(response, page_text, structured_data)
+        gia_hien_tai = (
+            self.extract_price(response, page_text, structured_data)
+            or fallback_price
+        )
         danh_gia = self.extract_rating(structured_data)
         so_luong_danh_gia = self.extract_review_count(structured_data)
+
+        if not self.is_keyword_related_product(ten_san_pham):
+            self.logger.info(
+                f"Bỏ qua sản phẩm không khớp keyword '{self.keyword}': {ten_san_pham}"
+            )
+            return
 
         item = SanPhamThoItem()
         item["tenSanPham"] = ten_san_pham
@@ -141,13 +242,98 @@ class HoangHaMobileSpider(scrapy.Spider):
         if "/tra-gop/" in url:
             return False
 
-        if "/dien-thoai-di-dong/" in url:
+        valid_prefixes = [
+            "/dien-thoai/",
+            "/dien-thoai-di-dong/",
+            "/kho-san-pham-cu/dien-thoai/",
+            "/op-lung/",
+            "/tam-dan-man-hinh/",
+            "/thay/",
+        ]
+
+        if not url.startswith("https://hoanghamobile.com/"):
             return False
 
-        if not re.match(r"^https://hoanghamobile\.com/dien-thoai/[^/?#]+$", url):
-            return False
+        path = url.replace("https://hoanghamobile.com", "")
 
-        return True
+        return any(
+            path.startswith(prefix)
+            for prefix in valid_prefixes
+        )
+
+    def get_candidate_priority(self, title, url):
+        keyword_is_accessory = self.is_accessory_text(self.keyword)
+        candidate_is_accessory = self.is_accessory_text(title) or self.is_accessory_url(url)
+        candidate_is_phone = self.is_phone_url(url)
+
+        # Nếu người dùng tìm phụ kiện, ưu tiên phụ kiện trước.
+        if keyword_is_accessory:
+            if candidate_is_accessory:
+                return 0
+            if candidate_is_phone:
+                return 1
+            return 2
+
+        # Nếu người dùng tìm điện thoại/dòng máy, ưu tiên điện thoại trước.
+        if candidate_is_phone and not candidate_is_accessory:
+            return 0
+
+        if candidate_is_accessory:
+            return 1
+
+        return 2
+
+    def is_phone_url(self, url):
+        path = url.replace("https://hoanghamobile.com", "")
+
+        return (
+            path.startswith("/dien-thoai/")
+            or path.startswith("/dien-thoai-di-dong/")
+            or path.startswith("/kho-san-pham-cu/dien-thoai/")
+        )
+
+    def is_accessory_url(self, url):
+        path = url.replace("https://hoanghamobile.com", "")
+
+        accessory_prefixes = [
+            "/op-lung/",
+            "/tam-dan-man-hinh/",
+            "/thay/",
+            "/sac-cap/",
+            "/tai-nghe/",
+            "/pin-sac-du-phong/",
+        ]
+
+        return any(
+            path.startswith(prefix)
+            for prefix in accessory_prefixes
+        )
+
+    def is_accessory_text(self, text):
+        normalized_text = self.normalize_keyword_match_text(text)
+
+        accessory_patterns = [
+            r"\bop\s+lung\b",
+            r"\bdan\s+kinh\b",
+            r"\bdan\s+man\s+hinh\b",
+            r"\bkinh\s+dan\b",
+            r"\bcuong\s+luc\b",
+            r"\btam\s+dan\b",
+            r"\bthay\s+man\s+hinh\b",
+            r"\bcase\b",
+            r"\bcover\b",
+            r"\bmagsafe\b",
+            r"\bsac\b",
+            r"\bcap\b",
+            r"\btai\s+nghe\b",
+            r"\badapter\b",
+            r"\bpin\s+du\s+phong\b",
+        ]
+
+        return any(
+            re.search(pattern, normalized_text)
+            for pattern in accessory_patterns
+        )
 
     def extract_structured_product_data(self, response):
         scripts = response.css("script[type='application/ld+json']::text").getall()
@@ -303,6 +489,72 @@ class HoangHaMobileSpider(scrapy.Spider):
             return None
 
         return re.sub(r"\s+", " ", str(text)).strip()
+
+    def is_keyword_related_product(self, product_name):
+        normalized_keyword = self.normalize_keyword_match_text(self.keyword)
+        normalized_product_name = self.normalize_keyword_match_text(product_name)
+
+        keyword_phrase = self.extract_main_keyword_phrase(normalized_keyword)
+
+        if not keyword_phrase:
+            return False
+
+        return keyword_phrase in normalized_product_name
+
+    def extract_main_keyword_phrase(self, normalized_keyword):
+        iphone_number_match = re.search(
+            r"\biphone\s+\d{1,2}(?:\s+(?:pro max|pro|max|plus|e))?",
+            normalized_keyword
+        )
+
+        if iphone_number_match:
+            return iphone_number_match.group(0)
+
+        iphone_x_match = re.search(
+            r"\biphone\s+(?:xs max|xr|xs|x|se)",
+            normalized_keyword
+        )
+
+        if iphone_x_match:
+            return iphone_x_match.group(0)
+
+        return normalized_keyword
+
+    def normalize_keyword_match_text(self, text):
+        text = self.clean_text(text) or ""
+        text = text.lower()
+        text = unicodedata.normalize("NFD", text)
+        text = "".join(
+            char for char in text
+            if unicodedata.category(char) != "Mn"
+        )
+        text = text.replace("đ", "d")
+
+        text = re.sub(r"[/\-_,.()+]", " ", text)
+
+        text = re.sub(
+            r"\biphone\s*(\d{1,2})\s*(pro\s*max|pro|max|plus|e)?\b",
+            lambda match: self.clean_text(
+                f"iphone {match.group(1)} {match.group(2) or ''}"
+            ),
+            text
+        )
+
+        text = re.sub(
+            r"\biphone\s*xs\s*max\b",
+            "iphone xs max",
+            text
+        )
+
+        text = re.sub(
+            r"\biphone\s*(xr|xs|x|se)\b",
+            r"iphone \1",
+            text
+        )
+
+        text = re.sub(r"\s+", " ", text)
+
+        return text.strip()
 
     def parse_price(self, value):
         if value is None:

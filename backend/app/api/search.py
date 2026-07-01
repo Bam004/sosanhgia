@@ -34,6 +34,7 @@ def search_products(
         items = items_fpt + items_cps + items_hhm + items_lazada
 
         text_matching_service = TextMatchingService()
+        items = text_matching_service.filter_relevant_items(items, keyword)
         groups = text_matching_service.group_products(items)
 
         sources = sorted({
