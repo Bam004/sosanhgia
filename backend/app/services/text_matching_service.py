@@ -67,6 +67,23 @@ class TextMatchingService:
         "phong",
     }
 
+    REPAIR_SERVICE_KEYWORDS = {
+        "thay",
+        "sua",
+        "ep",
+        "man",
+        "hinh",
+        "pin",
+        "camera",
+        "kinh",
+        "vo",
+        "nap",
+        "lung",
+        "oled",
+        "lcd",
+        "pisen",
+    }
+
     # Ngưỡng điểm để quyết định hai sản phẩm có thuộc cùng nhóm hay không.
     MATCH_THRESHOLD = 0.82
 
@@ -97,6 +114,43 @@ class TextMatchingService:
             for index, group in enumerate(groups)
         ]
 
+    def filter_relevant_items(
+        self,
+        items: list[dict[str, Any]],
+        keyword: str
+    ) -> list[dict[str, Any]]:
+        normalized_keyword = self._normalize_text(keyword)
+        keyword_model_key = (
+            self._extract_iphone_model_key(normalized_keyword)
+            or self._extract_android_model_key(normalized_keyword)
+        )
+
+        filtered_items = []
+
+        for item in items:
+            if not item.get("tenSanPham"):
+                continue
+
+            enriched_item = self._enrich_item(item)
+            matching_data = enriched_item["_matching"]
+
+            # Loại phụ kiện: ốp lưng, kính cường lực, dán camera, sạc, cáp...
+            if matching_data.get("is_accessory"):
+                continue
+
+            # Nếu keyword có model rõ ràng, chỉ giữ sản phẩm cùng dòng model.
+            if keyword_model_key:
+                model_key = matching_data.get("model_key") or ""
+
+                if not model_key.startswith(keyword_model_key):
+                    continue
+
+            filtered_items.append(
+                self._remove_matching_metadata(enriched_item)
+            )
+
+        return filtered_items
+
     # Hàm này bổ sung dữ liệu phục vụ matching cho từng sản phẩm.
     def _enrich_item(self, item: dict[str, Any]) -> dict[str, Any]:
         product_name = item.get("tenSanPham", "")
@@ -105,6 +159,7 @@ class TextMatchingService:
         brand = self._extract_brand(normalized_name)
         storage = self._extract_storage(normalized_name)
         is_accessory = self._is_accessory(normalized_name)
+        product_type = self._classify_product_type(normalized_name, is_accessory)
 
         model_key = self._extract_model_key(
             normalized_name=normalized_name,
@@ -120,7 +175,8 @@ class TextMatchingService:
             "brand": brand,
             "storage": storage,
             "model_key": model_key,
-            "is_accessory": is_accessory
+            "is_accessory": is_accessory,
+            "product_type": product_type
         }
 
         return enriched_item
@@ -155,7 +211,8 @@ class TextMatchingService:
     ) -> float:
         data_a = item_a["_matching"]
         data_b = item_b["_matching"]
-        if data_a.get("is_accessory") != data_b.get("is_accessory"):
+
+        if data_a.get("product_type") != data_b.get("product_type"):
             return 0.0
 
         brand_a = data_a["brand"]
@@ -249,6 +306,7 @@ class TextMatchingService:
             "thuongHieu": matching_data.get("brand"),
             "dungLuong": matching_data.get("storage"),
             "modelKey": matching_data.get("model_key"),
+            "productType": matching_data.get("product_type"),
             "soNguon": len(sources),
             "nguon": sources,
             "soSanPham": len(items),
@@ -266,10 +324,43 @@ class TextMatchingService:
         if not items:
             return {}
 
-        return max(
-            items,
-            key=lambda item: len(item.get("tenSanPham") or "")
-        )
+        def representative_score(item: dict[str, Any]) -> tuple:
+            name = item.get("tenSanPham") or ""
+            normalized_name = self._normalize_text(name)
+            source = item.get("sanTMDT") or ""
+
+            bad_title_keywords = [
+                "may cu",
+                "hang cu",
+                "san pham cu",
+                "troi bao hanh",
+                "da kich hoat",
+                "bh kich hoat",
+                "man hinh sang",
+                "camera",
+                "snapdragon",
+                "bao hanh 12 thang",
+            ]
+
+            bad_keyword_count = sum(
+                1 for keyword in bad_title_keywords
+                if keyword in normalized_name
+            )
+
+            source_priority = {
+                "FPT Shop": 0,
+                "CellPhoneS": 1,
+                "Hoàng Hà Mobile": 2,
+                "Lazada": 3,
+            }.get(source, 4)
+
+            return (
+                bad_keyword_count,
+                source_priority,
+                len(name)
+            )
+
+        return min(items, key=representative_score)
 
     # Hàm này xóa dữ liệu kỹ thuật _matching trước khi trả ra API.
     def _remove_matching_metadata(
@@ -292,6 +383,11 @@ class TextMatchingService:
 
         if iphone_key:
             return iphone_key
+
+        android_key = self._extract_android_model_key(normalized_name)
+
+        if android_key:
+            return android_key
 
         clean_tokens = []
 
@@ -340,6 +436,113 @@ class TextMatchingService:
 
         return " ".join(model_parts).strip()
 
+    def _extract_android_model_key(self, normalized_name: str) -> str | None:
+        android_patterns = [
+            (
+                r"\b(?:samsung\s+)?galaxy\s+([a-z])\s*(\d{1,3})(?:\s+(ultra|plus|fe))?\b",
+                lambda match: [
+                    "samsung",
+                    "galaxy",
+                    f"{match.group(1)}{match.group(2)}",
+                    match.group(3)
+                ]
+            ),
+            (
+                r"\b(?:xiaomi\s+)?redmi\s+note\s*(\d{1,3}[a-z]?)(?:\s+(pro\s+max|pro|max|plus|ultra))?\b",
+                lambda match: [
+                    "xiaomi",
+                    "redmi",
+                    "note",
+                    match.group(1),
+                    match.group(2)
+                ]
+            ),
+            (
+                r"\b(?:xiaomi\s+)?redmi\s+(\d{1,3}[a-z]?)(?:\s+(pro\s+max|pro|max|plus|ultra))?\b",
+                lambda match: [
+                    "xiaomi",
+                    "redmi",
+                    match.group(1),
+                    match.group(2)
+                ]
+            ),
+            (
+                r"\bxiaomi\s+(mi\s+)?(\d{1,3}[a-z]?)(?:\s+(pro\s+max|pro|max|plus|ultra|lite))?\b",
+                lambda match: [
+                    "xiaomi",
+                    "mi" if match.group(1) else None,
+                    match.group(2),
+                    match.group(3)
+                ]
+            ),
+            (
+                r"\b(?:xiaomi\s+)?poco\s+([a-z]\d{1,3}[a-z]?)(?:\s+(pro\s+max|pro|max|plus|ultra))?\b",
+                lambda match: [
+                    "xiaomi",
+                    "poco",
+                    match.group(1),
+                    match.group(2)
+                ]
+            ),
+            (
+                r"\boppo\s+(reno|find|a)\s*([a-z]?\d{1,3}[a-z]?)(?:\s+(pro\s+max|pro|max|plus|ultra|f))?\b",
+                lambda match: [
+                    "oppo",
+                    match.group(1),
+                    match.group(2),
+                    match.group(3)
+                ]
+            ),
+            (
+                r"\bvivo\s+([a-z]?\d{1,3}[a-z]?)(?:\s+(pro\s+max|pro|max|plus|ultra))?\b",
+                lambda match: [
+                    "vivo",
+                    match.group(1),
+                    match.group(2)
+                ]
+            ),
+            (
+                r"\brealme\s+([a-z]?\d{1,3}[a-z]?)(?:\s+(pro\s+max|pro|max|plus|ultra))?\b",
+                lambda match: [
+                    "realme",
+                    match.group(1),
+                    match.group(2)
+                ]
+            ),
+            (
+                r"\bhonor\s+([a-z]?\d{1,3}[a-z]?)(?:\s+(pro\s+max|pro|max|plus|ultra))?\b",
+                lambda match: [
+                    "honor",
+                    match.group(1),
+                    match.group(2)
+                ]
+            ),
+            (
+                r"\bnokia\s+([a-z]?\d{1,3}[a-z]?)(?:\s+(pro\s+max|pro|max|plus|ultra))?\b",
+                lambda match: [
+                    "nokia",
+                    match.group(1),
+                    match.group(2)
+                ]
+            ),
+        ]
+
+        for pattern, build_parts in android_patterns:
+            match = re.search(pattern, normalized_name)
+
+            if not match:
+                continue
+
+            parts = [
+                str(part).strip()
+                for part in build_parts(match)
+                if part
+            ]
+
+            return " ".join(parts)
+
+        return None
+
     # Hàm này nhận diện thương hiệu từ tên sản phẩm.
     def _extract_brand(self, normalized_name: str) -> str | None:
         for brand, aliases in self.BRAND_ALIASES.items():
@@ -362,15 +565,85 @@ class TextMatchingService:
         storage = match.group(0)
         return storage.replace(" ", "")
 
+    def _classify_product_type(
+        self,
+        normalized_name: str,
+        is_accessory: bool
+    ) -> str:
+        repair_patterns = [
+            r"\bthay\s+man\s+hinh\b",
+            r"\bthay\s+pin\b",
+            r"\bthay\s+camera\b",
+            r"\bthay\s+kinh\b",
+            r"\bep\s+kinh\b",
+            r"\bsua\s+chua\b",
+            r"\boled\b",
+            r"\blcd\b",
+        ]
+
+        for pattern in repair_patterns:
+            if re.search(pattern, normalized_name):
+                return "repair_service"
+
+        if is_accessory:
+            return "accessory"
+
+        phone_patterns = [
+            r"\biphone\s+(se|\d{1,2}e?|\d{1,2})\b",
+            r"\bsamsung\s+galaxy\s+[a-z0-9]+\b",
+            r"\bgalaxy\s+[a-z0-9]+\b",
+            r"\bxiaomi\s+\d{1,2}[a-z]?\b",
+            r"\bredmi\s+(note\s+)?\d{1,2}[a-z]?\b",
+            r"\bpoco\s+[a-z0-9]+\b",
+            r"\boppo\s+(reno|find|a)\s*[a-z0-9]+\b",
+            r"\bvivo\s+[a-z0-9]+\b",
+            r"\brealme\s+[a-z0-9]+\b",
+            r"\bhonor\s+[a-z0-9]+\b",
+            r"\bnokia\s+[a-z0-9]+\b",
+        ]
+
+        for pattern in phone_patterns:
+            if re.search(pattern, normalized_name):
+                return "phone"
+
+        if "dien thoai" in normalized_name or "smartphone" in normalized_name:
+            return "phone"
+
+        return "other"
+
     def _is_accessory(self, normalized_name: str) -> bool:
+        false_accessory_phrases = [
+            "bao hanh",
+            "troi bao hanh",
+            "het bao hanh",
+            "con bao hanh",
+        ]
+
+        for phrase in false_accessory_phrases:
+            if phrase in normalized_name:
+                normalized_name = normalized_name.replace(phrase, " ")
+
         tokens = set(normalized_name.split())
 
-        if tokens.intersection(self.ACCESSORY_KEYWORDS):
+        strong_accessory_tokens = {
+            "oplung",
+            "miengdan",
+            "case",
+            "cover",
+            "magsafe",
+            "adapter",
+        }
+
+        if tokens.intersection(strong_accessory_tokens):
             return True
 
         accessory_patterns = [
             r"\bop\s+lung\b",
             r"\bdan\s+kinh\b",
+            r"\bkinh\s+dan\b",
+            r"\bdan\s+man\s+hinh\b",
+            r"\bkinh\s+dan\s+man\s+hinh\b",
+            r"\btam\s+dan\b",
             r"\bcuong\s+luc\b",
             r"\bmieng\s+dan\b",
             r"\bbao\s+da\b",

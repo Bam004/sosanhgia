@@ -1,7 +1,9 @@
 
 import json
+import re
 import subprocess
 import sys
+import unicodedata
 from pathlib import Path
 
 import scrapy
@@ -27,7 +29,28 @@ class LazadaSpider(scrapy.Spider):
 
         self.logger.info("Runner returned %s Lazada products", len(products))
 
+        filtered_products = []
+
         for product in products:
+            product_name = product.get("tenSanPham")
+
+            if not self.is_keyword_related_product(product_name):
+                self.logger.info(
+                    "Bỏ qua sản phẩm Lazada không khớp keyword '%s': %s",
+                    self.keyword,
+                    product_name
+                )
+                continue
+
+            filtered_products.append(product)
+
+        self.logger.info(
+            "Lazada: giữ lại %s/%s sản phẩm khớp keyword",
+            len(filtered_products),
+            len(products)
+        )
+
+        for product in filtered_products:
             yield product
 
     def _run_playwright_runner(self):
@@ -67,3 +90,54 @@ class LazadaSpider(scrapy.Spider):
         except json.JSONDecodeError:
             self.logger.error("Cannot parse Lazada runner JSON output:\n%s", result.stdout[:1000])
             return []
+
+    def is_keyword_related_product(self, product_name):
+        normalized_keyword = self.normalize_keyword_match_text(self.keyword)
+        normalized_product_name = self.normalize_keyword_match_text(product_name)
+
+        keyword_phrase = self.extract_main_keyword_phrase(normalized_keyword)
+
+        if not keyword_phrase:
+            return False
+
+        return keyword_phrase in normalized_product_name
+
+    def extract_main_keyword_phrase(self, normalized_keyword):
+        iphone_number_match = re.search(
+            r"\biphone\s+\d{1,2}(?:\s+(?:pro max|pro|max|plus|e))?",
+            normalized_keyword
+        )
+
+        if iphone_number_match:
+            return iphone_number_match.group(0)
+
+        iphone_x_match = re.search(
+            r"\biphone\s+(?:xs max|xr|xs|x|se)",
+            normalized_keyword
+        )
+
+        if iphone_x_match:
+            return iphone_x_match.group(0)
+
+        return normalized_keyword
+
+    def normalize_keyword_match_text(self, text):
+        if not text:
+            return ""
+
+        text = str(text).lower()
+        text = unicodedata.normalize("NFD", text)
+        text = "".join(
+            char for char in text
+            if unicodedata.category(char) != "Mn"
+        )
+        text = text.replace("đ", "d")
+
+        text = re.sub(r"[/\-_,.()+|\"“”']", " ", text)
+
+        text = re.sub(r"([a-z])(\d)", r"\1 \2", text)
+        text = re.sub(r"(\d)([a-z])", r"\1 \2", text)
+
+        text = re.sub(r"\s+", " ", text)
+
+        return text.strip()
