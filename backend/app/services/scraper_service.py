@@ -18,11 +18,28 @@ class ScraperService:
     def search_hoanghamobile(self, keyword: str):
         return self._run_spider("hoanghamobile", keyword)
 
-    def _run_spider(self, spider_name: str, keyword: str):
+    def search_lazada(self, keyword: str):
+        return self._run_spider(
+            "lazada",
+            keyword,
+            extra_args={
+                "max_pages": "1",
+                "headless": "true",
+            },
+            timeout=240,
+        )
+
+    def _run_spider(
+        self,
+        spider_name: str,
+        keyword: str,
+        extra_args: dict | None = None,
+        timeout: int = 180,
+    ):
         keyword = self._clean_keyword(keyword)
 
         if not keyword:
-            raise ValueError("Từ khóa tìm kiếm không được để trống.")
+            raise ValueError("Keyword is required.")
 
         output_file = tempfile.NamedTemporaryFile(
             mode="w",
@@ -30,7 +47,7 @@ class ScraperService:
             prefix=f"{spider_name}_search_",
             delete=False,
             encoding="utf-8",
-            dir=self.project_root
+            dir=self.project_root,
         )
         output_path = Path(output_file.name)
         output_file.close()
@@ -43,9 +60,13 @@ class ScraperService:
             spider_name,
             "-a",
             f"keyword={keyword}",
-            "-O",
-            str(output_path)
         ]
+
+        if extra_args:
+            for key, value in extra_args.items():
+                command.extend(["-a", f"{key}={value}"])
+
+        command.extend(["-O", str(output_path)])
 
         try:
             result = subprocess.run(
@@ -53,13 +74,14 @@ class ScraperService:
                 cwd=self.project_root,
                 capture_output=True,
                 text=True,
-                timeout=180
+                encoding="utf-8",
+                errors="replace",
+                timeout=timeout,
             )
 
             if result.returncode != 0:
                 raise RuntimeError(
-                    f"Không thể chạy {spider_name} spider. "
-                    f"Chi tiết lỗi: {result.stderr}"
+                    f"Cannot run {spider_name} spider. Detail: {result.stderr}"
                 )
 
             if not output_path.exists():
@@ -79,5 +101,3 @@ class ScraperService:
             return ""
 
         return " ".join(keyword.strip().split())
-
-
