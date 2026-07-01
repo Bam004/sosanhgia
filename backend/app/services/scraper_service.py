@@ -15,6 +15,9 @@ class ScraperService:
     def search_cellphones(self, keyword: str):
         return self._run_spider("cellphones", keyword)
 
+    def search_hoanghamobile(self, keyword: str):
+        return self._run_spider("hoanghamobile", keyword)
+
     def search_lazada(self, keyword: str):
         return self._run_spider(
             "lazada",

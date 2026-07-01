@@ -19,16 +19,19 @@ def search_products(
     try:
         scraper_service = ScraperService()
 
-        with ThreadPoolExecutor(max_workers=3) as executor:
+        # Run spiders in parallel from FPT Shop, CellPhoneS, Hoang Ha Mobile and Lazada.
+        with ThreadPoolExecutor(max_workers=4) as executor:
             future_fpt = executor.submit(scraper_service.search_fptshop, keyword)
             future_cps = executor.submit(scraper_service.search_cellphones, keyword)
+            future_hhm = executor.submit(scraper_service.search_hoanghamobile, keyword)
             future_lazada = executor.submit(scraper_service.search_lazada, keyword)
 
             items_fpt = future_fpt.result()
             items_cps = future_cps.result()
+            items_hhm = future_hhm.result()
             items_lazada = future_lazada.result()
 
-        items = items_fpt + items_cps + items_lazada
+        items = items_fpt + items_cps + items_hhm + items_lazada
 
         text_matching_service = TextMatchingService()
         groups = text_matching_service.group_products(items)
