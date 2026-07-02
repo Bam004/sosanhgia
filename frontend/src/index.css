@@ -1,0 +1,46 @@
+﻿* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f4f4f4;
+  color: #111827;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.bo-cuc-nguoi-dung,
+.bo-cuc-quan-tri {
+  width: 1200px;
+  margin: 24px auto;
+  background: #ffffff;
+  border: 1px solid #333333;
+}
+
+.page-placeholder {
+  min-height: 420px;
+  padding: 48px;
+  background: #ffffff;
+}
+
+.component-placeholder {
+  border: 1px dashed #9ca3af;
+  padding: 12px;
+  margin: 8px;
+  background: #f9fafb;
+}
+
+.noi-dung-quan-tri {
+  display: flex;
+  min-height: 720px;
+}
+
+.khu-vuc-quan-tri {
+  flex: 1;
+  padding: 32px;
+}
