@@ -29,6 +29,9 @@ class ScraperService:
             timeout=240,
         )
 
+    def search_tiki(self, keyword: str):
+        return self._run_spider("tiki", keyword)
+
     def _run_spider(
         self,
         spider_name: str,
@@ -101,3 +104,4 @@ class ScraperService:
             return ""
 
         return " ".join(keyword.strip().split())
+
