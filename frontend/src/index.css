@@ -1,10 +1,10 @@
-﻿* {
+* {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
+  font-family: 'Inter', sans-serif;
   background: #f4f4f4;
   color: #111827;
 }
@@ -14,7 +14,6 @@ a {
   text-decoration: none;
 }
 
-.bo-cuc-nguoi-dung,
 .bo-cuc-quan-tri {
   width: 1200px;
   margin: 24px auto;
