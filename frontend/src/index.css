@@ -4,7 +4,7 @@
 
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
+  font-family: Inter, Roboto, "Segoe UI", Arial, sans-serif;
   background: #f4f4f4;
   color: #111827;
 }
@@ -14,8 +14,7 @@ a {
   text-decoration: none;
 }
 
-.bo-cuc-nguoi-dung,
-.bo-cuc-quan-tri {
+.bo-cuc-nguoi-dung {
   width: 1200px;
   margin: 24px auto;
   background: #ffffff;
@@ -44,3 +43,177 @@ a {
   flex: 1;
   padding: 32px;
 }
+
+.thanh-ben-quan-tri {
+  width: 240px;
+  min-height: calc(100vh - 72px);
+  background: #ffffff;
+  border-top: none;
+  border-bottom: 1px solid #111827;
+  border-right: 1px solid #111827;
+  border-left: 1px solid #111827;
+  box-sizing: border-box;
+}
+
+.menu-admin {
+  display: flex;
+  flex-direction: column;
+}
+
+.muc-menu-admin {
+  min-height: 56px;
+  padding: 0 18px;
+  border: none;
+  border-bottom: 1px solid #111827;
+  background: #ffffff;
+  color: #111827;
+  text-decoration: none;
+  font-size: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.bieu-tuong-menu {
+  width: 26px;
+  min-width: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.nhan-menu-admin {
+  flex: 1;
+  line-height: 1.3;
+}
+
+.nut-dang-xuat {
+  width: 100%;
+  font-family: inherit;
+}
+
+.muc-menu-admin:hover {
+  background: #dbeafe;
+}
+
+.muc-menu-admin.dang-chon {
+  background: #a9c4e8;
+  color: #111827;
+}
+
+.nut-dang-xuat {
+  width: 100%;
+}
+
+.hop-thong-tin-admin {
+  margin-top: 28px;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.hop-thong-tin-admin p {
+  margin: 0 0 6px;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.hop-thong-tin-admin strong {
+  font-size: 15px;
+}
+
+.dau-trang-quan-tri {
+  width: 100%;
+  height: 72px;
+  margin: 0;
+  background: #2563eb;
+  color: #ffffff;
+  border-top: 1px solid #111827;
+  border-bottom: 1px solid #111827;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 240px 1fr 220px;
+  align-items: center;
+}
+
+.ten-he-thong-admin {
+  padding-left: 34px;
+  font-size: 20px;
+  font-weight: 700;
+  font-style: italic;
+  text-shadow: 1px 1px 0 #111827;
+}
+
+.loi-chao-admin {
+  font-size: 22px;
+  font-weight: 700;
+  padding-left: 44px;
+}
+
+.tai-khoan-admin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.icon-admin {
+  font-size: 34px;
+  line-height: 1;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  display: block;
+  place-items: initial;
+  background: #ffffff;
+  overflow-x: hidden;
+}
+
+#root {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  text-align: initial;
+}
+
+.bo-cuc-quan-tri {
+  width: 100vw;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  background: #ffffff;
+}
+
+.noi-dung-quan-tri {
+  width: 100%;
+  min-height: calc(100vh - 72px);
+  display: flex;
+  margin: 0;
+  padding: 0;
+}
+
+.khu-vuc-quan-tri {
+  flex: 1;
+  min-height: calc(100vh - 72px);
+  margin: 0;
+  padding: 0;
+  background: #ffffff;
+}
+
