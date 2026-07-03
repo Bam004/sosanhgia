@@ -557,3 +557,213 @@ a {
   font-weight: 700;
 }
 
+/* ===== Trang quan ly tien trinh scraping ===== */
+.trang-tien-trinh-admin {
+  width: 100%;
+  min-height: calc(100vh - 72px);
+  padding: 24px 48px 36px;
+  background: #ffffff;
+  color: #111827;
+}
+
+.trang-tien-trinh-admin h1 {
+  margin: 0 0 12px;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.luoi-the-tien-trinh-admin {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(170px, 1fr));
+  gap: 12px;
+  margin-bottom: 26px;
+}
+
+.the-tien-trinh-admin {
+  min-height: 76px;
+  padding: 8px 12px;
+  border: 1px solid #111827;
+  border-radius: 9px;
+  background: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.18);
+}
+
+.the-tien-trinh-admin h3 {
+  margin: 0;
+  color: #6b7280;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.the-tien-trinh-admin strong {
+  display: block;
+  margin-top: 0;
+  text-align: right;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.the-tien-trinh-admin p {
+  margin: 2px 0 0;
+  color: #3ca266;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.thanh-cong-cu-tien-trinh {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.4fr) 160px 180px 100px 110px 140px;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 28px;
+}
+
+.o-tim-kiem-tien-trinh {
+  height: 40px;
+  border: 1px solid #111827;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  background: #ffffff;
+}
+
+.o-tim-kiem-tien-trinh input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 14px;
+  background: transparent;
+}
+
+.o-tim-kiem-tien-trinh span {
+  font-size: 20px;
+}
+
+.nut-hanh-dong-tien-trinh {
+  height: 40px;
+  border: 1px solid #111827;
+  border-radius: 999px;
+  background: #ffffff;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.nut-hanh-dong-tien-trinh:hover {
+  background: #dbeafe;
+}
+
+.khu-vuc-danh-sach-tien-trinh h2 {
+  margin: 0 0 26px;
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.bang-tien-trinh-scraping-admin {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid #111827;
+  border-radius: 10px 10px 0 0;
+  overflow: hidden;
+  font-size: 15px;
+}
+
+.bang-tien-trinh-scraping-admin th,
+.bang-tien-trinh-scraping-admin td {
+  padding: 9px 10px;
+  border-bottom: 1px solid #111827;
+  text-align: center;
+}
+
+.bang-tien-trinh-scraping-admin th {
+  background: #d9d9d9;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.bang-tien-trinh-scraping-admin tbody tr {
+  background: #eeeeee;
+}
+
+.nhan-tien-trinh {
+  display: inline-block;
+  min-width: 82px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.nhan-tien-trinh.hoàn-tất {
+  color: #15803d;
+  background: #dcfce7;
+}
+
+.nhan-tien-trinh.đang-chạy {
+  color: #1d4ed8;
+  background: #dbeafe;
+}
+
+.nhan-tien-trinh.đang-chờ {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.nhan-tien-trinh.có-lỗi {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
+.thanh-tien-do-admin {
+  width: 90px;
+  height: 8px;
+  margin: 0 auto 4px;
+  border-radius: 999px;
+  background: #d1d5db;
+  overflow: hidden;
+}
+
+.muc-tien-do-admin {
+  height: 100%;
+  border-radius: 999px;
+  background: #2563eb;
+}
+
+.so-tien-do-admin {
+  font-size: 13px;
+}
+
+.phan-trang-admin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 62px;
+}
+
+.phan-trang-admin button {
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 999px;
+  background: #5f95e5;
+  color: #ffffff;
+  font-size: 30px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.phan-trang-admin span {
+  font-size: 15px;
+}
+
+.phan-trang-admin .trang-dang-chon {
+  color: #5f95e5;
+  font-weight: 700;
+}
+
