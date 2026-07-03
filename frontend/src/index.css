@@ -1141,3 +1141,188 @@ a {
   background: #fee2e2;
 }
 
+/* ===== Trang quan ly san pham chuan hoa ===== */
+.trang-san-pham-chuan-hoa-admin {
+  width: 100%;
+  min-height: calc(100vh - 72px);
+  padding: 24px 48px 36px;
+  background: #ffffff;
+  color: #111827;
+}
+
+.trang-san-pham-chuan-hoa-admin h1 {
+  margin: 0 0 12px;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.luoi-the-san-pham-chuan-hoa-admin {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(170px, 1fr));
+  gap: 12px;
+  margin-bottom: 26px;
+}
+
+.the-san-pham-chuan-hoa-admin {
+  min-height: 76px;
+  padding: 8px 12px;
+  border: 1px solid #111827;
+  border-radius: 9px;
+  background: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.18);
+}
+
+.the-san-pham-chuan-hoa-admin h3 {
+  margin: 0;
+  color: #6b7280;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.the-san-pham-chuan-hoa-admin strong {
+  display: block;
+  margin-top: 0;
+  text-align: right;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.the-san-pham-chuan-hoa-admin p {
+  margin: 2px 0 0;
+  color: #3ca266;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.thanh-cong-cu-san-pham-chuan-hoa {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1.45fr 0.65fr 0.8fr 0.75fr 0.55fr;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 28px;
+}
+
+.thanh-cong-cu-san-pham-chuan-hoa > * {
+  width: 100%;
+}
+
+.o-tim-kiem-san-pham-chuan-hoa {
+  height: 40px;
+  border: 1px solid #111827;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  background: #ffffff;
+}
+
+.o-tim-kiem-san-pham-chuan-hoa input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 13px;
+  background: transparent;
+}
+
+.o-tim-kiem-san-pham-chuan-hoa span {
+  font-size: 20px;
+}
+
+.thanh-cong-cu-san-pham-chuan-hoa .select-boc-ngoai select {
+  font-size: 13px;
+  padding-left: 14px;
+  padding-right: 42px;
+}
+
+.nut-hanh-dong-san-pham-chuan-hoa {
+  height: 40px;
+  border: 1px solid #111827;
+  border-radius: 999px;
+  background: #ffffff;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.nut-hanh-dong-san-pham-chuan-hoa:hover {
+  background: #dbeafe;
+}
+
+.khu-vuc-danh-sach-san-pham-chuan-hoa h2 {
+  margin: 0 0 26px;
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.bang-san-pham-chuan-hoa-admin {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid #111827;
+  border-radius: 10px 10px 0 0;
+  overflow: hidden;
+  font-size: 14px;
+}
+
+.bang-san-pham-chuan-hoa-admin th,
+.bang-san-pham-chuan-hoa-admin td {
+  padding: 9px 8px;
+  border-bottom: 1px solid #111827;
+  text-align: center;
+}
+
+.bang-san-pham-chuan-hoa-admin th {
+  background: #d9d9d9;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.bang-san-pham-chuan-hoa-admin tbody tr {
+  background: #eeeeee;
+}
+
+.anh-san-pham-chuan-hoa {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #111827;
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 20px;
+}
+
+.ten-sp-chuan-hoa {
+  max-width: 280px;
+  text-align: left !important;
+}
+
+.nhan-san-pham-chuan-hoa {
+  display: inline-block;
+  min-width: 96px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.nhan-san-pham-chuan-hoa.du-nguon {
+  color: #15803d;
+  background: #dcfce7;
+}
+
+.nhan-san-pham-chuan-hoa.chua-du-nguon {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.nhan-san-pham-chuan-hoa.can-kiem-tra {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
