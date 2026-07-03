@@ -74,6 +74,10 @@ a {
   display: grid;
   grid-template-columns: 240px 1fr 220px;
   align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  flex-shrink: 0;
 }
 
 .ten-he-thong-admin {
@@ -1324,5 +1328,240 @@ a {
 .nhan-san-pham-chuan-hoa.can-kiem-tra {
   color: #b91c1c;
   background: #fee2e2;
+}
+
+/* ===== Trang quan ly gom nhom san pham ===== */
+.trang-gom-nhom-admin {
+  width: 100%;
+  min-height: calc(100vh - 72px);
+  padding: 24px 48px 36px;
+  background: #ffffff;
+  color: #111827;
+}
+
+.trang-gom-nhom-admin h1 {
+  margin: 0 0 12px;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.luoi-the-gom-nhom-admin {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(170px, 1fr));
+  gap: 12px;
+  margin-bottom: 26px;
+}
+
+.the-gom-nhom-admin {
+  min-height: 76px;
+  padding: 8px 12px;
+  border: 1px solid #111827;
+  border-radius: 9px;
+  background: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.18);
+}
+
+.the-gom-nhom-admin h3 {
+  margin: 0;
+  color: #6b7280;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.the-gom-nhom-admin strong {
+  display: block;
+  margin-top: 0;
+  text-align: right;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.the-gom-nhom-admin p {
+  margin: 2px 0 0;
+  color: #3ca266;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.bo-cuc-gom-nhom {
+  display: grid;
+  grid-template-columns: minmax(460px, 1fr) minmax(520px, 1.05fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.cot-san-pham-tho-chua-gom h2,
+.cot-goi-y-gom-nhom h2 {
+  margin: 0 0 24px;
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.thanh-cong-cu-gom-nhom {
+  display: grid;
+  grid-template-columns: 1fr 150px;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.o-tim-kiem-gom-nhom {
+  height: 40px;
+  border: 1px solid #111827;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  background: #ffffff;
+}
+
+.o-tim-kiem-gom-nhom input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 13px;
+  background: transparent;
+}
+
+.o-tim-kiem-gom-nhom span {
+  font-size: 20px;
+}
+
+.thanh-cong-cu-gom-nhom .select-boc-ngoai select {
+  font-size: 13px;
+  padding-left: 14px;
+  padding-right: 42px;
+}
+
+.bang-san-pham-tho-gom-nhom,
+.bang-goi-y-gom-nhom {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid #111827;
+  border-radius: 10px 10px 0 0;
+  overflow: hidden;
+  font-size: 14px;
+}
+
+.bang-san-pham-tho-gom-nhom th,
+.bang-san-pham-tho-gom-nhom td,
+.bang-goi-y-gom-nhom th,
+.bang-goi-y-gom-nhom td {
+  padding: 9px 8px;
+  border-bottom: 1px solid #111827;
+  text-align: center;
+}
+
+.bang-san-pham-tho-gom-nhom th,
+.bang-goi-y-gom-nhom th {
+  background: #d9d9d9;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.bang-san-pham-tho-gom-nhom tbody tr,
+.bang-goi-y-gom-nhom tbody tr {
+  background: #eeeeee;
+}
+
+.bang-san-pham-tho-gom-nhom tbody tr {
+  cursor: pointer;
+}
+
+.bang-san-pham-tho-gom-nhom tbody tr:hover {
+  background: #dbeafe;
+}
+
+.bang-san-pham-tho-gom-nhom tbody tr.dong-dang-chon {
+  background: #bfdbfe;
+}
+
+.ten-spt-gom-nhom,
+.ten-spch-goi-y {
+  text-align: left !important;
+  max-width: 240px;
+}
+
+.nhan-gom-nhom,
+.nhan-tuong-dong {
+  display: inline-block;
+  min-width: 88px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.nhan-gom-nhom.chua-gom-nhom {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.nhan-gom-nhom.can-kiem-tra {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
+.nhan-tuong-dong.cao {
+  color: #15803d;
+  background: #dcfce7;
+}
+
+.nhan-tuong-dong.trung-binh {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.nhan-tuong-dong.thap {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
+.nhan-thong-tin-gom-nhom {
+  margin: 0 0 10px;
+  font-size: 17px;
+}
+
+.khung-san-pham-dang-chon {
+  min-height: 78px;
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  border-radius: 9px;
+  background: #d9d9d9;
+}
+
+.khung-san-pham-dang-chon p {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.khung-san-pham-dang-chon span {
+  font-weight: 700;
+}
+
+.cot-goi-y-gom-nhom h3 {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.nut-gan-gom-nhom {
+  padding: 5px 12px;
+  border: 1px solid #111827;
+  border-radius: 6px;
+  background: #ffffff;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.nut-gan-gom-nhom:hover {
+  background: #dbeafe;
+}
+
+.phan-trang-gom-nhom {
+  margin-top: 48px;
 }
 
