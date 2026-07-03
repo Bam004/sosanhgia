@@ -2,11 +2,23 @@
   box-sizing: border-box;
 }
 
+html,
+body,
+#root {
+  width: 100%;
+  min-width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
 body {
+  display: block;
   margin: 0;
   font-family: Inter, Roboto, "Segoe UI", Arial, sans-serif;
-  background: #f4f4f4;
+  background: #ffffff;
   color: #111827;
+  overflow-x: hidden;
 }
 
 a {
@@ -14,6 +26,14 @@ a {
   text-decoration: none;
 }
 
+#root {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  text-align: initial;
+}
+
+/* ===== Layout nguoi dung tam thoi ===== */
 .bo-cuc-nguoi-dung {
   width: 1200px;
   margin: 24px auto;
@@ -34,25 +54,71 @@ a {
   background: #f9fafb;
 }
 
-.noi-dung-quan-tri {
-  display: flex;
-  min-height: 720px;
+/* ===== Layout quan tri ===== */
+.bo-cuc-quan-tri {
+  width: 100vw;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  background: #ffffff;
 }
 
-.khu-vuc-quan-tri {
-  flex: 1;
-  padding: 32px;
+.dau-trang-quan-tri {
+  width: 100%;
+  height: 72px;
+  margin: 0;
+  background: #2563eb;
+  color: #ffffff;
+  border-top: 1px solid #111827;
+  border-bottom: 1px solid #111827;
+  display: grid;
+  grid-template-columns: 240px 1fr 220px;
+  align-items: center;
+}
+
+.ten-he-thong-admin {
+  padding-left: 34px;
+  font-size: 20px;
+  font-weight: 700;
+  font-style: italic;
+  text-shadow: 1px 1px 0 #111827;
+}
+
+.loi-chao-admin {
+  padding-left: 44px;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.tai-khoan-admin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.icon-admin {
+  font-size: 34px;
+  line-height: 1;
+}
+
+.noi-dung-quan-tri {
+  width: 100%;
+  min-height: calc(100vh - 72px);
+  display: flex;
+  margin: 0;
+  padding: 0;
 }
 
 .thanh-ben-quan-tri {
   width: 240px;
   min-height: calc(100vh - 72px);
   background: #ffffff;
-  border-top: none;
-  border-bottom: 1px solid #111827;
-  border-right: 1px solid #111827;
   border-left: 1px solid #111827;
-  box-sizing: border-box;
+  border-right: 1px solid #111827;
+  border-bottom: 1px solid #111827;
 }
 
 .menu-admin {
@@ -67,15 +133,23 @@ a {
   border-bottom: 1px solid #111827;
   background: #ffffff;
   color: #111827;
-  text-decoration: none;
-  font-size: 17px;
+  font-size: 16px;
+  font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: flex-start;
   gap: 12px;
   text-align: left;
   cursor: pointer;
-  box-sizing: border-box;
+}
+
+.muc-menu-admin:hover {
+  background: #dbeafe;
+}
+
+.muc-menu-admin.dang-chon {
+  background: #a9c4e8;
+  color: #111827;
 }
 
 .bieu-tuong-menu {
@@ -97,123 +171,211 @@ a {
   font-family: inherit;
 }
 
-.muc-menu-admin:hover {
-  background: #dbeafe;
-}
-
-.muc-menu-admin.dang-chon {
-  background: #a9c4e8;
-  color: #111827;
-}
-
-.nut-dang-xuat {
-  width: 100%;
-}
-
-.hop-thong-tin-admin {
-  margin-top: 28px;
-  padding: 14px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.hop-thong-tin-admin p {
-  margin: 0 0 6px;
-  color: #94a3b8;
-  font-size: 13px;
-}
-
-.hop-thong-tin-admin strong {
-  font-size: 15px;
-}
-
-.dau-trang-quan-tri {
-  width: 100%;
-  height: 72px;
-  margin: 0;
-  background: #2563eb;
-  color: #ffffff;
-  border-top: 1px solid #111827;
-  border-bottom: 1px solid #111827;
-  box-sizing: border-box;
-  display: grid;
-  grid-template-columns: 240px 1fr 220px;
-  align-items: center;
-}
-
-.ten-he-thong-admin {
-  padding-left: 34px;
-  font-size: 20px;
-  font-weight: 700;
-  font-style: italic;
-  text-shadow: 1px 1px 0 #111827;
-}
-
-.loi-chao-admin {
-  font-size: 22px;
-  font-weight: 700;
-  padding-left: 44px;
-}
-
-.tai-khoan-admin {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  font-size: 22px;
-  font-weight: 700;
-}
-
-.icon-admin {
-  font-size: 34px;
-  line-height: 1;
-}
-
-html,
-body,
-#root {
-  width: 100%;
-  min-width: 100%;
-  min-height: 100vh;
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  display: block;
-  place-items: initial;
-  background: #ffffff;
-  overflow-x: hidden;
-}
-
-#root {
-  max-width: none;
-  margin: 0;
-  padding: 0;
-  text-align: initial;
-}
-
-.bo-cuc-quan-tri {
-  width: 100vw;
-  min-height: 100vh;
-  margin: 0;
-  padding: 0;
-  background: #ffffff;
-}
-
-.noi-dung-quan-tri {
-  width: 100%;
-  min-height: calc(100vh - 72px);
-  display: flex;
-  margin: 0;
-  padding: 0;
-}
-
 .khu-vuc-quan-tri {
   flex: 1;
   min-height: calc(100vh - 72px);
   margin: 0;
   padding: 0;
   background: #ffffff;
+}
+
+/* ===== Trang tong quan quan tri ===== */
+.trang-tong-quan-admin {
+  width: 100%;
+  min-height: calc(100vh - 72px);
+  padding: 24px 48px 36px;
+  color: #111827;
+  background: #ffffff;
+}
+
+.trang-tong-quan-admin h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.mo-ta-trang-admin {
+  margin: 0 0 18px;
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+/* ===== The thong ke ===== */
+.luoi-the-thong-ke-admin {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(170px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.the-thong-ke-admin {
+  min-height: 64px;
+  padding: 7px 10px;
+  border: 1px solid #111827;
+  border-radius: 9px;
+  background: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.18);
+}
+
+.the-thong-ke-admin h3 {
+  margin: 0;
+  color: #6b7280;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.the-thong-ke-admin strong {
+  display: block;
+  margin-top: -2px;
+  text-align: right;
+  font-size: 23px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.the-thong-ke-admin p {
+  margin: 2px 0 0;
+  color: #3ca266;
+  font-size: 13px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ===== Bieu do va trang thai he thong ===== */
+.hang-bieu-do-trang-thai-admin {
+  display: grid;
+  grid-template-columns: minmax(680px, 2.1fr) minmax(300px, 0.85fr);
+  gap: 36px;
+  align-items: stretch;
+  margin-bottom: 24px;
+}
+
+.khung-bieu-do-admin,
+.khung-trang-thai-admin {
+  border: 1px solid #111827;
+  border-radius: 10px;
+  background: #fbfdff;
+  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.16);
+}
+
+.khung-bieu-do-admin {
+  min-height: 290px;
+  padding: 12px 18px 14px;
+}
+
+.khung-bieu-do-admin h2,
+.khung-trang-thai-admin h2,
+.khu-vuc-bang-tien-trinh-admin h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.khung-bieu-do-admin h2 {
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.noi-dung-bieu-do-admin {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  height: 235px;
+}
+
+.truc-y-admin {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 8px 0 26px;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.vung-cot-bieu-do-admin {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 18px;
+  padding: 0 10px;
+}
+
+.cot-theo-ngay-admin {
+  height: 224px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.cot-so-luong-admin {
+  width: 34px;
+  margin-bottom: 14px;
+  background: #9fb8e9;
+}
+
+.cot-theo-ngay-admin span {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.khung-trang-thai-admin {
+  padding: 14px 22px;
+}
+
+.khung-trang-thai-admin h2 {
+  margin-bottom: 12px;
+}
+
+.danh-sach-trang-thai-admin p {
+  margin: 13px 0;
+  font-size: 17px;
+}
+
+/* ===== Bang tien trinh scraping ===== */
+.khu-vuc-bang-tien-trinh-admin h2 {
+  margin-bottom: 10px;
+}
+
+.bang-tien-trinh-admin {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid #111827;
+  border-radius: 10px 10px 0 0;
+  overflow: hidden;
+  font-size: 16px;
+}
+
+.bang-tien-trinh-admin th,
+.bang-tien-trinh-admin td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #111827;
+  text-align: center;
+}
+
+.bang-tien-trinh-admin th {
+  background: #d9d9d9;
+  font-size: 17px;
+  font-weight: 500;
+}
+
+.bang-tien-trinh-admin tbody tr {
+  background: #eeeeee;
+}
+
+.nut-xem-admin {
+  padding: 5px 12px;
+  border: 1px solid #111827;
+  border-radius: 6px;
+  background: #ffffff;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.nut-xem-admin:hover {
+  background: #dbeafe;
 }
 
