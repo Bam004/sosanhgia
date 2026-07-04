@@ -1,22 +1,49 @@
 import { useParams, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import BieuDoGia from '../../components/user/BieuDoGia';
-import { sanPhamMau, lichSuGiaMau, thongKeLichSuGiaMau } from '../../data/duLieuSanPhamMau';
+import { productService } from '../../services/productService';
 import { SinhIconSanPham } from '../../components/user/TheSanPham';
 import { dinhDangTien } from '../../utils/dinhDangTien';
 
 export default function BieuDoLichSuGia() {
   const { id } = useParams();
   const [sanPham, setSanPham] = useState(null);
+  const [lichSuGia, setLichSuGia] = useState(null);
+  const [thongKe, setThongKe] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Tìm sản phẩm
-    const sp = sanPhamMau.find((item) => item.id === Number(id)) || sanPhamMau[0];
-    setSanPham(sp);
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const detailRes = await productService.layChiTietSanPham(id);
+        if (detailRes.data) {
+          setSanPham(detailRes.data);
+        }
+        
+        const historyRes = await productService.layLichSuGia(id);
+        if (historyRes.data) {
+          setLichSuGia(historyRes.data.lichSu);
+          setThongKe(historyRes.data.thongKe);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, [id]);
 
-  if (!sanPham) {
-    return <div className="user-page"><div className="user-container">Đang tải...</div></div>;
+  if (loading || !sanPham) {
+    return (
+      <div className="user-page">
+        <div className="user-container" style={{ textAlign: 'center', padding: '100px 0' }}>
+          <span className="spinner" style={{ display: 'inline-block', width: '30px', height: '30px', marginBottom: '16px' }}></span>
+          <p>Đang tải dữ liệu lịch sử giá...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -67,7 +94,12 @@ export default function BieuDoLichSuGia() {
           
           <div className="chart-main-card__body">
             {/* Render component biểu đồ Recharts */}
-            <BieuDoGia dataInput={lichSuGiaMau} thongKe={thongKeLichSuGiaMau} />
+            <div style={{ position: 'relative' }}>
+              <BieuDoGia dataInput={lichSuGia} thongKe={thongKe} />
+              <div style={{ position: 'absolute', bottom: '-20px', left: '10px', fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>
+                * Hệ thống đang hiển thị Dữ liệu lịch sử giá mẫu
+              </div>
+            </div>
           </div>
         </section>
       </div>

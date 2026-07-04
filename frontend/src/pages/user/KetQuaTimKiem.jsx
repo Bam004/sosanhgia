@@ -1,8 +1,9 @@
 import { useSearchParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import BoLocSanPham from '../../components/user/BoLocSanPham';
 import TheSanPhamOffer from '../../components/user/TheSanPhamOffer';
-import { sanPhamMau } from '../../data/duLieuSanPhamMau';
+import { productService } from '../../services/productService';
 
 export default function KetQuaTimKiem() {
   const [searchParams] = useSearchParams();
@@ -12,113 +13,77 @@ export default function KetQuaTimKiem() {
   const [danhSachHienThi, setDanhSachHienThi] = useState([]);
   const [trangHienTai, setTrangHienTai] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
+  const [error, setError] = useState(null);
+  const [boLocActive, setBoLocActive] = useState({});
+
   const sanPhamMoiTrang = 6;
 
-  // Lọc sản phẩm theo từ khóa 'q' hoặc danh mục từ URL ban đầu
+  // Lọc sản phẩm từ API hoặc mock data
   useEffect(() => {
-    setLoading(true);
-    let ketQua = [...sanPhamMau];
+    const fetchResults = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const parsedFilters = {
+          website: boLocActive.san ? Object.keys(boLocActive.san)
+            .filter(key => boLocActive.san[key])
+            .map(key => {
+              if (key === 'fptshop') return 'FPT Shop';
+              if (key === 'cellphones') return 'CellphoneS';
+              if (key === 'hoanghamobile') return 'HoangHa Mobile';
+              return key.charAt(0).toUpperCase() + key.slice(1);
+            }) : [],
+          brand: boLocActive.thuongHieu ? Object.keys(boLocActive.thuongHieu)
+            .filter(key => boLocActive.thuongHieu[key])
+            .map(key => {
+              if (key === 'apple') return 'Apple';
+              if (key === 'samsung') return 'Samsung';
+              if (key === 'lenovo') return 'Lenovo';
+              if (key === 'epower') return 'E-Power';
+              return key;
+            }) : [],
+          giaMin: boLocActive.giaMin || null,
+          giaMax: boLocActive.giaMax || null,
+          mucGia: boLocActive.mucGia ? Object.keys(boLocActive.mucGia).filter(key => boLocActive.mucGia[key]) : [],
+          danhGia: boLocActive.danhGia || null
+        };
 
-    // Lọc theo từ khóa
-    if (q) {
-      const queryLower = q.toLowerCase();
-      ketQua = ketQua.filter(
-        (sp) =>
-          sp.tenSanPham.toLowerCase().includes(queryLower) ||
-          sp.thuongHieu.toLowerCase().includes(queryLower)
-      );
-    }
+        const res = await productService.timKiemSanPham(q || danhMucParam, parsedFilters);
+        let data = res.data || [];
 
-    // Lọc theo danh mục
-    if (danhMucParam) {
-      ketQua = ketQua.filter(
-        (sp) => sp.danhMuc === danhMucParam
-      );
-    }
+        // Lọc thêm theo danh mục nếu có tham số từ URL
+        if (danhMucParam) {
+          data = data.filter(sp => sp.danhMuc === danhMucParam);
+        }
 
-    const timer = setTimeout(() => {
-      setDanhSachHienThi(ketQua);
-      setTrangHienTai(1);
-      setLoading(false);
-    }, 600);
+        setDanhSachHienThi(data);
+        setIsOffline(res.isOffline);
 
-    return () => clearTimeout(timer);
-  }, [q, danhMucParam]);
+        // Hiển thị toast cảnh báo nếu đang ở chế độ offline
+        if (res.isOffline) {
+          toast.warning('Đang hiển thị dữ liệu offline do không kết nối được máy chủ API!');
+        }
+      } catch (err) {
+        console.error(err);
+        setError('Lỗi kết nối máy chủ API và không có dữ liệu dự phòng.');
+        toast.error('Lỗi kết nối máy chủ API.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchResults();
+  }, [q, danhMucParam, boLocActive]);
 
   // Hàm xử lý bộ lọc từ component BoLocSanPham
   const xuLyApDungBoLoc = (filters) => {
-    setLoading(true);
-    let ketQua = [...sanPhamMau];
+    setBoLocActive(filters);
+    setTrangHienTai(1);
+  };
 
-    // Lọc theo từ khóa ban đầu
-    if (q) {
-      const queryLower = q.toLowerCase();
-      ketQua = ketQua.filter(
-        (sp) =>
-          sp.tenSanPham.toLowerCase().includes(queryLower) ||
-          sp.thuongHieu.toLowerCase().includes(queryLower)
-      );
-    }
-
-    // Lọc theo danh mục
-    if (danhMucParam) {
-      ketQua = ketQua.filter(
-        (sp) => sp.danhMuc === danhMucParam
-      );
-    }
-
-    // 1. Lọc theo Sàn TMĐT
-    const activeShorthands = Object.keys(filters.san).filter((key) => filters.san[key]);
-    if (activeShorthands.length > 0) {
-      ketQua = ketQua.filter((sp) => {
-        return sp.sanDangBan.some((s) => {
-          const sLower = s.toLowerCase().replace(/\s/g, '');
-          return activeShorthands.includes(sLower);
-        });
-      });
-    }
-
-    // 1.5 Lọc theo Thương hiệu
-    const activeBrands = Object.keys(filters.thuongHieu).filter((key) => filters.thuongHieu[key]);
-    if (activeBrands.length > 0) {
-      ketQua = ketQua.filter((sp) => {
-        const brandLower = sp.thuongHieu.toLowerCase().replace(/\s/g, '');
-        return activeBrands.includes(brandLower);
-      });
-    }
-
-    // 2. Lọc theo Khoảng giá Checkbox
-    const activePrices = Object.keys(filters.mucGia).filter((key) => filters.mucGia[key]);
-    if (activePrices.length > 0) {
-      ketQua = ketQua.filter((sp) => {
-        const gia = sp.giaThapNhat;
-        return (
-          (activePrices.includes('under2') && gia < 2000000) ||
-          (activePrices.includes('between2_5') && gia >= 2000000 && gia <= 5000000) ||
-          (activePrices.includes('between5_15') && gia >= 5000000 && gia <= 15000000) ||
-          (activePrices.includes('over15') && gia > 15000000)
-        );
-      });
-    }
-
-    // 3. Lọc theo Khoảng giá Nhập tay
-    if (filters.giaMin) {
-      ketQua = ketQua.filter((sp) => sp.giaThapNhat >= Number(filters.giaMin));
-    }
-    if (filters.giaMax) {
-      ketQua = ketQua.filter((sp) => sp.giaThapNhat <= Number(filters.giaMax));
-    }
-
-    // 4. Lọc theo Đánh giá
-    if (filters.danhGia) {
-      ketQua = ketQua.filter((sp) => sp.danhGia >= filters.danhGia);
-    }
-
-    setTimeout(() => {
-      setDanhSachHienThi(ketQua);
-      setTrangHienTai(1);
-      setLoading(false);
-    }, 500);
+  const handleRetry = () => {
+    setBoLocActive({ ...boLocActive });
   };
 
   // Phân trang
@@ -145,14 +110,32 @@ export default function KetQuaTimKiem() {
           </div>
 
           <div className="search-results__header">
-            <h2>Kết quả tìm kiếm siêu tổng hợp</h2>
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+              <h2>Kết quả tìm kiếm siêu tổng hợp</h2>
+              {isOffline && (
+                <span className="badge-offline" style={{ background: '#fef3c7', color: '#d97706', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>
+                  Chế độ Offline
+                </span>
+              )}
+            </div>
             <p>
               Tìm thấy <strong>{danhSachHienThi.length}</strong> sản phẩm{' '}
               {q ? `cho từ khóa "${q}"` : danhMucParam ? `thuộc danh mục "${danhMucParam}"` : ''}
             </p>
           </div>
 
-          {loading ? (
+          {error && danhSachHienThi.length === 0 ? (
+            <div className="search-results__error" style={{ textAlign: 'center', padding: '40px 20px' }}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.5" style={{ marginBottom: '16px' }}>
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              <h3>Đã xảy ra lỗi kết nối</h3>
+              <p style={{ color: '#64748b', marginBottom: '16px' }}>{error}</p>
+              <button className="btn-retry" onClick={handleRetry} style={{ background: 'var(--color-primary)', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer' }}>Thử lại</button>
+            </div>
+          ) : loading ? (
             <div className="product-offer-grid">
               {Array.from({ length: 6 }).map((_, idx) => (
                 <div key={idx} className="skeleton-card">

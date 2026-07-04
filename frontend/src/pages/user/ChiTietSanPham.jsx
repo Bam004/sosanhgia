@@ -1,10 +1,10 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import { sanPhamMau } from '../../data/duLieuSanPhamMau';
 import { dinhDangTien } from '../../utils/dinhDangTien';
 import { SinhIconSanPham } from '../../components/user/TheSanPham';
 import BangSoSanhGia from '../../components/user/BangSoSanhGia';
+import { productService } from '../../services/productService';
 
 export default function ChiTietSanPham() {
   const { id } = useParams();
@@ -12,6 +12,8 @@ export default function ChiTietSanPham() {
   const [sanPham, setSanPham] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
+  const [error, setError] = useState(null);
 
   // Accordion states
   const [hienSpec, setHienSpec] = useState(true);
@@ -21,16 +23,49 @@ export default function ChiTietSanPham() {
   const [kieuSapXep, setKieuSapXep] = useState('asc');
 
   useEffect(() => {
-    setLoading(true);
-    // Tìm sản phẩm theo id
-    const sp = sanPhamMau.find((item) => item.id === Number(id)) || sanPhamMau[0];
-    const timer = setTimeout(() => {
-      setSanPham(sp);
-      setLoading(false);
-    }, 800);
+    const fetchDetail = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await productService.layChiTietSanPham(id);
+        if (res.data) {
+          setSanPham(res.data);
+          setIsOffline(res.isOffline);
+          if (res.isOffline) {
+            toast.warning('Đang hiển thị dữ liệu offline do không kết nối được máy chủ API!');
+          }
+        } else {
+          setError('Không tìm thấy sản phẩm.');
+        }
+      } catch (err) {
+        console.error(err);
+        setError('Lỗi kết nối máy chủ API và không tìm thấy dữ liệu dự phòng.');
+        toast.error('Lỗi kết nối máy chủ API.');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    return () => clearTimeout(timer);
+    fetchDetail();
   }, [id]);
+
+  const handleRetry = () => {
+    setLoading(true);
+    setError(null);
+    productService.layChiTietSanPham(id).then(res => {
+      if (res.data) {
+        setSanPham(res.data);
+        setIsOffline(res.isOffline);
+      } else {
+        setError('Không tìm thấy sản phẩm.');
+      }
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setError('Lỗi kết nối máy chủ API.');
+      setLoading(false);
+    });
+  };
 
   const xuLyTheoDoiGia = () => {
     if (!sanPham) return;
@@ -79,6 +114,23 @@ export default function ChiTietSanPham() {
       navigate('/tai-khoan/san-pham-theo-doi');
     }, 800);
   };
+
+  if (error && !sanPham) {
+    return (
+      <main className="user-page">
+        <div className="user-container" style={{ textAlign: 'center', padding: '60px 20px' }}>
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.5" style={{ marginBottom: '16px' }}>
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <h3>Đã xảy ra lỗi kết nối</h3>
+          <p style={{ color: '#64748b', marginBottom: '16px' }}>{error}</p>
+          <button className="btn-retry" onClick={handleRetry} style={{ background: 'var(--color-primary)', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer' }}>Thử lại</button>
+        </div>
+      </main>
+    );
+  }
 
   if (loading || !sanPham) {
     return (
@@ -150,7 +202,14 @@ export default function ChiTietSanPham() {
 
           {/* Cột phải: Thông số tóm tắt, giá, CTA */}
           <div className="product-main-card__right">
-            <h1 className="product-main-card__title">{sanPham.tenSanPham}</h1>
+            <h1 className="product-main-card__title">
+              {sanPham.tenSanPham}
+              {isOffline && (
+                <span className="badge-offline" style={{ marginLeft: '10px', background: '#fef3c7', color: '#d97706', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', display: 'inline-block', verticalAlign: 'middle' }}>
+                  Offline
+                </span>
+              )}
+            </h1>
             
             <div className="product-main-card__meta">
               <span className="brand-badge">Hãng: {sanPham.thuongHieu}</span>
