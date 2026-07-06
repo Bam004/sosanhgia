@@ -91,10 +91,10 @@ export default function DauTrangNguoiDung() {
             onClick={() => {
               const token = localStorage.getItem("accessToken");
               if (!token) {
-                toast.info("Vui lòng đăng nhập để sử dụng chức năng theo dõi giá");
+                toast.info("Vui l?ng ??ng nh?p ?? s? d?ng ch?c n?ng theo d?i gi?");
                 navigate('/dang-nhap');
               } else {
-                toast.info("Tính năng theo dõi giảm giá đang phát triển");
+                navigate('/theo-doi-gia');
               }
             }} 
             className="user-header__track-button"

@@ -14,6 +14,8 @@ export default function SanPhamTheoDoi() {
   const [loading, setLoading] = useState(Boolean(token));
   const [error, setError] = useState(null);
   const [dangXuLyId, setDangXuLyId] = useState(null);
+  const [chinhSuaId, setChinhSuaId] = useState(null);
+  const [giaMoi, setGiaMoi] = useState('');
 
   const layDanhSachTheoDoi = async () => {
     if (!token) return;
@@ -60,6 +62,54 @@ export default function SanPhamTheoDoi() {
     } catch (err) {
       console.error('Delete watched product failed:', err);
       toast.error('Lỗi kết nối máy chủ API');
+    } finally {
+      setDangXuLyId(null);
+    }
+  };
+
+  const xuLyBatDauChinhGia = (item) => {
+  setChinhSuaId(item.maTheoDoi);
+  setGiaMoi(item.giaMongMuon ? String(Number(item.giaMongMuon)) : '');
+};
+
+const xuLyHuyChinhGia = () => {
+  setChinhSuaId(null);
+  setGiaMoi('');
+};
+
+  const xuLyLuuGiaMongMuon = async (item) => {
+    const giaMoiNumber = giaMoi ? Number(giaMoi) : null;
+
+    if (giaMoi && (Number.isNaN(giaMoiNumber) || giaMoiNumber <= 0)) {
+      toast.info('Giá mong muốn phải là số lớn hơn 0');
+      return;
+    }
+
+    setDangXuLyId(item.maTheoDoi);
+
+    try {
+      const res = await theoDoiGiaService.capNhatTheoDoi(item.maTheoDoi, {
+        giaMongMuon: giaMoiNumber,
+      });
+
+      if (res.success) {
+        setDanhSach((prev) =>
+          prev.map((sanPham) =>
+            sanPham.maTheoDoi === item.maTheoDoi
+              ? { ...sanPham, giaMongMuon: giaMoiNumber }
+              : sanPham
+          )
+        );
+
+        toast.success(res.message || 'Cập nhật giá mong muốn thành công');
+        setChinhSuaId(null);
+        setGiaMoi('');
+      } else {
+        toast.error(res.message || 'Không thể cập nhật giá mong muốn');
+      }
+    } catch (err) {
+      console.error('Update target price failed:', err);
+      toast.error(err.response?.data?.message || 'Lỗi kết nối máy chủ API');
     } finally {
       setDangXuLyId(null);
     }
@@ -271,50 +321,135 @@ export default function SanPhamTheoDoi() {
                   </span>
                 )}
                 {item.giaMongMuon && (
-                  <span style={{ color: '#2563eb' }}>
-                    Giá mong muốn: {dinhDangTien(item.giaMongMuon)}
+                  <span style={{ color: '#2563eb', fontWeight: '700' }}>
+                     Giá mong muốn: {item.giaMongMuon ? dinhDangTien(item.giaMongMuon) : 'Chưa đặt'}
                   </span>
                 )}
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <button
-                type="button"
-                onClick={() => navigate(`/san-pham/${item.maSPCH}`)}
-                style={{
-                  background: 'var(--color-primary)',
-                  color: '#fff',
-                  border: 'none',
-                  padding: '9px 14px',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontWeight: '600',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                Xem chi tiết
-              </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: '190px' }}>
+  {chinhSuaId === item.maTheoDoi ? (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px',
+        padding: '10px',
+        border: '1px solid #bfdbfe',
+        borderRadius: '10px',
+        background: '#eff6ff'
+      }}
+    >
+      <label style={{ color: '#1e3a8a', fontSize: '13px', fontWeight: '700' }}>
+        Giá mong muốn mới
+      </label>
 
-              <button
-                type="button"
-                disabled={dangXuLyId === item.maTheoDoi}
-                onClick={() => xuLyHuyTheoDoi(item.maTheoDoi)}
-                style={{
-                  background: '#fff',
-                  color: '#dc2626',
-                  border: '1px solid #fecaca',
-                  padding: '9px 14px',
-                  borderRadius: '8px',
-                  cursor: dangXuLyId === item.maTheoDoi ? 'not-allowed' : 'pointer',
-                  fontWeight: '600',
-                  whiteSpace: 'nowrap',
-                  opacity: dangXuLyId === item.maTheoDoi ? 0.7 : 1
-                }}
-              >
-                {dangXuLyId === item.maTheoDoi ? 'Đang hủy...' : 'Hủy theo dõi'}
-              </button>
-            </div>
+      <input
+        type="number"
+        value={giaMoi}
+        onChange={(event) => setGiaMoi(event.target.value)}
+        placeholder="VD: 22000000"
+        min="0"
+        style={{
+          padding: '9px 10px',
+          border: '1px solid #93c5fd',
+          borderRadius: '8px',
+          outline: 'none'
+        }}
+      />
+
+      <button
+        type="button"
+        disabled={dangXuLyId === item.maTheoDoi}
+        onClick={() => xuLyLuuGiaMongMuon(item)}
+        style={{
+          background: 'var(--color-primary)',
+          color: '#fff',
+          border: 'none',
+          padding: '9px 14px',
+          borderRadius: '8px',
+          cursor: dangXuLyId === item.maTheoDoi ? 'not-allowed' : 'pointer',
+          fontWeight: '700',
+          whiteSpace: 'nowrap',
+          opacity: dangXuLyId === item.maTheoDoi ? 0.7 : 1
+        }}
+      >
+        {dangXuLyId === item.maTheoDoi ? 'Đang lưu...' : 'Lưu giá'}
+      </button>
+
+      <button
+        type="button"
+        onClick={xuLyHuyChinhGia}
+        style={{
+          background: '#fff',
+          color: '#334155',
+          border: '1px solid #cbd5e1',
+          padding: '8px 14px',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          fontWeight: '600',
+          whiteSpace: 'nowrap'
+        }}
+      >
+        Hủy sửa
+      </button>
+    </div>
+  ) : (
+    <button
+      type="button"
+      onClick={() => xuLyBatDauChinhGia(item)}
+      style={{
+        background: 'var(--color-primary)',
+        color: '#fff',
+        border: 'none',
+        padding: '9px 14px',
+        borderRadius: '8px',
+        cursor: 'pointer',
+        fontWeight: '700',
+        whiteSpace: 'nowrap'
+      }}
+    >
+      Chỉnh giá mong muốn
+    </button>
+  )}
+
+  <button
+    type="button"
+    onClick={() => navigate('/theo-doi-gia')}
+    style={{
+      background: '#f8fafc',
+      color: '#2563eb',
+      border: '1px solid #bfdbfe',
+      padding: '9px 14px',
+      borderRadius: '8px',
+      cursor: 'pointer',
+      fontWeight: '600',
+      whiteSpace: 'nowrap'
+    }}
+  >
+    Đổi sản phẩm
+  </button>
+
+  <button
+    type="button"
+    disabled={dangXuLyId === item.maTheoDoi}
+    onClick={() => xuLyHuyTheoDoi(item.maTheoDoi)}
+    style={{
+      background: '#fff',
+      color: '#dc2626',
+      border: '1px solid #fecaca',
+      padding: '9px 14px',
+      borderRadius: '8px',
+      cursor: dangXuLyId === item.maTheoDoi ? 'not-allowed' : 'pointer',
+      fontWeight: '600',
+      whiteSpace: 'nowrap',
+      opacity: dangXuLyId === item.maTheoDoi ? 0.7 : 1
+    }}
+  >
+    {dangXuLyId === item.maTheoDoi ? 'Đang hủy...' : 'Hủy theo dõi'}
+  </button>
+</div>
           </article>
         ))}
       </div>
