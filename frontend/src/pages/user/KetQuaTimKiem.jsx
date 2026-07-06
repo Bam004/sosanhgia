@@ -16,6 +16,7 @@ export default function KetQuaTimKiem() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [boLocActive, setBoLocActive] = useState({});
+  const [sortOrder, setSortOrder] = useState('asc');
 
   const sanPhamMoiTrang = 6;
 
@@ -38,6 +39,7 @@ export default function KetQuaTimKiem() {
       setDanhSachGoc([]);
       setDanhSachHienThi([]);
       setBoLocActive({});
+      setSortOrder('asc');
       setTrangHienTai(1);
 
       setLoading(true);
@@ -139,9 +141,24 @@ export default function KetQuaTimKiem() {
       ketQua = ketQua.filter((sp) => (sp.danhGia || 0) >= boLocActive.danhGia);
     }
 
+    // Sắp xếp
+    if (sortOrder === 'asc') {
+      ketQua.sort((a, b) => {
+        const giaA = a.giaThapNhat || Infinity;
+        const giaB = b.giaThapNhat || Infinity;
+        return giaA - giaB;
+      });
+    } else if (sortOrder === 'desc') {
+      ketQua.sort((a, b) => {
+        const giaA = a.giaThapNhat || -Infinity;
+        const giaB = b.giaThapNhat || -Infinity;
+        return giaB - giaA;
+      });
+    }
+
     setDanhSachHienThi(ketQua);
     setTrangHienTai(1);
-  }, [danhSachGoc, boLocActive]);
+  }, [danhSachGoc, boLocActive, sortOrder]);
 
   // Hàm xử lý bộ lọc từ component BoLocSanPham
   const xuLyApDungBoLoc = (filters) => {
@@ -185,10 +202,26 @@ export default function KetQuaTimKiem() {
               )}
             </div>
             {!loading && (
-              <p>
-                Tìm thấy <strong>{danhSachHienThi.length}</strong> sản phẩm{' '}
-                {q ? `cho từ khóa "${q}"` : danhMucParam ? `thuộc danh mục "${danhMucParam}"` : ''}
-              </p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', width: '100%' }}>
+                <p>
+                  Tìm thấy <strong>{danhSachHienThi.length}</strong> sản phẩm{' '}
+                  {q ? `cho từ khóa "${q}"` : danhMucParam ? `thuộc danh mục "${danhMucParam}"` : ''}
+                </p>
+                {sanPhamPhanTrang.length > 0 && (
+                  <div className="sort-container" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <label htmlFor="sortOrder" style={{ fontWeight: '500' }}>Sắp xếp:</label>
+                    <select
+                      id="sortOrder"
+                      value={sortOrder}
+                      onChange={(e) => setSortOrder(e.target.value)}
+                      style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                    >
+                      <option value="asc">Giá tăng dần</option>
+                      <option value="desc">Giá giảm dần</option>
+                    </select>
+                  </div>
+                )}
+              </div>
             )}
           </div>
 

@@ -1,13 +1,7 @@
 import { useState, useEffect } from 'react';
 
 export default function BoLocSanPham({ onFilterChange, danhSachGoc = [] }) {
-  const [san, setSan] = useState({
-    lazada: false,
-    fptshop: false,
-    tiki: false,
-    cellphones: false,
-    hoanghamobile: false,
-  });
+  const [san, setSan] = useState({});
 
   const [thuongHieu, setThuongHieu] = useState({});
 
@@ -54,13 +48,53 @@ export default function BoLocSanPham({ onFilterChange, danhSachGoc = [] }) {
 
   const availableBrands = getAvailableBrands();
 
-  // Reset thuongHieu if options change completely (optional, but good for UX)
+  const getAvailableSources = () => {
+    const sourceSet = new Set();
+    danhSachGoc.forEach((sp) => {
+      const addSource = (s) => {
+        if (s && typeof s === 'string') sourceSet.add(s.trim());
+      };
+      if (sp.sanDangBan) {
+        if (Array.isArray(sp.sanDangBan)) sp.sanDangBan.forEach(addSource);
+        else addSource(sp.sanDangBan);
+      }
+      if (sp.nguon) {
+        if (Array.isArray(sp.nguon)) sp.nguon.forEach(addSource);
+        else addSource(sp.nguon);
+      }
+      if (sp.sources) {
+        if (Array.isArray(sp.sources)) sp.sources.forEach(addSource);
+        else addSource(sp.sources);
+      }
+      if (sp.items) sp.items.forEach(i => addSource(i.sanTMDT));
+      if (sp.offers) sp.offers.forEach(o => addSource(o.sanTMDT));
+    });
+    
+    const sourcesMap = new Map();
+    sourceSet.forEach(s => {
+      const key = normalizeText(s);
+      if (!sourcesMap.has(key)) {
+        sourcesMap.set(key, s);
+      }
+    });
+    return Array.from(sourcesMap.entries()).map(([key, label]) => ({ key, label }));
+  };
+
+  const availableSources = getAvailableSources();
+
+  // Reset thuongHieu and san if options change completely
   useEffect(() => {
     const newThuongHieu = {};
     availableBrands.forEach(b => {
       newThuongHieu[b.key] = thuongHieu[b.key] || false;
     });
     setThuongHieu(newThuongHieu);
+    
+    const newSan = {};
+    availableSources.forEach(s => {
+      newSan[s.key] = san[s.key] || false;
+    });
+    setSan(newSan);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [danhSachGoc]);
 
@@ -98,48 +132,22 @@ export default function BoLocSanPham({ onFilterChange, danhSachGoc = [] }) {
         {/* Sàn TMĐT */}
         <div className="product-filter__section">
           <h4>Sàn TMĐT</h4>
-          <div className="product-filter__options">
-            <label className="product-filter__checkbox">
-              <input
-                type="checkbox"
-                checked={san.lazada}
-                onChange={() => handleCheckboxChange('san', 'lazada')}
-              />
-              <span>Lazada</span>
-            </label>
-            <label className="product-filter__checkbox">
-              <input
-                type="checkbox"
-                checked={san.fptshop}
-                onChange={() => handleCheckboxChange('san', 'fptshop')}
-              />
-              <span>FPT Shop</span>
-            </label>
-            <label className="product-filter__checkbox">
-              <input
-                type="checkbox"
-                checked={san.tiki}
-                onChange={() => handleCheckboxChange('san', 'tiki')}
-              />
-              <span>Tiki</span>
-            </label>
-            <label className="product-filter__checkbox">
-              <input
-                type="checkbox"
-                checked={san.cellphones}
-                onChange={() => handleCheckboxChange('san', 'cellphones')}
-              />
-              <span>CellphoneS</span>
-            </label>
-            <label className="product-filter__checkbox">
-              <input
-                type="checkbox"
-                checked={san.hoanghamobile}
-                onChange={() => handleCheckboxChange('san', 'hoanghamobile')}
-              />
-              <span>HoangHa Mobile</span>
-            </label>
-          </div>
+          {availableSources.length > 0 ? (
+            <div className="product-filter__options">
+              {availableSources.map(source => (
+                <label key={source.key} className="product-filter__checkbox">
+                  <input
+                    type="checkbox"
+                    checked={san[source.key] || false}
+                    onChange={() => handleCheckboxChange('san', source.key)}
+                  />
+                  <span>{source.label}</span>
+                </label>
+              ))}
+            </div>
+          ) : (
+            <div style={{ fontSize: '13px', color: '#64748b', fontStyle: 'italic' }}>Chưa có dữ liệu sàn TMĐT</div>
+          )}
         </div>
 
         {/* Thương hiệu */}
