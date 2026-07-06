@@ -150,7 +150,7 @@ export default function BieuDoLichSuGia() {
         {/* Khối biểu đồ Recharts */}
         <section className="chart-main-card">
           <div className="chart-main-card__header">
-            <h3>Lịch sử biến động giá đa sàn (Lazada, FPT Shop, Tiki, CellphoneS, HoangHa Mobile)</h3>
+            <h3>Lịch sử biến động giá đa sàn </h3>
             <p>Biểu đồ thể hiện biến động giá bán thực tế ghi nhận qua các mốc thời gian.</p>
           </div>
           
