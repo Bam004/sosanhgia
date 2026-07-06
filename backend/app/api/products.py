@@ -97,12 +97,28 @@ def get_product_price_history(
 ):
     try:
         items = db.query(SanPhamTho).filter(SanPhamTho.maSPCH == product_id).all()
+        
+        from backend.app.api.search import is_accessory, ACCESSORY_KEYWORDS
+        spch = db.query(SanPhamChuanHoa).filter(SanPhamChuanHoa.maSPCH == product_id).first()
+        is_accessory_group = False
+        if spch:
+            kw_lower = (spch.tenChuanHoa or "").lower()
+            is_accessory_group = any(kw in kw_lower for kw in ACCESSORY_KEYWORDS)
+
+        filtered_items = []
+        for item in items:
+            if not is_accessory_group and is_accessory(item.tenSanPham):
+                continue
+            filtered_items.append(item)
+            
+        items = filtered_items
+
         if not items:
             return JSONResponse(
                 status_code=status.HTTP_404_NOT_FOUND,
                 content={
                     "success": False,
-                    "error": "Product not found"
+                    "error": "Product not found or all items filtered out"
                 }
             )
         

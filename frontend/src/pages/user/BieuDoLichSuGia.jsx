@@ -8,14 +8,18 @@ import { dinhDangTien } from '../../utils/dinhDangTien';
 export default function BieuDoLichSuGia() {
   const { id } = useParams();
   const [sanPham, setSanPham] = useState(null);
-  const [lichSuGia, setLichSuGia] = useState(null);
+  const [lichSuGia, setLichSuGia] = useState([]);
+  const [chartData, setChartData] = useState({});
+  const [chartSources, setChartSources] = useState([]);
+  const [chartDomain, setChartDomain] = useState({ min: 0, max: 0 });
   const [thongKe, setThongKe] = useState(null);
-  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      setError(null);
+      setError("");
       try {
         const detailRes = await productService.layChiTietSanPham(id);
         if (detailRes.data) {
@@ -23,15 +27,53 @@ export default function BieuDoLichSuGia() {
         }
         
         const historyRes = await productService.layLichSuGia(id);
-        if (historyRes.data && historyRes.data.lichSu.length > 0) {
-          setLichSuGia(historyRes.data.lichSu);
-          setThongKe(historyRes.data.thongKe);
+        const data = historyRes.data;
+        const historyData = Array.isArray(data) ? data : [];
+
+        if (historyData.length > 0) {
+          setLichSuGia(historyData);
+          
+          // Format data cho Recharts
+          const groupedByDate = {};
+          let minP = Infinity;
+          let maxP = -Infinity;
+          const sourceSet = new Set();
+
+          historyData.forEach(item => {
+             sourceSet.add(item.sanTMDT);
+             if (item.gia < minP) minP = item.gia;
+             if (item.gia > maxP) maxP = item.gia;
+
+             const dateObj = new Date(item.ngayGhiNhan);
+             const dateStr = dateObj.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+             
+             if (!groupedByDate[dateStr]) {
+               groupedByDate[dateStr] = { name: dateStr, _timestamp: dateObj.getTime() };
+             }
+             
+             // Lấy giá thấp nhất nếu có nhiều giá cùng 1 ngày của cùng 1 sàn
+             if (groupedByDate[dateStr][item.sanTMDT]) {
+                groupedByDate[dateStr][item.sanTMDT] = Math.min(groupedByDate[dateStr][item.sanTMDT], item.gia);
+             } else {
+                groupedByDate[dateStr][item.sanTMDT] = item.gia;
+             }
+          });
+          
+          setChartSources([...sourceSet]);
+          setChartDomain({ min: minP, max: maxP });
+
+          const chartArray = Object.values(groupedByDate).sort((a, b) => a._timestamp - b._timestamp);
+          setChartData({
+            '1_month': chartArray,
+            '3_months': chartArray,
+            '6_months': chartArray
+          });
         } else {
-          setError(historyRes.errorMessage || 'Chưa có dữ liệu lịch sử giá');
+          setError("Chưa có dữ liệu lịch sử giá");
         }
       } catch (e) {
         console.error(e);
-        setError('Lỗi kết nối lịch sử giá');
+        setError("Lỗi kết nối lịch sử giá");
       } finally {
         setLoading(false);
       }
@@ -115,7 +157,43 @@ export default function BieuDoLichSuGia() {
           <div className="chart-main-card__body">
             {/* Render component biểu đồ Recharts */}
             <div style={{ position: 'relative' }}>
-              <BieuDoGia dataInput={lichSuGia} thongKe={thongKe} />
+              <BieuDoGia dataInput={chartData} thongKe={thongKe} sources={chartSources} priceRange={chartDomain} />
+            </div>
+            
+            {/* Render data table for raw history */}
+            <div className="history-table-container" style={{ marginTop: '30px' }}>
+              <h4 style={{ marginBottom: '15px' }}>Dữ liệu lịch sử chi tiết theo sản phẩm thô ({lichSuGia.length} điểm)</h4>
+              {lichSuGia.length <= 5 && (
+                <p style={{ color: '#009688', fontSize: '14px', marginBottom: '15px' }}>
+                  Hiện mới có {lichSuGia.length} lần ghi nhận giá, biểu đồ sẽ rõ hơn khi hệ thống có thêm dữ liệu theo thời gian.
+                </p>
+              )}
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+                      <th style={{ padding: '12px 10px', color: '#475569' }}>Sàn TMĐT</th>
+                      <th style={{ padding: '12px 10px', color: '#475569' }}>Mã SP Thô</th>
+                      <th style={{ padding: '12px 10px', color: '#475569' }}>Giá ghi nhận</th>
+                      <th style={{ padding: '12px 10px', color: '#475569' }}>Ngày ghi nhận</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lichSuGia.map((item, idx) => {
+                      const dateObj = new Date(item.ngayGhiNhan);
+                      const formattedDate = dateObj.toLocaleString('vi-VN');
+                      return (
+                        <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '12px 10px', fontWeight: 'bold' }}>{item.sanTMDT}</td>
+                          <td style={{ padding: '12px 10px' }}>{item.maSPTho}</td>
+                          <td style={{ padding: '12px 10px', color: '#e11d48', fontWeight: 'bold' }}>{dinhDangTien(item.gia)}</td>
+                          <td style={{ padding: '12px 10px' }}>{formattedDate}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </section>

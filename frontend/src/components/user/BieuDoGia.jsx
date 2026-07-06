@@ -11,18 +11,31 @@ import {
 } from 'recharts';
 import { dinhDangTien } from '../../utils/dinhDangTien';
 
-export default function BieuDoGia({ dataInput, thongKe }) {
+export default function BieuDoGia({ dataInput, thongKe, sources = [], priceRange = { min: 0, max: 0 } }) {
   const [timeline, setTimeline] = useState('1_month');
 
   // Lấy dữ liệu cho mốc thời gian được chọn
   const data = dataInput[timeline] || [];
 
   const dinhDangTienYAxis = (val) => {
-    return (val / 1000000).toFixed(1) + ' tr';
+    return (val / 1000000).toFixed(1) + 'tr';
   };
 
   const dinhDangTooltip = (value) => {
     return [dinhDangTien(value), 'Giá bán'];
+  };
+
+  const yDomain = priceRange.max > 0 
+    ? [Math.max(0, priceRange.min - 500000), priceRange.max + 500000]
+    : ['auto', 'auto'];
+
+  const colors = {
+    'Lazada': '#a21caf',
+    'Tiki': '#0ea5e9',
+    'FPT Shop': '#2563eb',
+    'CellPhoneS': '#e11d48',
+    'HoangHa Mobile': '#009688',
+    'Khác': '#64748b'
   };
 
   return (
@@ -87,7 +100,7 @@ export default function BieuDoGia({ dataInput, thongKe }) {
                 tick={{ fontSize: 12 }}
                 tickFormatter={dinhDangTienYAxis}
                 tickLine={false}
-                domain={['auto', 'auto']}
+                domain={yDomain}
               />
               <Tooltip
                 formatter={dinhDangTooltip}
@@ -104,51 +117,18 @@ export default function BieuDoGia({ dataInput, thongKe }) {
                 iconType="circle"
                 wrapperStyle={{ fontSize: 13, fontWeight: '600' }}
               />
-              <Line
-                name="Tiki"
-                type="monotone"
-                dataKey="Tiki"
-                stroke="#0ea5e9"
-                strokeWidth={2.5}
-                activeDot={{ r: 6 }}
-                connectNulls
-              />
-              <Line
-                name="CellphoneS"
-                type="monotone"
-                dataKey="CellphoneS"
-                stroke="#e11d48"
-                strokeWidth={2.5}
-                activeDot={{ r: 6 }}
-                connectNulls
-              />
-              <Line
-                name="Lazada"
-                type="monotone"
-                dataKey="Lazada"
-                stroke="#a21caf"
-                strokeWidth={2.5}
-                activeDot={{ r: 6 }}
-                connectNulls
-              />
-              <Line
-                name="FPT Shop"
-                type="monotone"
-                dataKey="FPT Shop"
-                stroke="#2563eb"
-                strokeWidth={2.5}
-                activeDot={{ r: 6 }}
-                connectNulls
-              />
-              <Line
-                name="HoangHa Mobile"
-                type="monotone"
-                dataKey="HoangHa Mobile"
-                stroke="#009688"
-                strokeWidth={2.5}
-                activeDot={{ r: 6 }}
-                connectNulls
-              />
+              {sources.map(source => (
+                <Line
+                  key={source}
+                  name={source}
+                  type="monotone"
+                  dataKey={source}
+                  stroke={colors[source] || colors['Khác']}
+                  strokeWidth={2.5}
+                  activeDot={{ r: 6 }}
+                  connectNulls
+                />
+              ))}
             </LineChart>
           </ResponsiveContainer>
         ) : (

@@ -79,7 +79,7 @@ export default function BangSoSanhGia({ noiBanChiTiet, sapXepKieu = 'asc' }) {
           const laGiaTotNhat = sapXepKieu === 'asc' ? index === 0 : index === noiBanDaSapXep.length - 1;
 
           return (
-            <div key={seller.san} className={`price-compare-table__row ${laGiaTotNhat ? 'price-compare-table__row--best' : ''}`}>
+            <div key={`${seller.san}-${index}`} className={`price-compare-table__row ${laGiaTotNhat ? 'price-compare-table__row--best' : ''}`}>
               {/* Nơi bán + Logo */}
               <div className="col-shop">
                 <SinhLogoSan brand={seller.san} width={40} height={40} />

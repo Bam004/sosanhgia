@@ -241,14 +241,20 @@ export default function ChiTietSanPham() {
           <div className="accordion-header" onClick={() => setHienSpec(!hienSpec)}>
             <h3>Thông số kỹ thuật {hienSpec ? '▲' : '▼'}</h3>
           </div>
-          {hienSpec && sanPham.thongSoKyThuat && (
+          {hienSpec && (
             <div className="accordion-body spec-grid">
-              {Object.entries(sanPham.thongSoKyThuat).map(([key, val]) => (
-                <div key={key} className="spec-row">
-                  <div className="spec-label">{key}</div>
-                  <div className="spec-value">{val}</div>
+              {sanPham.thongSoKyThuat && Object.keys(sanPham.thongSoKyThuat).length > 0 ? (
+                Object.entries(sanPham.thongSoKyThuat).map(([key, val]) => (
+                  <div key={key} className="spec-row">
+                    <div className="spec-label">{key}</div>
+                    <div className="spec-value">{val}</div>
+                  </div>
+                ))
+              ) : (
+                <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontStyle: 'italic' }}>
+                  Chưa có dữ liệu thông số kỹ thuật cho sản phẩm này.
                 </div>
-              ))}
+              )}
             </div>
           )}
         </section>

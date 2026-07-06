@@ -284,52 +284,32 @@ export const productService = {
   layLichSuGia: async (id, range = '1_month') => {
     try {
       const response = await api.get(`/products/${id}/history`);
-      const rawData = extractData(response);
+      const payload = response?.data?.data || response?.data || response;
+      const rawGroups = Array.isArray(payload) ? payload : [];
       
-      if (!rawData || rawData.length === 0) {
-        return {
-          data: { lichSu: [], thongKe: null },
+      const historyData = [];
 
-          errorMessage: 'Chưa có dữ liệu lịch sử giá'
-        };
-      }
-
-      // Map rawData array into a single flattened array of days
-      const groupedByDate = {};
-      
-      rawData.forEach(platformGroup => {
-        const platformName = platformGroup.sanTMDT || 'Khác';
-        if (platformGroup.history && Array.isArray(platformGroup.history)) {
-          platformGroup.history.forEach(record => {
-             // Create "DD/MM" format for the chart X-axis
-             const dateObj = new Date(record.ngayGhiNhan);
-             const dateStr = dateObj.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
-             
-             if (!groupedByDate[dateStr]) {
-               groupedByDate[dateStr] = { ngay: dateStr, _timestamp: dateObj.getTime() };
-             }
-             // Override to keep the latest price of the day if there are multiple
-             groupedByDate[dateStr][platformName] = record.gia;
+      rawGroups.forEach((group) => {
+        const histories = Array.isArray(group.history) ? group.history : [];
+        histories.forEach((point) => {
+          historyData.push({
+            maSPTho: group.maSPTho,
+            sanTMDT: group.sanTMDT,
+            gia: Number(point.gia),
+            ngayGhiNhan: point.ngayGhiNhan
           });
-        }
+        });
       });
-      
-      const lichSu = Object.values(groupedByDate).sort((a, b) => a._timestamp - b._timestamp);
 
       return {
-        data: {
-          lichSu: lichSu,
-          thongKe: null // Backend currently doesn't return statistics, can calculate if needed later
-        },
-
+        data: historyData,
         errorMessage: null
       };
     } catch (error) {
-      console.error('API History failed:', error.message);
+      console.error('API History failed:', error?.message);
       return {
-        data: { lichSu: [], thongKe: null },
-
-        errorMessage: error.message || 'Lỗi kết nối lịch sử giá'
+        data: [],
+        errorMessage: error?.message || 'Lỗi kết nối lịch sử giá'
       };
     }
   }
