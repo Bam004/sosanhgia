@@ -72,7 +72,13 @@ export default function ChiTietSanPham() {
   };
 
   const xuLyTheoDoiGia = () => {
-    toast.info('Tính năng theo dõi giảm giá đang phát triển');
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      toast.info('Vui lòng đăng nhập để sử dụng chức năng theo dõi giá');
+      navigate('/dang-nhap');
+    } else {
+      toast.info('Tính năng theo dõi giảm giá đang phát triển');
+    }
   };
 
   if (error && !sanPham) {

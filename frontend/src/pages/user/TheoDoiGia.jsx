@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 
 export default function TheoDoiGia() {
+  const token = localStorage.getItem("accessToken");
+
   return (
     <main className="user-page" style={{ padding: '60px 20px', textAlign: 'center', background: '#f8fafc', minHeight: '60vh' }}>
       <div className="user-container">
@@ -9,26 +11,39 @@ export default function TheoDoiGia() {
           <path d="M12 8v4"></path>
           <path d="M12 16h.01"></path>
         </svg>
-        <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#334155', marginBottom: '16px' }}>
-          Tính năng đang được phát triển
-        </h2>
-        <p style={{ color: '#64748b', maxWidth: '600px', margin: '0 auto 32px auto', lineHeight: '1.6' }}>
-          Chức năng sản phẩm theo dõi cần hệ thống tài khoản người dùng và API lưu sản phẩm theo dõi. Hiện chưa được triển khai.
-        </p>
-        <Link 
-          to="/" 
-          style={{ 
-            display: 'inline-block', 
-            background: 'var(--color-primary)', 
-            color: '#fff', 
-            padding: '10px 24px', 
-            borderRadius: '6px', 
-            textDecoration: 'none',
-            fontWeight: '500'
-          }}
-        >
-          Trở về Trang chủ
-        </Link>
+        {token ? (
+          <>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#334155', marginBottom: '16px' }}>
+              Tính năng đang được phát triển
+            </h2>
+            <p style={{ color: '#64748b', maxWidth: '600px', margin: '0 auto 32px auto', lineHeight: '1.6' }}>
+              Tính năng theo dõi giá đang phát triển
+            </p>
+          </>
+        ) : (
+          <>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#334155', marginBottom: '16px' }}>
+              Vui lòng đăng nhập
+            </h2>
+            <p style={{ color: '#64748b', maxWidth: '600px', margin: '0 auto 32px auto', lineHeight: '1.6' }}>
+              Vui lòng đăng nhập để sử dụng chức năng theo dõi giá
+            </p>
+            <Link 
+              to="/dang-nhap" 
+              style={{ 
+                display: 'inline-block', 
+                background: 'var(--color-primary)', 
+                color: '#fff', 
+                padding: '10px 24px', 
+                borderRadius: '6px', 
+                textDecoration: 'none',
+                fontWeight: '500'
+              }}
+            >
+              Đăng nhập
+            </Link>
+          </>
+        )}
       </div>
     </main>
   );

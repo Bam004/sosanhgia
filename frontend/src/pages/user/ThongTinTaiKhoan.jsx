@@ -1,51 +1,87 @@
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { authService } from '../../services/authService';
 
-export function SidebarTaiKhoan({ pathHienTai }) {
-  return (
-    <aside className="account-sidebar">
-      <div className="account-sidebar__title">Quản lý cá nhân</div>
-      <nav className="account-sidebar__menu">
-        <Link
-          to="/tai-khoan"
-          className={`account-sidebar__link ${pathHienTai === '/tai-khoan' ? 'active' : ''}`}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 8 }}>
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-            <circle cx="12" cy="7" r="4"></circle>
-          </svg>
-          Thông tin tài khoản
-        </Link>
-        <Link
-          to="/tai-khoan/san-pham-theo-doi"
-          className={`account-sidebar__link ${pathHienTai === '/tai-khoan/san-pham-theo-doi' ? 'active' : ''}`}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 8 }}>
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-          </svg>
-          Sản phẩm đang theo dõi
-        </Link>
-      </nav>
-    </aside>
-  );
-}
+import SidebarTaiKhoan from '../../components/user/SidebarTaiKhoan';
 
 export default function ThongTinTaiKhoan() {
+  const navigate = useNavigate();
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const token = localStorage.getItem("accessToken");
+
+  useEffect(() => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    const fetchUser = async () => {
+      try {
+        const res = await authService.layThongTinTaiKhoan();
+        if (res.success) {
+          setUser(res.data);
+        } else {
+          throw new Error("Lỗi xác thực");
+        }
+      } catch (error) {
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("user");
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, [token]);
+
   return (
-    <main className="user-page" style={{ padding: '60px 20px', textAlign: 'center', background: '#f8fafc', minHeight: '60vh' }}>
+    <main className="user-page" style={{ padding: '60px 20px', background: '#f8fafc', minHeight: '60vh' }}>
       <div className="user-container account-layout">
         <SidebarTaiKhoan pathHienTai="/tai-khoan" />
-        <section className="account-content" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '400px' }}>
-          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5" style={{ marginBottom: '24px' }}>
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-            <circle cx="12" cy="7" r="4"></circle>
-          </svg>
-          <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#334155', marginBottom: '16px' }}>
-            Tính năng đang được phát triển
-          </h2>
-          <p style={{ color: '#64748b', maxWidth: '600px', margin: '0 auto 32px auto', lineHeight: '1.6' }}>
-            Hệ thống Quản lý tài khoản (Authentication) chưa được triển khai API thật.
-          </p>
+        <section className="account-content" style={{ background: '#fff', padding: '32px', borderRadius: '12px', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)', minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
+          {loading ? (
+            <div style={{ textAlign: 'center', marginTop: '40px' }}>Đang tải dữ liệu...</div>
+          ) : !token || !user ? (
+            <div style={{ textAlign: 'center', margin: 'auto' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#334155', marginBottom: '16px' }}>
+                Vui lòng đăng nhập để xem thông tin tài khoản
+              </h2>
+              <Link 
+                to="/dang-nhap" 
+                style={{ display: 'inline-block', background: 'var(--color-primary)', color: '#fff', padding: '10px 24px', borderRadius: '6px', textDecoration: 'none', fontWeight: '500' }}
+              >
+                Đăng nhập
+              </Link>
+            </div>
+          ) : (
+            <div>
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#334155', marginBottom: '24px' }}>
+                Thông tin tài khoản
+              </h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '400px' }}>
+                <div>
+                  <label style={{ display: 'block', color: '#64748b', marginBottom: '4px', fontSize: '14px' }}>Họ tên</label>
+                  <div style={{ padding: '10px 12px', background: '#f1f5f9', borderRadius: '6px', border: '1px solid #e2e8f0', color: '#334155', fontWeight: '500' }}>
+                    {user.hoTen}
+                  </div>
+                </div>
+                <div>
+                  <label style={{ display: 'block', color: '#64748b', marginBottom: '4px', fontSize: '14px' }}>Email</label>
+                  <div style={{ padding: '10px 12px', background: '#f1f5f9', borderRadius: '6px', border: '1px solid #e2e8f0', color: '#334155', fontWeight: '500' }}>
+                    {user.email}
+                  </div>
+                </div>
+                <div>
+                  <label style={{ display: 'block', color: '#64748b', marginBottom: '4px', fontSize: '14px' }}>Vai trò</label>
+                  <div style={{ padding: '10px 12px', background: '#f1f5f9', borderRadius: '6px', border: '1px solid #e2e8f0', color: '#334155', fontWeight: '500' }}>
+                    {user.vaiTro === 'admin' ? 'Quản trị viên' : 'Người dùng'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </section>
       </div>
     </main>

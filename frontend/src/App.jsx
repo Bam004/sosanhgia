@@ -1,4 +1,4 @@
-﻿import { Routes, Route } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 
 import BoCucNguoiDung from './layouts/BoCucNguoiDung';
 import BoCucQuanTri from './layouts/BoCucQuanTri';
@@ -31,6 +31,7 @@ export default function App() {
         <Route path="/san-pham/:id/lich-su-gia" element={<BieuDoLichSuGia />} />
         <Route path="/theo-doi-gia" element={<TheoDoiGia />} />
         <Route path="/tai-khoan" element={<ThongTinTaiKhoan />} />
+        <Route path="/tai-khoan/thong-tin" element={<ThongTinTaiKhoan />} />
         <Route path="/tai-khoan/san-pham-theo-doi" element={<SanPhamTheoDoi />} />
         <Route path="/dang-nhap" element={<DangNhap />} />
         <Route path="/dang-ky" element={<DangKy />} />
