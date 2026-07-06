@@ -7,6 +7,7 @@ from backend.app.api.items import router as items_router
 from backend.app.api.products import router as products_router
 from backend.app.api.search import router as search_router
 from backend.app.api.scrape import router as scrape_router
+from backend.app.api.auth import router as auth_router
 
 
 app = FastAPI(
@@ -57,6 +58,7 @@ app.include_router(items_router)
 app.include_router(products_router)
 app.include_router(search_router)
 app.include_router(scrape_router)
+app.include_router(auth_router)
 
 
 @app.get("/")
