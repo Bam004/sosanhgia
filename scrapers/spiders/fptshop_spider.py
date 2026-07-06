@@ -132,6 +132,12 @@ class FptshopSpider(scrapy.Spider):
             )
             return
 
+        if self.is_suspicious_price(gia_hien_tai, ten_san_pham, response.url):
+            self.logger.warning(
+                f"Bỏ qua sản phẩm có giá bất thường: {ten_san_pham} - {gia_hien_tai} - {response.url}"
+            )
+            return
+
         item = SanPhamThoItem()
         item["tenSanPham"] = ten_san_pham
         item["sanTMDT"] = "FPT Shop"
@@ -265,6 +271,39 @@ class FptshopSpider(scrapy.Spider):
             path.startswith(prefix)
             for prefix in accessory_prefixes
         )
+
+    def is_suspicious_price(self, price, product_name, url):
+        if price is None:
+            return True
+
+        normalized_text = self.normalize_keyword_match_text(
+            f"{product_name or ''} {url or ''}"
+        )
+
+        phone_keywords = [
+            "iphone",
+            "xiaomi",
+            "redmi",
+            "samsung",
+            "galaxy",
+            "oppo",
+            "vivo",
+            "realme",
+            "nokia",
+        ]
+
+        is_phone_product = (
+            self.is_phone_url(url)
+            or any(keyword in normalized_text for keyword in phone_keywords)
+        )
+
+        if is_phone_product and price < 1000000:
+            return True
+
+        if price <= 0:
+            return True
+
+        return False
 
     def is_accessory_text(self, text):
         normalized_text = self.normalize_keyword_match_text(text)
