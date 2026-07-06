@@ -5,6 +5,7 @@ import { dinhDangTien } from '../../utils/dinhDangTien';
 import { SinhIconSanPham } from '../../components/user/TheSanPham';
 import BangSoSanhGia from '../../components/user/BangSoSanhGia';
 import { productService } from '../../services/productService';
+import { theoDoiGiaService } from '../../services/theoDoiGiaService';
 
 export default function ChiTietSanPham() {
   const { id } = useParams();
@@ -27,6 +28,10 @@ export default function ChiTietSanPham() {
 
   // Sắp xếp nơi bán
   const [kieuSapXep, setKieuSapXep] = useState('asc');
+
+  const [dangTheoDoi, setDangTheoDoi] = useState(false);
+  const [daTheoDoi, setDaTheoDoi] = useState(false);
+  const [maTheoDoi, setMaTheoDoi] = useState(null);
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -54,6 +59,27 @@ export default function ChiTietSanPham() {
     fetchDetail();
   }, [id]);
 
+
+  useEffect(() => {
+    const kiemTraTheoDoi = async () => {
+      const token = localStorage.getItem('accessToken');
+      if (!token || !id) return;
+
+      try {
+        const res = await theoDoiGiaService.kiemTraTheoDoi(id);
+
+        if (res.success) {
+          setDaTheoDoi(Boolean(res.data?.isFollowing));
+          setMaTheoDoi(res.data?.maTheoDoi || null);
+        }
+      } catch (err) {
+        console.error('Check price tracking failed:', err);
+      }
+    };
+
+    kiemTraTheoDoi();
+  }, [id]);
+
   const handleRetry = () => {
     setLoading(true);
     setError(null);
@@ -71,13 +97,49 @@ export default function ChiTietSanPham() {
     });
   };
 
-  const xuLyTheoDoiGia = () => {
-    const token = localStorage.getItem("accessToken");
+  const xuLyTheoDoiGia = async () => {
+    const token = localStorage.getItem('accessToken');
+
     if (!token) {
-      toast.info('Vui lòng đăng nhập để sử dụng chức năng theo dõi giá');
+      toast.info('Vui l?ng ??ng nh?p ?? s? d?ng ch?c n?ng theo d?i gi?');
       navigate('/dang-nhap');
-    } else {
-      toast.info('Tính năng theo dõi giảm giá đang phát triển');
+      return;
+    }
+
+    if (daTheoDoi) {
+      toast.info('S?n ph?m n?y ?? c? trong danh s?ch theo d?i');
+      navigate('/tai-khoan/san-pham-theo-doi');
+      return;
+    }
+
+    setDangTheoDoi(true);
+
+    try {
+      const res = await theoDoiGiaService.taoTheoDoiGia({
+        maSPCH: Number(id),
+      });
+
+      if (res.success) {
+        setDaTheoDoi(true);
+        setMaTheoDoi(res.data?.maTheoDoi || null);
+        toast.success(res.message || 'Theo d?i s?n ph?m th?nh c?ng');
+      } else {
+        toast.error(res.message || 'Kh?ng th? theo d?i s?n ph?m');
+      }
+    } catch (err) {
+      console.error('Create price tracking failed:', err);
+
+      if (err.response?.status === 409) {
+        setDaTheoDoi(true);
+        toast.info('S?n ph?m n?y ?? c? trong danh s?ch theo d?i');
+      } else if (err.response?.status === 401 || err.response?.status === 403) {
+        toast.info('Phi?n ??ng nh?p ?? h?t h?n, vui l?ng ??ng nh?p l?i');
+        navigate('/dang-nhap');
+      } else {
+        toast.error(err.response?.data?.message || 'L?i k?t n?i m?y ch? API');
+      }
+    } finally {
+      setDangTheoDoi(false);
     }
   };
 
