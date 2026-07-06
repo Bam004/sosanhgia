@@ -14,7 +14,7 @@ export default function TheSanPhamOffer({ sanPham, kieuNut = 'toinoiban', onSele
 
   return (
     <article className="offer-card">
-      <Link to={`/san-pham/${sanPham.id}`} className="offer-card__image-link">
+      <Link to={`/san-pham/${sanPham.maNhomTam || sanPham.id}`} state={{ sanPham }} className="offer-card__image-link">
         <div className="offer-card__image">
           {sanPham.hinhAnh ? (
             <img src={sanPham.hinhAnh} alt={sanPham.tenSanPham} />
@@ -27,9 +27,21 @@ export default function TheSanPhamOffer({ sanPham, kieuNut = 'toinoiban', onSele
       </Link>
 
       <div className="offer-card__body">
-        <Link to={`/san-pham/${sanPham.id}`} className="offer-card__title">
+        <Link to={`/san-pham/${sanPham.maNhomTam || sanPham.id}`} state={{ sanPham }} className="offer-card__title">
           {sanPham.tenSanPham}
         </Link>
+
+        {(() => {
+          const brand = sanPham.thuongHieu || sanPham.brand || sanPham.attributes?.brand || (sanPham.items && sanPham.items[0]?.attributes?.brand);
+          if (brand) {
+            return (
+              <div className="offer-card__brand" style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px' }}>
+                Thương hiệu: <strong style={{ color: '#0f172a' }}>{brand}</strong>
+              </div>
+            );
+          }
+          return null;
+        })()}
 
         <div className="offer-card__pricing">
           <div className="offer-card__price-row">

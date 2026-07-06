@@ -10,6 +10,7 @@ export default function KetQuaTimKiem() {
   const q = searchParams.get('q') || '';
   const danhMucParam = searchParams.get('danh-muc') || '';
 
+  const [danhSachGoc, setDanhSachGoc] = useState([]);
   const [danhSachHienThi, setDanhSachHienThi] = useState([]);
   const [trangHienTai, setTrangHienTai] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -19,37 +20,25 @@ export default function KetQuaTimKiem() {
 
   const sanPhamMoiTrang = 6;
 
-  // Lọc sản phẩm từ API hoặc mock data
+  // Hàm chuẩn hóa tên chuỗi để đối sánh
+  const normalizeString = (str) => {
+    if (!str) return '';
+    return str
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/\s+/g, '')
+      .trim();
+  };
+
+  // 1. Chỉ gọi API khi keyword hoặc danh mục thay đổi
   useEffect(() => {
     const fetchResults = async () => {
       setLoading(true);
       setError(null);
       try {
-        const parsedFilters = {
-          website: boLocActive.san ? Object.keys(boLocActive.san)
-            .filter(key => boLocActive.san[key])
-            .map(key => {
-              if (key === 'fptshop') return 'FPT Shop';
-              if (key === 'cellphones') return 'CellphoneS';
-              if (key === 'hoanghamobile') return 'HoangHa Mobile';
-              return key.charAt(0).toUpperCase() + key.slice(1);
-            }) : [],
-          brand: boLocActive.thuongHieu ? Object.keys(boLocActive.thuongHieu)
-            .filter(key => boLocActive.thuongHieu[key])
-            .map(key => {
-              if (key === 'apple') return 'Apple';
-              if (key === 'samsung') return 'Samsung';
-              if (key === 'lenovo') return 'Lenovo';
-              if (key === 'epower') return 'E-Power';
-              return key;
-            }) : [],
-          giaMin: boLocActive.giaMin || null,
-          giaMax: boLocActive.giaMax || null,
-          mucGia: boLocActive.mucGia ? Object.keys(boLocActive.mucGia).filter(key => boLocActive.mucGia[key]) : [],
-          danhGia: boLocActive.danhGia || null
-        };
-
-        const res = await productService.timKiemSanPham(q || danhMucParam, parsedFilters);
+        const res = await productService.timKiemSanPham(q || danhMucParam, {});
         let data = res.data || [];
 
         // Lọc thêm theo danh mục nếu có tham số từ URL
@@ -57,7 +46,7 @@ export default function KetQuaTimKiem() {
           data = data.filter(sp => sp.danhMuc === danhMucParam);
         }
 
-        setDanhSachHienThi(data);
+        setDanhSachGoc(data);
         setIsOffline(res.isOffline);
 
         // Hiển thị toast cảnh báo nếu đang ở chế độ offline
@@ -66,24 +55,104 @@ export default function KetQuaTimKiem() {
         }
       } catch (err) {
         console.error(err);
-        setError('Lỗi kết nối máy chủ API và không có dữ liệu dự phòng.');
-        toast.error('Lỗi kết nối máy chủ API.');
+        setError(err.message || 'Lỗi kết nối máy chủ API.');
+        toast.error(err.message || 'Lỗi kết nối máy chủ API.');
+        setDanhSachGoc([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchResults();
-  }, [q, danhMucParam, boLocActive]);
+  }, [q, danhMucParam]);
+
+  // 2. Chạy bộ lọc cục bộ trực tiếp trên danh sách gốc khi boLocActive hoặc danhSachGoc thay đổi
+  useEffect(() => {
+    let ketQua = [...danhSachGoc];
+
+    // Lọc theo Sàn TMĐT (Chuẩn hóa)
+    const activeShorthands = Object.keys(boLocActive.san || {})
+      .filter((key) => boLocActive.san[key])
+      .map(normalizeString);
+
+    if (activeShorthands.length > 0) {
+      ketQua = ketQua.filter((sp) => {
+        const platforms = [];
+        if (sp.sanDangBan) {
+          if (Array.isArray(sp.sanDangBan)) platforms.push(...sp.sanDangBan);
+          else platforms.push(sp.sanDangBan);
+        }
+        if (sp.nguon) {
+          if (Array.isArray(sp.nguon)) platforms.push(...sp.nguon);
+          else platforms.push(sp.nguon);
+        }
+        if (sp.sources) {
+          if (Array.isArray(sp.sources)) platforms.push(...sp.sources);
+          else platforms.push(sp.sources);
+        }
+        if (sp.items) {
+          sp.items.forEach(item => { if (item.sanTMDT) platforms.push(item.sanTMDT); });
+        }
+        if (sp.offers) {
+          sp.offers.forEach(offer => { if (offer.sanTMDT) platforms.push(offer.sanTMDT); });
+        }
+
+        return platforms.some((p) => activeShorthands.includes(normalizeString(p)));
+      });
+    }
+
+    // Lọc theo Thương hiệu (Chuẩn hóa)
+    const activeBrands = Object.keys(boLocActive.thuongHieu || {})
+      .filter((key) => boLocActive.thuongHieu[key])
+      .map(normalizeString);
+
+    if (activeBrands.length > 0) {
+      ketQua = ketQua.filter((sp) => {
+        const brand = sp.thuongHieu || sp.brand || sp.attributes?.brand || (sp.items && sp.items[0]?.attributes?.brand) || '';
+        return activeBrands.includes(normalizeString(brand));
+      });
+    }
+
+    // Lọc theo Khoảng giá Checkbox
+    const activePrices = Object.keys(boLocActive.mucGia || {}).filter((key) => boLocActive.mucGia[key]);
+    if (activePrices.length > 0) {
+      ketQua = ketQua.filter((sp) => {
+        const gia = sp.giaThapNhat || 0;
+        return (
+          (activePrices.includes('under2') && gia < 2000000) ||
+          (activePrices.includes('between2_5') && gia >= 2000000 && gia <= 5000000) ||
+          (activePrices.includes('between5_15') && gia >= 5000000 && gia <= 15000000) ||
+          (activePrices.includes('over15') && gia > 15000000)
+        );
+      });
+    }
+
+    // Lọc theo Khoảng giá Nhập tay
+    if (boLocActive.giaMin) {
+      ketQua = ketQua.filter((sp) => (sp.giaThapNhat || 0) >= Number(boLocActive.giaMin));
+    }
+    if (boLocActive.giaMax) {
+      ketQua = ketQua.filter((sp) => (sp.giaThapNhat || 0) <= Number(boLocActive.giaMax));
+    }
+
+    // Lọc theo Đánh giá
+    if (boLocActive.danhGia) {
+      ketQua = ketQua.filter((sp) => (sp.danhGia || 0) >= boLocActive.danhGia);
+    }
+
+    setDanhSachHienThi(ketQua);
+    setTrangHienTai(1);
+  }, [danhSachGoc, boLocActive]);
 
   // Hàm xử lý bộ lọc từ component BoLocSanPham
   const xuLyApDungBoLoc = (filters) => {
     setBoLocActive(filters);
-    setTrangHienTai(1);
   };
 
   const handleRetry = () => {
-    setBoLocActive({ ...boLocActive });
+    // Kích hoạt gọi lại API bằng cách gán lại từ khóa q
+    const currentQ = q;
+    setDanhSachGoc([]);
   };
 
   // Phân trang
@@ -100,7 +169,7 @@ export default function KetQuaTimKiem() {
     <main className="user-page">
       <div className="user-container search-layout">
         {/* Cột Trái - Bộ lọc */}
-        <BoLocSanPham onFilterChange={xuLyApDungBoLoc} />
+        <BoLocSanPham onFilterChange={xuLyApDungBoLoc} danhSachGoc={danhSachGoc} />
 
         {/* Cột Phải - Danh sách kết quả */}
         <section className="search-results">

@@ -1,4 +1,4 @@
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { dinhDangTien } from '../../utils/dinhDangTien';
@@ -9,8 +9,28 @@ import { productService } from '../../services/productService';
 export default function ChiTietSanPham() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [sanPham, setSanPham] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const location = useLocation();
+  const stateProduct = location.state?.sanPham;
+
+  const [sanPham, setSanPham] = useState(() => {
+    // 1. Dùng dữ liệu truyền từ trang tìm kiếm qua state
+    if (stateProduct) return stateProduct;
+
+    // 2. Dự phòng bằng localStorage
+    try {
+      const saved = localStorage.getItem('lastSearchResults');
+      if (saved) {
+        const list = JSON.parse(saved);
+        const found = list.find(item => String(item.maNhomTam || item.id) === String(id));
+        if (found) return found;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return null;
+  });
+
+  const [loading, setLoading] = useState(!sanPham);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [error, setError] = useState(null);
@@ -24,7 +44,9 @@ export default function ChiTietSanPham() {
 
   useEffect(() => {
     const fetchDetail = async () => {
-      setLoading(true);
+      if (!sanPham) {
+        setLoading(true);
+      }
       setError(null);
       try {
         const res = await productService.layChiTietSanPham(id);
@@ -35,12 +57,19 @@ export default function ChiTietSanPham() {
             toast.warning('Đang hiển thị dữ liệu offline do không kết nối được máy chủ API!');
           }
         } else {
-          setError('Không tìm thấy sản phẩm.');
+          if (!sanPham) {
+            setError('Không tìm thấy sản phẩm.');
+          }
         }
       } catch (err) {
-        console.error(err);
-        setError('Lỗi kết nối máy chủ API và không tìm thấy dữ liệu dự phòng.');
-        toast.error('Lỗi kết nối máy chủ API.');
+        console.error('API compare failed:', err);
+        if (sanPham) {
+          setIsOffline(true);
+          toast.warning('Không thể kết nối máy chủ để tải so sánh giá mới nhất. Đang sử dụng dữ liệu đã lưu.');
+        } else {
+          setError('Lỗi kết nối máy chủ API và không tìm thấy dữ liệu dự phòng.');
+          toast.error('Lỗi kết nối máy chủ API.');
+        }
       } finally {
         setLoading(false);
       }
@@ -212,7 +241,10 @@ export default function ChiTietSanPham() {
             </h1>
             
             <div className="product-main-card__meta">
-              <span className="brand-badge">Hãng: {sanPham.thuongHieu}</span>
+              {(() => {
+                const brand = sanPham.thuongHieu || sanPham.brand || sanPham.attributes?.brand || (sanPham.items && sanPham.items[0]?.attributes?.brand);
+                return brand && brand !== 'Khác' ? <span className="brand-badge" style={{ marginRight: '16px', fontWeight: '500' }}>Thương hiệu: {brand}</span> : null;
+              })()}
               <span className="rating-badge">⭐ {sanPham.danhGia?.toFixed(1)}/5 (Từ {sanPham.soLuongDanhGia} đánh giá)</span>
             </div>
 

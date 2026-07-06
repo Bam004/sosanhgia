@@ -51,31 +51,99 @@ export const productService = {
       const response = await api.get('/search', { params: { keyword } });
       const rawData = extractData(response);
 
-      if (rawData && rawData.groups) {
-        // Map backend groups to frontend product schema
-        const mappedProducts = rawData.groups.map(group => {
-          const firstItem = group.items && group.items[0] ? group.items[0] : {};
-          return {
-            id: group.maNhomTam || firstItem.maSPCH || Math.floor(Math.random() * 10000),
-            tenSanPham: group.tenChuanHoa || firstItem.tenSanPham || 'Sản phẩm',
-            thuongHieu: group.thuongHieu || firstItem.attributes?.brand || 'Khác',
-            danhMuc: group.productType || 'Điện thoại',
-            hinhAnh: firstItem.hinhAnh || '',
-            giaThapNhat: group.giaThapNhat || firstItem.giaHienTai || 0,
-            giaCaoNhat: group.giaCaoNhat || firstItem.giaHienTai || 0,
-            giaGoc: firstItem.giaHienTai * 1.15 || 0, // mock origin price
-            phanTramGiam: 15,
-            soNoiBan: group.soSanPham || group.soNguon || 1,
-            danhGia: firstItem.danhGia || 5.0,
-            soLuongDanhGia: firstItem.soLuongDanhGia || 10,
-            sanDangBan: group.nguon || [firstItem.sanTMDT],
-            linkMuaTotNhat: firstItem.linkGoc || '',
-            domain: getDomainName(firstItem.sanTMDT, firstItem.linkGoc),
-            thongSoKyThuat: firstItem.attributes || {}
-          };
-        });
+      if (rawData) {
+        let mappedProducts = [];
+        
+        // Ưu tiên render data.groups nếu có
+        if (rawData.groups && rawData.groups.length > 0) {
+          mappedProducts = rawData.groups.map(group => {
+            const firstItem = group.items && group.items[0] ? group.items[0] : {};
+            const lowestPriceItem = group.sanPhamGiaThapNhat || firstItem;
+            return {
+              id: group.maNhomTam,
+              maNhomTam: group.maNhomTam,
+              tenSanPham: group.tenChuanHoa || 'Sản phẩm',
+              tenChuanHoa: group.tenChuanHoa || 'Sản phẩm',
+              thuongHieu: group.thuongHieu || firstItem.attributes?.brand || 'Khác',
+              dungLuong: group.dungLuong,
+              danhMuc: group.productType || 'Điện thoại',
+              hinhAnh: group.sanPhamGiaThapNhat?.hinhAnh || firstItem.hinhAnh || '',
+              giaThapNhat: group.giaThapNhat || 0,
+              giaCaoNhat: group.giaCaoNhat || 0,
+              giaGoc: (group.giaThapNhat || 0) * 1.15,
+              phanTramGiam: 15,
+              soNoiBan: group.soNguon || 1,
+              sanDangBan: group.nguon || [],
+              nguon: group.nguon || [],
+              danhGia: lowestPriceItem.danhGia || 5.0,
+              soLuongDanhGia: lowestPriceItem.soLuongDanhGia || 10,
+              linkMuaTotNhat: lowestPriceItem.linkGoc || '',
+              domain: getDomainName(lowestPriceItem.sanTMDT, lowestPriceItem.linkGoc),
+              thongSoKyThuat: firstItem.attributes || {},
+              offers: (group.items || []).map(item => ({
+                tenSanPham: item.tenSanPham,
+                sanTMDT: item.sanTMDT,
+                giaHienTai: Number(item.giaHienTai),
+                giaGoc: Number(item.giaHienTai) * 1.15,
+                linkGoc: item.linkGoc,
+                hinhAnh: item.hinhAnh,
+                danhGia: item.danhGia,
+                soLuongDanhGia: item.soLuongDanhGia,
+                ngayCapNhat: item.ngayCapNhat
+              })),
+              items: group.items || []
+            };
+          });
 
-        // Apply filters locally on backend results if any filters are passed
+          // Lưu kết quả tìm kiếm gần nhất vào localStorage
+          try {
+            localStorage.setItem('lastSearchResults', JSON.stringify(mappedProducts));
+            localStorage.setItem('lastSearchKeyword', keyword || '');
+          } catch (storageError) {
+            console.error('Failed to save to localStorage:', storageError);
+          }
+        } 
+        // Fallback sang items thô nếu không có groups
+        else if (rawData.items && rawData.items.length > 0) {
+          mappedProducts = rawData.items.map(item => {
+            return {
+              id: item.maSPTho || Math.floor(Math.random() * 10000),
+              maNhomTam: null,
+              tenSanPham: item.tenSanPham || 'Sản phẩm',
+              tenChuanHoa: item.tenSanPham || 'Sản phẩm',
+              thuongHieu: item.attributes?.brand || 'Khác',
+              dungLuong: null,
+              danhMuc: 'Điện thoại',
+              hinhAnh: item.hinhAnh || '',
+              giaThapNhat: item.giaHienTai || 0,
+              giaCaoNhat: item.giaHienTai || 0,
+              giaGoc: item.giaHienTai * 1.15 || 0,
+              phanTramGiam: 15,
+              soNoiBan: 1,
+              sanDangBan: [item.sanTMDT],
+              nguon: [item.sanTMDT],
+              danhGia: item.danhGia || 5.0,
+              soLuongDanhGia: item.soLuongDanhGia || 10,
+              linkMuaTotNhat: item.linkGoc || '',
+              domain: getDomainName(item.sanTMDT, item.linkGoc),
+              thongSoKyThuat: item.attributes || {},
+              offers: [{
+                tenSanPham: item.tenSanPham,
+                sanTMDT: item.sanTMDT,
+                giaHienTai: Number(item.giaHienTai),
+                giaGoc: Number(item.giaHienTai) * 1.15,
+                linkGoc: item.linkGoc,
+                hinhAnh: item.hinhAnh,
+                danhGia: item.danhGia,
+                soLuongDanhGia: item.soLuongDanhGia,
+                ngayCapNhat: item.ngayCapNhat
+              }],
+              items: [item]
+            };
+          });
+        }
+
+        // Áp dụng bộ lọc cục bộ trên danh sách sản phẩm lấy từ API
         let filtered = mappedProducts;
         if (filters.website && filters.website.length > 0) {
           filtered = filtered.filter(p => p.sanDangBan.some(s => filters.website.includes(s)));
@@ -110,18 +178,45 @@ export const productService = {
           errorMessage: null
         };
       }
-      throw new Error('Định dạng dữ liệu không hợp lệ từ máy chủ.');
+      throw new Error('Không nhận được dữ liệu hợp lệ từ máy chủ API.');
     } catch (error) {
-      console.warn('API Search failed, falling back to mock data:', error.message);
-      // Fallback local mock search
-      let localData = [...sanPhamMau];
+      console.warn('API Search failed, falling back to local data:', error.message);
+      
+      const isTimeout = error.code === 'ECONNABORTED' || error.message?.toLowerCase().includes('timeout');
+      const errorMessage = isTimeout 
+        ? 'Yêu cầu tìm kiếm bị quá hạn. Đang hiển thị dữ liệu lưu tạm.' 
+        : (error.message || 'Lỗi kết nối máy chủ API. Đang hiển thị dữ liệu lưu tạm.');
 
-      if (keyword) {
-        const keywordLower = keyword.toLowerCase();
-        localData = localData.filter(p => 
-          p.tenSanPham.toLowerCase().includes(keywordLower) ||
-          p.thuongHieu.toLowerCase().includes(keywordLower)
-        );
+      let localData = [];
+      let foundInStorage = false;
+
+      // Ưu tiên lấy từ localStorage trước
+      try {
+        const lastKeyword = localStorage.getItem('lastSearchKeyword');
+        const lastResultsStr = localStorage.getItem('lastSearchResults');
+        
+        if (lastResultsStr) {
+          const lastResults = JSON.parse(lastResultsStr);
+          // Nếu keyword trùng khớp hoặc không nhập keyword (tìm chung) thì dùng cache
+          if (!keyword || (lastKeyword && keyword.toLowerCase() === lastKeyword.toLowerCase())) {
+            localData = lastResults;
+            foundInStorage = true;
+          }
+        }
+      } catch (storageError) {
+        console.error('Error reading from localStorage:', storageError);
+      }
+
+      // Nếu không có trong storage, dùng sanPhamMau
+      if (!foundInStorage) {
+        localData = [...sanPhamMau];
+        if (keyword) {
+          const keywordLower = keyword.toLowerCase();
+          localData = localData.filter(p => 
+            p.tenSanPham.toLowerCase().includes(keywordLower) ||
+            p.thuongHieu.toLowerCase().includes(keywordLower)
+          );
+        }
       }
 
       // Apply filters on local data
@@ -155,7 +250,7 @@ export const productService = {
       return {
         data: localData,
         isOffline: true,
-        errorMessage: error.message || 'Lỗi kết nối máy chủ API'
+        errorMessage: errorMessage
       };
     }
   },
