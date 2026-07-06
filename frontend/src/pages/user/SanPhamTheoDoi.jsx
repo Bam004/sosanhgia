@@ -1,8 +1,4 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
-import { dinhDangTien } from '../../utils/dinhDangTien';
-import { SinhIconSanPham } from '../../components/user/TheSanPham';
+import { Link } from 'react-router-dom';
 
 export function SidebarTaiKhoan({ pathHienTai }) {
   return (
@@ -35,204 +31,34 @@ export function SidebarTaiKhoan({ pathHienTai }) {
 }
 
 export default function SanPhamTheoDoi() {
-  const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-  const [dsTheoDoi, setDsTheoDoi] = useState([]);
-  const [editingId, setEditingId] = useState(null);
-  const [newGiaMucTieu, setNewGiaMucTieu] = useState('');
-
-  // Kiểm tra đăng nhập và nạp danh sách theo dõi
-  useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    if (!savedUser) {
-      toast.info('Bạn cần đăng nhập để quản lý danh sách sản phẩm theo dõi!');
-      navigate('/dang-nhap');
-      return;
-    }
-    setUser(JSON.parse(savedUser));
-
-    // Nạp dsTheoDoi, nếu chưa có thì tạo dữ liệu mặc định để demo
-    const savedDs = localStorage.getItem('dsTheoDoi');
-    if (savedDs) {
-      setDsTheoDoi(JSON.parse(savedDs));
-    } else {
-      const macDinh = [
-        {
-          id: 1,
-          tenSanPham: 'Samsung Galaxy S26 Ultra 5G 12GB 512GB',
-          thuongHieu: 'Samsung',
-          giaThapNhat: 29890000,
-          giaMucTieu: 31000000,
-          nguon: 'Shopee',
-          ngayTheoDoi: '01/07/2026',
-          datMucTieu: true, // Vì giá thấp nhất (29.89M) thấp hơn giá mục tiêu (31M)
-        },
-        {
-          id: 4,
-          tenSanPham: 'Samsung Galaxy S26 5G 12GB 256GB',
-          thuongHieu: 'Samsung',
-          giaThapNhat: 20790000,
-          giaMucTieu: 19000000,
-          nguon: 'FPT Shop',
-          ngayTheoDoi: '02/07/2026',
-          datMucTieu: false, // Vì giá hiện tại (20.79M) cao hơn giá mục tiêu (19M)
-        },
-      ];
-      localStorage.setItem('dsTheoDoi', JSON.stringify(macDinh));
-      setDsTheoDoi(macDinh);
-    }
-  }, [navigate]);
-
-  // Xóa sản phẩm theo dõi
-  const xuLyBoTheoDoi = (id) => {
-    const dsCapNhat = dsTheoDoi.filter((item) => item.id !== id);
-    localStorage.setItem('dsTheoDoi', JSON.stringify(dsCapNhat));
-    setDsTheoDoi(dsCapNhat);
-    toast.success('Đã bỏ theo dõi sản phẩm thành công!');
-  };
-
-  // Mở chế độ chỉnh sửa giá mong muốn
-  const batDauSuaGia = (item) => {
-    setEditingId(item.id);
-    setNewGiaMucTieu(item.giaMucTieu);
-  };
-
-  // Lưu giá chỉnh sửa
-  const luuGiaMoi = (id) => {
-    if (!newGiaMucTieu || Number(newGiaMucTieu) <= 0) {
-      toast.warning('Giá không hợp lệ!');
-      return;
-    }
-
-    const dsCapNhat = dsTheoDoi.map((item) => {
-      if (item.id === id) {
-        const targetPrice = Number(newGiaMucTieu);
-        return {
-          ...item,
-          giaMucTieu: targetPrice,
-          datMucTieu: item.giaThapNhat <= targetPrice,
-        };
-      }
-      return item;
-    });
-
-    localStorage.setItem('dsTheoDoi', JSON.stringify(dsCapNhat));
-    setDsTheoDoi(dsCapNhat);
-    setEditingId(null);
-    toast.success('Đã cập nhật giá mong muốn thành công!');
-  };
-
-  if (!user) {
-    return null;
-  }
-
   return (
-    <main className="user-page">
-      <div className="user-container account-layout">
-        {/* Cột trái: Sidebar tài khoản */}
-        <SidebarTaiKhoan pathHienTai="/tai-khoan/san-pham-theo-doi" />
-
-        {/* Cột phải: Danh sách sản phẩm đang theo dõi */}
-        <section className="account-content">
-          <div className="account-content__header">
-            <h2>Sản phẩm đang theo dõi giá</h2>
-            <p>Danh sách các sản phẩm đang được giám sát giá tự động. Hệ thống sẽ báo về tài khoản khi giá giảm đạt đích.</p>
-          </div>
-
-          {dsTheoDoi.length > 0 ? (
-            <div className="tracked-products-list">
-              {dsTheoDoi.map((item) => {
-                // Xác định động trạng thái đạt mục tiêu
-                const datMucTieu = item.giaThapNhat <= item.giaMucTieu;
-
-                return (
-                  <div key={item.id} className="tracked-item-card">
-                    {/* Cột 1: Ảnh đại diện */}
-                    <div className="tracked-item-card__img">
-                      <SinhIconSanPham danhMuc="Điện thoại" width={48} height={48} />
-                    </div>
-
-                    {/* Cột 2: Thông tin sản phẩm */}
-                    <div className="tracked-item-card__info">
-                      <Link to={`/san-pham/${item.id}`} className="tracked-title">
-                        {item.tenSanPham}
-                      </Link>
-                      <div className="tracked-meta">
-                        <span>Hãng: <strong>{item.thuongHieu}</strong></span>
-                        <span>Ngày theo dõi: {item.ngayTheoDoi}</span>
-                      </div>
-                    </div>
-
-                    {/* Cột 3: Giá hiện tại vs Giá mong muốn */}
-                    <div className="tracked-item-card__pricing">
-                      <div className="price-item">
-                        <span className="price-lbl">Giá thấp nhất:</span>
-                        <strong className="price-val text-red">{dinhDangTien(item.giaThapNhat)}</strong>
-                        <span className="price-source">(tại {item.nguon})</span>
-                      </div>
-
-                      <div className="price-item">
-                        <span className="price-lbl">Giá mong muốn:</span>
-                        {editingId === item.id ? (
-                          <div className="edit-price-inline">
-                            <input
-                              type="number"
-                              min="0"
-                              max="200000000"
-                              value={newGiaMucTieu}
-                              onChange={(e) => {
-                                const val = Number(e.target.value);
-                                if (val <= 200000000) setNewGiaMucTieu(e.target.value);
-                              }}
-                              className="edit-price-input"
-                            />
-                            <button onClick={() => luuGiaMoi(item.id)} className="btn-save-inline">Lưu</button>
-                            <button onClick={() => setEditingId(null)} className="btn-cancel-inline">Hủy</button>
-                          </div>
-                        ) : (
-                          <div className="display-price-inline">
-                            <strong className="price-val text-blue">{dinhDangTien(item.giaMucTieu)}</strong>
-                            <button onClick={() => batDauSuaGia(item)} className="btn-edit-inline">
-                              ✏️ Sửa
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Cột 4: Trạng thái & Action */}
-                    <div className="tracked-item-card__status-actions">
-                      <div className="status-badge-wrapper">
-                        {datMucTieu ? (
-                          <span className="status-badge status-badge--success">🍀 Đã đạt mục tiêu</span>
-                        ) : (
-                          <span className="status-badge status-badge--pending">⏳ Chưa đạt mục tiêu</span>
-                        )}
-                      </div>
-
-                      <button
-                        onClick={() => xuLyBoTheoDoi(item.id)}
-                        className="btn-unfollow"
-                      >
-                        Bỏ theo dõi
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="tracked-empty">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-              </svg>
-              <h3>Chưa theo dõi sản phẩm nào</h3>
-              <p>Hãy truy cập trang chi tiết sản phẩm hoặc trang Theo dõi giá để bắt đầu nhận tin tức biến động giá.</p>
-              <Link to="/theo-doi-gia" className="btn-redirect-track">Đến trang Theo dõi giá</Link>
-            </div>
-          )}
-        </section>
+    <main className="user-page" style={{ padding: '60px 20px', textAlign: 'center', background: '#f8fafc', minHeight: '60vh' }}>
+      <div className="user-container">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5" style={{ marginBottom: '24px' }}>
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          <path d="M12 8v4"></path>
+          <path d="M12 16h.01"></path>
+        </svg>
+        <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#334155', marginBottom: '16px' }}>
+          Tính năng đang được phát triển
+        </h2>
+        <p style={{ color: '#64748b', maxWidth: '600px', margin: '0 auto 32px auto', lineHeight: '1.6' }}>
+          Chức năng sản phẩm theo dõi cần hệ thống tài khoản người dùng và API lưu sản phẩm theo dõi. Hiện chưa được triển khai.
+        </p>
+        <Link 
+          to="/" 
+          style={{ 
+            display: 'inline-block', 
+            background: 'var(--color-primary)', 
+            color: '#fff', 
+            padding: '10px 24px', 
+            borderRadius: '6px', 
+            textDecoration: 'none',
+            fontWeight: '500'
+          }}
+        >
+          Trở về Trang chủ
+        </Link>
       </div>
     </main>
   );

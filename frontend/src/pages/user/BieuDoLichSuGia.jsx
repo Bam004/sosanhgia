@@ -10,11 +10,12 @@ export default function BieuDoLichSuGia() {
   const [sanPham, setSanPham] = useState(null);
   const [lichSuGia, setLichSuGia] = useState(null);
   const [thongKe, setThongKe] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      setError(null);
       try {
         const detailRes = await productService.layChiTietSanPham(id);
         if (detailRes.data) {
@@ -22,12 +23,15 @@ export default function BieuDoLichSuGia() {
         }
         
         const historyRes = await productService.layLichSuGia(id);
-        if (historyRes.data) {
+        if (historyRes.data && historyRes.data.lichSu.length > 0) {
           setLichSuGia(historyRes.data.lichSu);
           setThongKe(historyRes.data.thongKe);
+        } else {
+          setError(historyRes.errorMessage || 'Chưa có dữ liệu lịch sử giá');
         }
       } catch (e) {
         console.error(e);
+        setError('Lỗi kết nối lịch sử giá');
       } finally {
         setLoading(false);
       }
@@ -41,6 +45,22 @@ export default function BieuDoLichSuGia() {
         <div className="user-container" style={{ textAlign: 'center', padding: '100px 0' }}>
           <span className="spinner" style={{ display: 'inline-block', width: '30px', height: '30px', marginBottom: '16px' }}></span>
           <p>Đang tải dữ liệu lịch sử giá...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="user-page">
+        <div className="user-container" style={{ textAlign: 'center', padding: '100px 0' }}>
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5" style={{ marginBottom: '16px' }}>
+             <circle cx="12" cy="12" r="10"></circle>
+             <line x1="12" y1="8" x2="12" y2="12"></line>
+             <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <p>{error}</p>
+          <Link to={`/san-pham/${id}`} style={{ color: 'var(--color-primary)', textDecoration: 'underline', marginTop: '10px', display: 'inline-block' }}>Quay lại</Link>
         </div>
       </div>
     );
@@ -96,9 +116,6 @@ export default function BieuDoLichSuGia() {
             {/* Render component biểu đồ Recharts */}
             <div style={{ position: 'relative' }}>
               <BieuDoGia dataInput={lichSuGia} thongKe={thongKe} />
-              <div style={{ position: 'absolute', bottom: '-20px', left: '10px', fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>
-                * Hệ thống đang hiển thị Dữ liệu lịch sử giá mẫu
-              </div>
             </div>
           </div>
         </section>

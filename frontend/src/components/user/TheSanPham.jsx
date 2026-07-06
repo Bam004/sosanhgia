@@ -53,7 +53,7 @@ export default function TheSanPham({ sanPham }) {
 
   return (
     <article className="product-card">
-      <Link to={`/san-pham/${sanPham.maNhomTam || sanPham.id}`} state={{ sanPham }} className="product-card__image-link">
+      <Link to={`/san-pham/${sanPham.maSPCH || sanPham.id}`} state={{ sanPham }} className="product-card__image-link">
         <div className="product-card__image">
           {sanPham.hinhAnh ? (
             <img src={sanPham.hinhAnh} alt={sanPham.tenSanPham} />
@@ -71,7 +71,7 @@ export default function TheSanPham({ sanPham }) {
       </Link>
 
       <div className="product-card__body">
-        <Link to={`/san-pham/${sanPham.maNhomTam || sanPham.id}`} state={{ sanPham }} className="product-card__title">
+        <Link to={`/san-pham/${sanPham.maSPCH || sanPham.id}`} state={{ sanPham }} className="product-card__title">
           {sanPham.tenSanPham}
         </Link>
 
@@ -111,7 +111,7 @@ export default function TheSanPham({ sanPham }) {
             {sanPham.soNoiBan} nơi bán
           </span>
           <span className="product-card__rating">
-            ⭐ {sanPham.danhGia?.toFixed(1)}
+            {sanPham.danhGia ? `⭐ ${sanPham.danhGia.toFixed(1)}` : 'Chưa có đánh giá'}
           </span>
         </div>
 

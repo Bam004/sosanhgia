@@ -1,26 +1,29 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import TheSanPham from '../../components/user/TheSanPham';
-import { sanPhamMau } from '../../data/duLieuSanPhamMau';
+import TheSanPhamOffer from '../../components/user/TheSanPhamOffer';
+import { productService } from '../../services/productService';
 
 export default function TrangChu() {
   const [tuKhoa, setTuKhoa] = useState('');
-  const [sanPhamGanDay, setSanPhamGanDay] = useState([]);
-  const [tuKhoaGanDay, setTuKhoaGanDay] = useState('');
+  const [sanPhamNoiBat, setSanPhamNoiBat] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('lastSearchResults');
-      const keyword = localStorage.getItem('lastSearchKeyword');
-      if (saved) {
-        setSanPhamGanDay(JSON.parse(saved));
-        setTuKhoaGanDay(keyword || '');
+    const fetchFeatured = async () => {
+      try {
+        const res = await productService.laySanPhamNoiBat();
+        if (res.data) {
+          setSanPhamNoiBat(res.data.slice(0, 6)); // Lấy 6 sản phẩm đầu tiên
+        }
+      } catch (error) {
+        console.error('Lỗi khi tải sản phẩm nổi bật:', error);
+      } finally {
+        setLoading(false);
       }
-    } catch (e) {
-      console.error(e);
-    }
+    };
+    fetchFeatured();
   }, []);
 
   const xuLyTimKiem = (event) => {
@@ -71,7 +74,7 @@ export default function TrangChu() {
               <span className="platform">CellphoneS</span>
               <span className="price">30.290.000đ</span>
             </div>
-            <div className="hero-chart-mockup">
+            <div className="hero-chart-preview">
               <div className="bar bar-1"></div>
               <div className="bar bar-2"></div>
               <div className="bar bar-3"></div>
@@ -80,38 +83,42 @@ export default function TrangChu() {
         </section>
 
         {/* Danh sách sản phẩm */}
-        {sanPhamGanDay.length > 0 ? (
-          <section className="home-featured">
-            <div className="section-heading">
-              <div>
-                <h2>Sản phẩm vừa tìm kiếm gần đây {tuKhoaGanDay && `(Từ khóa: "${tuKhoaGanDay}")`}</h2>
-                <p>Kết quả từ phiên tìm kiếm gần nhất của bạn.</p>
-              </div>
+        <section className="home-featured">
+          <div className="section-heading">
+            <div>
+              <h2>Sản phẩm nổi bật</h2>
+              <p>Khám phá giá tốt nhất ngay hôm nay.</p>
             </div>
+          </div>
 
-            <div className="product-grid">
-              {sanPhamGanDay.slice(0, 8).map((sanPham) => (
-                <TheSanPham key={sanPham.id} sanPham={sanPham} />
+          {loading ? (
+            <div className="product-offer-grid">
+              {Array.from({ length: 6 }).map((_, idx) => (
+                <div key={idx} className="skeleton-card">
+                  <div className="skeleton skeleton-image"></div>
+                  <div className="skeleton skeleton-title"></div>
+                  <div className="skeleton skeleton-text" style={{ width: '40%' }}></div>
+                  <div className="skeleton skeleton-text" style={{ width: '85%' }}></div>
+                  <div className="skeleton skeleton-text" style={{ width: '60%', height: '36px', marginTop: '12px' }}></div>
+                </div>
               ))}
             </div>
-          </section>
-        ) : (
-          <section className="home-featured">
-            <div className="section-heading">
-              <div>
-                <h2>Sản phẩm nổi bật</h2>
-                <p>Các sản phẩm được quan tâm nhiều nhất trên thị trường.</p>
-              </div>
-            </div>
-
-            <div className="product-grid">
-              {sanPhamMau.slice(0, 8).map((sanPham) => (
-                <TheSanPham key={sanPham.id} sanPham={sanPham} />
+          ) : sanPhamNoiBat.length > 0 ? (
+            <div className="product-offer-grid">
+              {sanPhamNoiBat.map((sp) => (
+                <TheSanPhamOffer key={sp.id} sanPham={sp} />
               ))}
             </div>
-          </section>
-        )}
+          ) : (
+            <div className="search-results__empty" style={{ textAlign: 'center', padding: '40px' }}>
+              <p style={{ color: '#64748b', fontStyle: 'italic' }}>
+                Chưa có sản phẩm nổi bật
+              </p>
+            </div>
+          )}
+        </section>
       </div>
     </main>
   );
 }
+

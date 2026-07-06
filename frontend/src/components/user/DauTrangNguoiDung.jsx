@@ -2,19 +2,15 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 
 export default function DauTrangNguoiDung() {
-  const [tuKhoa, setTuKhoa] = useState('');
-  const [user, setUser] = useState(null);
-  const navigate = useNavigate();
   const location = useLocation();
+  const [tuKhoa, setTuKhoa] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    } else {
-      setUser(null);
-    }
-  }, [location]);
+    const params = new URLSearchParams(location.search);
+    const q = params.get('q') || '';
+    setTuKhoa(q);
+  }, [location.search]);
 
   const xuLyTimKiem = (event) => {
     event.preventDefault();
@@ -24,12 +20,6 @@ export default function DauTrangNguoiDung() {
     } else {
       navigate('/tim-kiem');
     }
-  };
-
-  const xuLyDangXuat = () => {
-    localStorage.removeItem('user');
-    setUser(null);
-    navigate('/');
   };
 
   return (
@@ -63,22 +53,7 @@ export default function DauTrangNguoiDung() {
           </button>
         </form>
 
-        <div className="user-header__actions">
-          {user ? (
-            <div className="user-header__profile">
-              <span className="user-header__avatar">
-                {user.avatar === 'clover' ? '🍀' : (user.name ? user.name[0].toUpperCase() : 'U')}
-              </span>
-              <div className="user-header__profile-text">
-                <Link to="/tai-khoan" className="user-header__profile-name">
-                  Xin chào {user.name || 'Thành viên'}
-                </Link>
-                <button onClick={xuLyDangXuat} className="user-header__logout">
-                  Đăng xuất
-                </button>
-              </div>
-            </div>
-          ) : (
+          <div className="user-header__actions">
             <Link to="/dang-nhap" className="user-header__login-link">
               <span>Đăng nhập</span>
               <svg
@@ -96,7 +71,6 @@ export default function DauTrangNguoiDung() {
                 <circle cx="12" cy="7" r="4"></circle>
               </svg>
             </Link>
-          )}
 
           <Link to="/theo-doi-gia" className="user-header__track-button">
             Theo dõi giá

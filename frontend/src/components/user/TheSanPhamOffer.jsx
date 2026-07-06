@@ -14,7 +14,7 @@ export default function TheSanPhamOffer({ sanPham, kieuNut = 'toinoiban', onSele
 
   return (
     <article className="offer-card">
-      <Link to={`/san-pham/${sanPham.maNhomTam || sanPham.id}`} state={{ sanPham }} className="offer-card__image-link">
+      <Link to={`/san-pham/${sanPham.maSPCH || sanPham.id}`} state={{ sanPham }} className="offer-card__image-link">
         <div className="offer-card__image">
           {sanPham.hinhAnh ? (
             <img src={sanPham.hinhAnh} alt={sanPham.tenSanPham} />
@@ -27,7 +27,7 @@ export default function TheSanPhamOffer({ sanPham, kieuNut = 'toinoiban', onSele
       </Link>
 
       <div className="offer-card__body">
-        <Link to={`/san-pham/${sanPham.maNhomTam || sanPham.id}`} state={{ sanPham }} className="offer-card__title">
+        <Link to={`/san-pham/${sanPham.maSPCH || sanPham.id}`} state={{ sanPham }} className="offer-card__title">
           {sanPham.tenSanPham}
         </Link>
 

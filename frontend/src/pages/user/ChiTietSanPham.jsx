@@ -15,24 +15,10 @@ export default function ChiTietSanPham() {
   const [sanPham, setSanPham] = useState(() => {
     // 1. Dùng dữ liệu truyền từ trang tìm kiếm qua state
     if (stateProduct) return stateProduct;
-
-    // 2. Dự phòng bằng localStorage
-    try {
-      const saved = localStorage.getItem('lastSearchResults');
-      if (saved) {
-        const list = JSON.parse(saved);
-        const found = list.find(item => String(item.maNhomTam || item.id) === String(id));
-        if (found) return found;
-      }
-    } catch (e) {
-      console.error(e);
-    }
     return null;
   });
 
   const [loading, setLoading] = useState(!sanPham);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isOffline, setIsOffline] = useState(false);
   const [error, setError] = useState(null);
 
   // Accordion states
@@ -52,24 +38,14 @@ export default function ChiTietSanPham() {
         const res = await productService.layChiTietSanPham(id);
         if (res.data) {
           setSanPham(res.data);
-          setIsOffline(res.isOffline);
-          if (res.isOffline) {
-            toast.warning('Đang hiển thị dữ liệu offline do không kết nối được máy chủ API!');
-          }
+          
         } else {
-          if (!sanPham) {
-            setError('Không tìm thấy sản phẩm.');
-          }
+          setError(res.errorMessage || 'Không tìm thấy sản phẩm.');
         }
       } catch (err) {
         console.error('API compare failed:', err);
-        if (sanPham) {
-          setIsOffline(true);
-          toast.warning('Không thể kết nối máy chủ để tải so sánh giá mới nhất. Đang sử dụng dữ liệu đã lưu.');
-        } else {
-          setError('Lỗi kết nối máy chủ API và không tìm thấy dữ liệu dự phòng.');
-          toast.error('Lỗi kết nối máy chủ API.');
-        }
+        setError('Lỗi kết nối máy chủ API.');
+        toast.error('Lỗi kết nối máy chủ API.');
       } finally {
         setLoading(false);
       }
@@ -84,7 +60,6 @@ export default function ChiTietSanPham() {
     productService.layChiTietSanPham(id).then(res => {
       if (res.data) {
         setSanPham(res.data);
-        setIsOffline(res.isOffline);
       } else {
         setError('Không tìm thấy sản phẩm.');
       }
@@ -97,51 +72,7 @@ export default function ChiTietSanPham() {
   };
 
   const xuLyTheoDoiGia = () => {
-    if (!sanPham) return;
-    
-    // Kiểm tra đăng nhập
-    const savedUser = localStorage.getItem('user');
-    if (!savedUser) {
-      toast.info('Bạn cần đăng nhập để sử dụng tính năng theo dõi giá!');
-      navigate('/dang-nhap');
-      return;
-    }
-
-    // Lưu vào localStorage sản phẩm đang theo dõi
-    const giaMucTieu = Math.round(sanPham.giaThapNhat * 0.9); // Đặt mặc định giảm 10%
-    const sanPhamTheoDoiMoi = {
-      id: sanPham.id,
-      tenSanPham: sanPham.tenSanPham,
-      thuongHieu: sanPham.thuongHieu,
-      giaThapNhat: sanPham.giaThapNhat,
-      giaMucTieu: giaMucTieu,
-      nguon: sanPham.domain || 'Tiki',
-      ngayTheoDoi: new Date().toLocaleDateString('vi-VN'),
-      datMucTieu: false,
-    };
-
-    let dsTheoDoi = [];
-    const savedDs = localStorage.getItem('dsTheoDoi');
-    if (savedDs) {
-      dsTheoDoi = JSON.parse(savedDs);
-    }
-
-    // Kiểm tra xem đã theo dõi chưa
-    const daTonTai = dsTheoDoi.some((item) => item.id === sanPham.id);
-    if (daTonTai) {
-      toast.warning('Bạn đã theo dõi sản phẩm này rồi!');
-      navigate('/tai-khoan/san-pham-theo-doi');
-      return;
-    }
-
-    setIsSubmitting(true);
-    setTimeout(() => {
-      dsTheoDoi.push(sanPhamTheoDoiMoi);
-      localStorage.setItem('dsTheoDoi', JSON.stringify(dsTheoDoi));
-      toast.success(`Đã thêm ${sanPham.tenSanPham} vào danh sách theo dõi giá!`);
-      setIsSubmitting(false);
-      navigate('/tai-khoan/san-pham-theo-doi');
-    }, 800);
+    toast.info('Tính năng theo dõi giảm giá đang phát triển');
   };
 
   if (error && !sanPham) {
@@ -233,11 +164,6 @@ export default function ChiTietSanPham() {
           <div className="product-main-card__right">
             <h1 className="product-main-card__title">
               {sanPham.tenSanPham}
-              {isOffline && (
-                <span className="badge-offline" style={{ marginLeft: '10px', background: '#fef3c7', color: '#d97706', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', display: 'inline-block', verticalAlign: 'middle' }}>
-                  Offline
-                </span>
-              )}
             </h1>
             
             <div className="product-main-card__meta">
@@ -245,7 +171,9 @@ export default function ChiTietSanPham() {
                 const brand = sanPham.thuongHieu || sanPham.brand || sanPham.attributes?.brand || (sanPham.items && sanPham.items[0]?.attributes?.brand);
                 return brand && brand !== 'Khác' ? <span className="brand-badge" style={{ marginRight: '16px', fontWeight: '500' }}>Thương hiệu: {brand}</span> : null;
               })()}
-              <span className="rating-badge">⭐ {sanPham.danhGia?.toFixed(1)}/5 (Từ {sanPham.soLuongDanhGia} đánh giá)</span>
+              <span className="rating-badge">
+                {sanPham.danhGia ? `⭐ ${sanPham.danhGia.toFixed(1)}/5 (Từ ${sanPham.soLuongDanhGia} đánh giá)` : 'Chưa có đánh giá'}
+              </span>
             </div>
 
             <div className="product-main-card__pricing">
@@ -273,25 +201,26 @@ export default function ChiTietSanPham() {
                 Tới nơi bán rẻ nhất
               </a>
               <button
-                onClick={xuLyTheoDoiGia}
-                className="btn-secondary-track"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <>
-                    <span className="spinner"></span>
-                    Đang kích hoạt...
-                  </>
-                ) : (
-                  <>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>
-                      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                      <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-                    </svg>
-                    Theo dõi giảm giá
-                  </>
-                )}
-              </button>
+                  type="button"
+                  onClick={xuLyTheoDoiGia}
+                  className="btn-secondary-track"
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{ marginRight: 6 }}
+                  >
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                  </svg>
+                  Theo dõi giảm giá
+                </button>
             </div>
 
             <div className="product-main-card__chart-link">

@@ -14,7 +14,6 @@ export default function KetQuaTimKiem() {
   const [danhSachHienThi, setDanhSachHienThi] = useState([]);
   const [trangHienTai, setTrangHienTai] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [isOffline, setIsOffline] = useState(false);
   const [error, setError] = useState(null);
   const [boLocActive, setBoLocActive] = useState({});
 
@@ -35,10 +34,16 @@ export default function KetQuaTimKiem() {
   // 1. Chỉ gọi API khi keyword hoặc danh mục thay đổi
   useEffect(() => {
     const fetchResults = async () => {
+      // Clear data cũ ngay lập tức
+      setDanhSachGoc([]);
+      setDanhSachHienThi([]);
+      setBoLocActive({});
+      setTrangHienTai(1);
+
       setLoading(true);
       setError(null);
       try {
-        const res = await productService.timKiemSanPham(q || danhMucParam, {});
+        const res = await productService.timKiemSanPham(q || danhMucParam, true, {});
         let data = res.data || [];
 
         // Lọc thêm theo danh mục nếu có tham số từ URL
@@ -47,12 +52,6 @@ export default function KetQuaTimKiem() {
         }
 
         setDanhSachGoc(data);
-        setIsOffline(res.isOffline);
-
-        // Hiển thị toast cảnh báo nếu đang ở chế độ offline
-        if (res.isOffline) {
-          toast.warning('Đang hiển thị dữ liệu offline do không kết nối được máy chủ API!');
-        }
       } catch (err) {
         console.error(err);
         setError(err.message || 'Lỗi kết nối máy chủ API.');
@@ -181,16 +180,16 @@ export default function KetQuaTimKiem() {
           <div className="search-results__header">
             <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
               <h2>Kết quả tìm kiếm siêu tổng hợp</h2>
-              {isOffline && (
-                <span className="badge-offline" style={{ background: '#fef3c7', color: '#d97706', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>
-                  Chế độ Offline
-                </span>
+              {error && !loading && (
+                <div style={{ color: '#ef4444', marginBottom: '16px' }}>{error}</div>
               )}
             </div>
-            <p>
-              Tìm thấy <strong>{danhSachHienThi.length}</strong> sản phẩm{' '}
-              {q ? `cho từ khóa "${q}"` : danhMucParam ? `thuộc danh mục "${danhMucParam}"` : ''}
-            </p>
+            {!loading && (
+              <p>
+                Tìm thấy <strong>{danhSachHienThi.length}</strong> sản phẩm{' '}
+                {q ? `cho từ khóa "${q}"` : danhMucParam ? `thuộc danh mục "${danhMucParam}"` : ''}
+              </p>
+            )}
           </div>
 
           {error && danhSachHienThi.length === 0 ? (
@@ -205,17 +204,24 @@ export default function KetQuaTimKiem() {
               <button className="btn-retry" onClick={handleRetry} style={{ background: 'var(--color-primary)', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer' }}>Thử lại</button>
             </div>
           ) : loading ? (
-            <div className="product-offer-grid">
-              {Array.from({ length: 6 }).map((_, idx) => (
-                <div key={idx} className="skeleton-card">
-                  <div className="skeleton skeleton-image"></div>
-                  <div className="skeleton skeleton-title"></div>
-                  <div className="skeleton skeleton-text" style={{ width: '40%' }}></div>
-                  <div className="skeleton skeleton-text" style={{ width: '85%' }}></div>
-                  <div className="skeleton skeleton-text" style={{ width: '60%', height: '36px', marginTop: '12px' }}></div>
-                </div>
-              ))}
-            </div>
+            <>
+              <div className="search-loading" style={{ textAlign: 'center', marginBottom: '20px' }}>
+                <p style={{ color: '#64748b', fontSize: '15px' }}>
+                  Đang tìm kiếm sản phẩm. Nếu từ khóa chưa có trong hệ thống, quá trình này có thể mất vài giây để cào dữ liệu mới...
+                </p>
+              </div>
+              <div className="product-offer-grid">
+                {Array.from({ length: 6 }).map((_, idx) => (
+                  <div key={idx} className="skeleton-card">
+                    <div className="skeleton skeleton-image"></div>
+                    <div className="skeleton skeleton-title"></div>
+                    <div className="skeleton skeleton-text" style={{ width: '40%' }}></div>
+                    <div className="skeleton skeleton-text" style={{ width: '85%' }}></div>
+                    <div className="skeleton skeleton-text" style={{ width: '60%', height: '36px', marginTop: '12px' }}></div>
+                  </div>
+                ))}
+              </div>
+            </>
           ) : sanPhamPhanTrang.length > 0 ? (
             <>
               {/* Lưới sản phẩm */}
@@ -260,7 +266,7 @@ export default function KetQuaTimKiem() {
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
               </svg>
-              <h3>Không tìm thấy sản phẩm nào khớp</h3>
+              <h3>Chưa tìm thấy sản phẩm phù hợp</h3>
               <p>Vui lòng thử tìm kiếm lại với từ khóa khác hoặc điều chỉnh bộ lọc.</p>
             </div>
           )}

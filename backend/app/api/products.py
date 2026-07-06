@@ -5,7 +5,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from backend.app.core.database import get_db
-from backend.app.models import SanPhamTho, LichSuGia
+from backend.app.models import SanPhamTho, LichSuGia, SanPhamChuanHoa
 
 
 router = APIRouter(
@@ -35,23 +35,40 @@ def compare_product_prices(
     db: Session = Depends(get_db)
 ):
     try:
+        from backend.app.api.search import is_accessory, ACCESSORY_KEYWORDS
+        spch = db.query(SanPhamChuanHoa).filter(SanPhamChuanHoa.maSPCH == product_id).first()
+        is_accessory_group = False
+        if spch:
+            kw_lower = (spch.tenChuanHoa or "").lower()
+            is_accessory_group = any(kw in kw_lower for kw in ACCESSORY_KEYWORDS)
+
         items = (
             db.query(SanPhamTho)
             .filter(SanPhamTho.maSPCH == product_id)
-            .order_by(SanPhamTho.giaHienTai.asc())
             .all()
         )
+        
+        filtered_items = []
+        for item in items:
+            if not is_accessory_group and is_accessory(item.tenSanPham):
+                continue
+            filtered_items.append(item)
+            
+        items = filtered_items
 
         if len(items) == 0:
             return JSONResponse(
                 status_code=status.HTTP_404_NOT_FOUND,
                 content={
                     "success": False,
-                    "error": "Resource with specified ID not found"
+                    "error": "Resource with specified ID not found or filtered out"
                 }
             )
 
-        prices = [float(item.giaHienTai) for item in items if item.giaHienTai is not None]
+        # Sắp xếp thủ công: giá > 0 tăng dần, giá = 0 đẩy xuống cuối
+        items.sort(key=lambda x: float(x.giaHienTai) if x.giaHienTai and x.giaHienTai > 0 else float('inf'))
+
+        prices = [float(item.giaHienTai) for item in items if item.giaHienTai is not None and item.giaHienTai > 0]
 
         return {
             "success": True,

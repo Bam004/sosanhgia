@@ -94,7 +94,7 @@ class DataSyncService:
                             
                             updated_count += 1
 
-                            if price_changed:
+                            if price_changed and clean_price > 0:
                                 lich_su = LichSuGia(maSPTho=sp_tho.maSPTho, gia=clean_price)
                                 self.db.add(lich_su)
                                 history_inserted_count += 1
@@ -118,10 +118,11 @@ class DataSyncService:
                             inserted_count += 1
 
                             # Initial price history
-                            lich_su = LichSuGia(maSPTho=sp_tho.maSPTho, gia=clean_price)
-                            self.db.add(lich_su)
-                            history_inserted_count += 1
-                            self.db.commit()
+                            if clean_price > 0:
+                                lich_su = LichSuGia(maSPTho=sp_tho.maSPTho, gia=clean_price)
+                                self.db.add(lich_su)
+                                history_inserted_count += 1
+                                self.db.commit()
 
                     except Exception as item_err:
                         self.db.rollback()
