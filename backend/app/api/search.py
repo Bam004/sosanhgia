@@ -10,6 +10,7 @@ from backend.app.core.database import get_db
 from backend.app.models.san_pham_chuan_hoa import SanPhamChuanHoa
 from backend.app.models.san_pham_tho import SanPhamTho
 from backend.app.services.scrape_pipeline_service import scrape_and_sync_keyword
+from backend.app.services.text_matching_service import TextMatchingService
 
 router = APIRouter(
     prefix="/api/search",
@@ -110,6 +111,20 @@ def detect_expected_product_type(keyword: str) -> str | None:
 
     return None
 
+
+def detect_expected_condition(
+    keyword: str,
+    expected_product_type: str | None
+) -> str | None:
+    if expected_product_type != "phone":
+        return None
+
+    matching_service = TextMatchingService()
+    normalized_keyword = matching_service._normalize_text(keyword)
+
+    return matching_service._detect_condition(normalized_keyword)
+
+
 def build_query_tokens(
     keyword: str,
     expected_product_type: str | None
@@ -167,6 +182,17 @@ def build_query_tokens(
             "smartphone",
         ])
 
+        condition_keywords = (
+            TextMatchingService.USED_CONDITION_KEYWORDS
+            | TextMatchingService.ACTIVATED_CONDITION_KEYWORDS
+            | TextMatchingService.REFURBISHED_CONDITION_KEYWORDS
+        )
+
+        for condition_keyword in condition_keywords:
+            removable_words.update(
+                normalize_search_text(condition_keyword).split()
+            )
+
     query_tokens = [
         token for token in tokens
         if token not in removable_words
@@ -174,9 +200,12 @@ def build_query_tokens(
 
     return query_tokens or tokens
 
+
 def build_search_data(keyword: str, db: Session):
     keyword = " ".join(keyword.strip().split())
     expected_product_type = detect_expected_product_type(keyword)
+    expected_condition = detect_expected_condition(keyword, expected_product_type)
+    matching_service = TextMatchingService()
     tokens = build_query_tokens(keyword, expected_product_type)
 
     conditions = []
@@ -191,28 +220,40 @@ def build_search_data(keyword: str, db: Session):
             )
         )
 
-    query = db.query(SanPhamChuanHoa).filter(and_(*conditions))
+    query = db.query(SanPhamChuanHoa)
+
+    if conditions:
+        query = query.filter(and_(*conditions))
 
     if expected_product_type:
         query = query.filter(SanPhamChuanHoa.productType == expected_product_type)
+
+    if expected_condition:
+        query = query.filter(SanPhamChuanHoa.tinhTrang == expected_condition)
+
     spch_list = query.all()
 
     groups = []
     all_items = []
     sources = set()
-    
 
     for spch in spch_list:
         items = db.query(SanPhamTho).filter(
             SanPhamTho.maSPCH == spch.maSPCH
         ).all()
-        
-       # Lọc lại ở cấp item để tránh dữ liệu cũ trong DB làm sai kết quả.
+
+        # Lọc lại ở cấp item để tránh dữ liệu cũ trong DB làm sai kết quả.
         filtered_items = []
 
         for item in items:
             if expected_product_type == "phone":
                 if is_accessory(item.tenSanPham) or is_repair_service(item.tenSanPham):
+                    continue
+
+                normalized_item_name = matching_service._normalize_text(item.tenSanPham)
+                item_condition = matching_service._detect_condition(normalized_item_name)
+
+                if expected_condition and item_condition != expected_condition:
                     continue
 
             if expected_product_type == "accessory":
@@ -230,8 +271,14 @@ def build_search_data(keyword: str, db: Session):
         if not items:
             continue
 
-        # Sắp xếp thủ công: giá > 0 tăng dần, giá = 0 đẩy xuống cuối
-        items.sort(key=lambda x: float(x.giaHienTai) if x.giaHienTai and x.giaHienTai > 0 else float('inf'))
+        # Sắp xếp thủ công: giá > 0 tăng dần, giá = 0 đẩy xuống cuối.
+        items.sort(
+            key=lambda item: (
+                float(item.giaHienTai)
+                if item.giaHienTai and item.giaHienTai > 0
+                else float("inf")
+            )
+        )
 
         prices = []
         group_sources = set()
@@ -255,7 +302,8 @@ def build_search_data(keyword: str, db: Session):
                 "linkGoc": item.linkGoc,
                 "hinhAnh": item.hinhAnh,
                 "danhGia": item.danhGia,
-                "soLuongDanhGia": item.soLuongDanhGia
+                "soLuongDanhGia": item.soLuongDanhGia,
+                "tinhTrang": spch.tinhTrang,
             }
 
             raw_items.append(raw_item)
@@ -271,13 +319,14 @@ def build_search_data(keyword: str, db: Session):
             "dungLuong": spch.dungLuong,
             "modelKey": spch.modelKey,
             "productType": spch.productType,
+            "tinhTrang": spch.tinhTrang,
             "soNguon": len(group_sources),
             "nguon": sorted(group_sources),
             "soSanPham": len(items),
             "giaThapNhat": float(min(prices)) if prices else None,
             "giaCaoNhat": float(max(prices)) if prices else None,
             "sanPhamGiaThapNhat": raw_items[0] if raw_items else None,
-            "items": raw_items
+            "items": raw_items,
         }
         groups.append(group_data)
 
@@ -287,7 +336,7 @@ def build_search_data(keyword: str, db: Session):
         "total_groups": len(groups),
         "sources": sorted(sources),
         "groups": groups,
-        "items": all_items
+        "items": all_items,
     }
 
 
@@ -299,22 +348,32 @@ def search_products(
 ):
     try:
         keyword = " ".join(keyword.strip().split())
+        scraped = False
+        scrape_error = None
+
+        # Realtime-first:
+        # Khi User tìm kiếm, hệ thống ưu tiên kích hoạt scraper theo keyword,
+        # sau đó mới đọc dữ liệu đã được sync vào DB để trả kết quả mới nhất.
+        # auto_scrape=false chỉ dùng cho cache/fallback/trang chủ/test nhanh.
+        if auto_scrape:
+            try:
+                scrape_and_sync_keyword(keyword, db)
+                db.expire_all()
+                scraped = True
+            except Exception as error:
+                db.rollback()
+                db.expire_all()
+                scrape_error = str(error)
 
         data = build_search_data(keyword, db)
-        scraped = False
-
-        if data["total_groups"] == 0 and auto_scrape:
-            scrape_and_sync_keyword(keyword, db)
-            db.expire_all()
-
-            data = build_search_data(keyword, db)
-            scraped = True
 
         return {
             "success": True,
             "data": {
                 **data,
-                "scraped": scraped
+                "scraped": scraped,
+                "mode": "realtime" if auto_scrape else "cache",
+                "scrape_error": scrape_error,
             }
         }
 
