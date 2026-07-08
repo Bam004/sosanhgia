@@ -1832,3 +1832,39 @@ a {
   background: #b91c1c;
 }
 
+.thanh-cong-cu-gom-nhom {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.thanh-cong-cu-gom-nhom .o-tim-kiem-gom-nhom {
+  flex: 1;
+  min-width: 280px;
+}
+
+.nut-cap-nhat-gom-nhom {
+  min-width: 170px;
+  height: 42px;
+  padding: 0 24px;
+  border: 1.5px solid #111827;
+  border-radius: 22px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.nut-cap-nhat-gom-nhom:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.nut-cap-nhat-gom-nhom:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
