@@ -1,87 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import api from "../../services/api";
 
-const thongKeSanPhamTho = [
-  {
-    tieuDe: "Tổng sản phẩm thô",
-    giaTri: "1.480",
-    moTa: "Dữ liệu đã thu thập",
-  },
-  {
-    tieuDe: "Đã gom nhóm",
-    giaTri: "930",
-    moTa: "Đã liên kết sản phẩm chuẩn hóa",
-  },
-  {
-    tieuDe: "Chưa gom nhóm",
-    giaTri: "480",
-    moTa: "Cần xử lý gom nhóm",
-  },
-  {
-    tieuDe: "Dữ liệu lỗi",
-    giaTri: "70",
-    moTa: "Thiếu giá, ảnh hoặc link gốc",
-  },
-];
-
-const danhSachSanPhamTho = [
-  {
-    maSP: "RAW-001",
-    anh: "📱",
-    tenSPGoc: "iPhone 15 128GB Chính hãng VN/A",
-    san: "FPT Shop",
-    gia: "17.690.000đ",
-    danhGia: "4.8",
-    trangThai: "Đã gom nhóm",
-    loaiSP: "Điện thoại",
-    ngayCapNhat: "23:10",
-  },
-  {
-    maSP: "RAW-002",
-    anh: "📱",
-    tenSPGoc: "Apple iPhone 15 128GB VN/A",
-    san: "CellphoneS",
-    gia: "17.890.000đ",
-    danhGia: "4.7",
-    trangThai: "Đã gom nhóm",
-    loaiSP: "Điện thoại",
-    ngayCapNhat: "22:55",
-  },
-  {
-    maSP: "RAW-003",
-    anh: "💻",
-    tenSPGoc: "Laptop Acer Aspire 7 Ryzen 5",
-    san: "Tiki",
-    gia: "13.990.000đ",
-    danhGia: "4.6",
-    trangThai: "Chưa gom nhóm",
-    loaiSP: "Laptop",
-    ngayCapNhat: "22:40",
-  },
-  {
-    maSP: "RAW-004",
-    anh: "🎧",
-    tenSPGoc: "Tai nghe Bluetooth Sony WH-CH520",
-    san: "Lazada",
-    gia: "990.000đ",
-    danhGia: "4.5",
-    trangThai: "Chưa gom nhóm",
-    loaiSP: "Phụ kiện",
-    ngayCapNhat: "22:20",
-  },
-  {
-    maSP: "RAW-005",
-    anh: "📱",
-    tenSPGoc: "Samsung Galaxy A55 5G 256GB",
-    san: "HoangHaMobile",
-    gia: "8.990.000đ",
-    danhGia: "4.7",
-    trangThai: "Dữ liệu lỗi",
-    loaiSP: "Điện thoại",
-    ngayCapNhat: "21:50",
-  },
-];
-
 function layClassTrangThaiSanPhamTho(trangThai) {
   if (trangThai === "Đã gom nhóm") return "da-gom-nhom";
   if (trangThai === "Chưa gom nhóm") return "chua-gom-nhom";
@@ -275,7 +194,7 @@ function layTrangThaiTuSanPhamTho(sanPham) {
 
 function chuyenSanPhamThoTuApi(sanPham) {
   return {
-    maSP: `RAW-${sanPham.maSPTho}`,
+    maSP: `SPT-${sanPham.maSPTho}`,
     maSPTho: sanPham.maSPTho,
     anh: sanPham.hinhAnh || "📦",
     tenSPGoc: sanPham.tenSanPham || "Chưa có tên sản phẩm",
@@ -450,6 +369,7 @@ function QuanLySanPhamTho() {
       const noiDungTimKiem = chuanHoaTuKhoaTimKiem(
         [
           sanPham.maSP,
+          sanPham.maSPCH ? `SPCH-${sanPham.maSPCH}` : "Chưa gom nhóm",
           sanPham.tenSPGoc,
           sanPham.san,
           sanPham.gia,
@@ -650,7 +570,8 @@ function QuanLySanPhamTho() {
         <table className="bang-san-pham-tho-admin">
           <thead>
             <tr>
-              <th>Mã SP</th>
+              <th>Mã SPT</th>
+              <th>Mã SPCH</th>
               <th>Ảnh</th>
               <th>Tên SP gốc</th>
               <th>Sàn</th>
@@ -666,6 +587,7 @@ function QuanLySanPhamTho() {
             {danhSachPhanTrang.map((sanPham) => (
               <tr key={sanPham.maSP}>
                 <td>{sanPham.maSP}</td>
+                <td>{sanPham.maSPCH ? `SPCH-${sanPham.maSPCH}` : "Chưa gom"}</td>
                 <td>
                   <AnhSanPhamTho anh={sanPham.anh} tenSPGoc={sanPham.tenSPGoc} />
                 </td>

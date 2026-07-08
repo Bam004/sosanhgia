@@ -1,6 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
-
-const API_BASE_URL = "http://127.0.0.1:8000";
+import api from "../../services/api";
 
 function formatVND(value) {
   const numberValue = Number(value || 0);
@@ -13,7 +12,7 @@ function formatVND(value) {
 }
 
 function formatMaSPTho(maSPTho) {
-  return `RAW-${String(maSPTho).padStart(3, "0")}`;
+  return `SPT-${maSPTho}`;
 }
 
 function formatMaSPCH(maSPCH) {
@@ -205,7 +204,8 @@ function QuanLyGomNhomSanPham() {
   const [loiTaiDuLieu, setLoiTaiDuLieu] = useState("");
   const [dangGanNhom, setDangGanNhom] = useState(false);
   const [thongBao, setThongBao] = useState(null);
-  const [trangHienTai, setTrangHienTai] = useState(1);
+  const [trangNhomHienTai, setTrangNhomHienTai] = useState(1);
+  const [trangSanPhamThoHienTai, setTrangSanPhamThoHienTai] = useState(1);
 
   const SO_DONG_MOI_TRANG = 5;
 
@@ -215,14 +215,15 @@ function QuanLyGomNhomSanPham() {
       setDangTai(true);
       setLoiTaiDuLieu("");
 
-      const response = await fetch(`${API_BASE_URL}/api/items?limit=1000`);
-      const result = await response.json();
+      const response = await api.get("/items", {
+        params: { limit: 1000 },
+      });
 
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || "Không thể tải danh sách sản phẩm");
+      if (!response.data?.success) {
+        throw new Error(response.data?.error || "Không thể tải danh sách sản phẩm");
       }
 
-      const data = Array.isArray(result.data) ? result.data : [];
+      const data = Array.isArray(response.data?.data) ? response.data.data : [];
       setDanhSachSanPham(data);
 
       const sanPhamChuaGomDauTien = data.find((item) => !item.maSPCH);
@@ -233,7 +234,7 @@ function QuanLyGomNhomSanPham() {
             item.maSPTho === sanPhamHienTai?.maSPTho && !item.maSPCH
         );
 
-        return sanPhamDangChonConTonTai || sanPhamChuaGomDauTien || data[0] || null;
+        return sanPhamDangChonConTonTai || sanPhamChuaGomDauTien || null;
       });
 
       if (coHienThongBao) {
@@ -279,23 +280,14 @@ function QuanLyGomNhomSanPham() {
       setDangGanNhom(true);
       setThongBao(null);
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/items/${sanPhamDangChon.maSPTho}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            maSPCH,
-          }),
-        }
-      );
+      const response = await api.put(`/items/${sanPhamDangChon.maSPTho}`, {
+        maSPCH,
+      });
 
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || "Không thể gắn sản phẩm vào nhóm");
+      if (!response.data?.success) {
+        throw new Error(
+          response.data?.error || "Không thể gắn sản phẩm vào nhóm"
+        );
       }
 
       setDanhSachSanPham((prevDanhSach) =>
@@ -376,27 +368,27 @@ function QuanLyGomNhomSanPham() {
     });
   }, [danhSachSanPhamChuaGom, tuKhoa, sanLoc]);
 
-  const tongSoTrang = Math.max(
+  const tongSoTrangSanPhamTho = Math.max(
     1,
     Math.ceil(danhSachHienThi.length / SO_DONG_MOI_TRANG)
   );
 
-  const danhSachTheoTrang = useMemo(() => {
-    const viTriBatDau = (trangHienTai - 1) * SO_DONG_MOI_TRANG;
+  const danhSachSanPhamThoTheoTrang = useMemo(() => {
+    const viTriBatDau = (trangSanPhamThoHienTai - 1) * SO_DONG_MOI_TRANG;
     const viTriKetThuc = viTriBatDau + SO_DONG_MOI_TRANG;
 
     return danhSachHienThi.slice(viTriBatDau, viTriKetThuc);
-  }, [danhSachHienThi, trangHienTai]);
+  }, [danhSachHienThi, trangSanPhamThoHienTai]);
 
   useEffect(() => {
-    setTrangHienTai(1);
+    setTrangSanPhamThoHienTai(1);
   }, [tuKhoa, sanLoc]);
 
   useEffect(() => {
-    if (trangHienTai > tongSoTrang) {
-      setTrangHienTai(tongSoTrang);
+    if (trangSanPhamThoHienTai > tongSoTrangSanPhamTho) {
+      setTrangSanPhamThoHienTai(tongSoTrangSanPhamTho);
     }
-  }, [trangHienTai, tongSoTrang]);
+  }, [trangSanPhamThoHienTai, tongSoTrangSanPhamTho]);
 
   const danhSachNhomDaCo = useMemo(() => {
     const mapNhom = new Map();
@@ -454,6 +446,28 @@ function QuanLyGomNhomSanPham() {
       .sort((nhomA, nhomB) => nhomB.diemTuongDong - nhomA.diemTuongDong);
   }, [danhSachNhomDaCo, sanPhamDangChon]);
 
+  const tongSoTrangNhom = Math.max(
+    1,
+    Math.ceil(danhSachNhomCoTuongDong.length / SO_DONG_MOI_TRANG)
+  );
+
+  const danhSachNhomTheoTrang = useMemo(() => {
+    const viTriBatDau = (trangNhomHienTai - 1) * SO_DONG_MOI_TRANG;
+    const viTriKetThuc = viTriBatDau + SO_DONG_MOI_TRANG;
+
+    return danhSachNhomCoTuongDong.slice(viTriBatDau, viTriKetThuc);
+  }, [danhSachNhomCoTuongDong, trangNhomHienTai]);
+
+  useEffect(() => {
+    setTrangNhomHienTai(1);
+  }, [sanPhamDangChon]);
+
+  useEffect(() => {
+    if (trangNhomHienTai > tongSoTrangNhom) {
+      setTrangNhomHienTai(tongSoTrangNhom);
+    }
+  }, [trangNhomHienTai, tongSoTrangNhom]);
+
   return (
     <section className="trang-gom-nhom-admin">
       <h1>Quản lý gom nhóm sản phẩm</h1>
@@ -474,10 +488,136 @@ function QuanLyGomNhomSanPham() {
       </div>
 
       <div className="bo-cuc-gom-nhom">
+        <div className="cot-goi-y-gom-nhom">
+          <h2>Danh sách nhóm chuẩn hóa hiện có</h2>
+
+          {thongBao && (
+            <div className={`thong-bao-admin ${thongBao.loai}`}>
+              {thongBao.loai === "loi" ? "❌" : "✅"} {thongBao.noiDung}
+            </div>
+          )}
+
+          <table className="bang-goi-y-gom-nhom">
+            <thead>
+              <tr>
+                <th>Mã SPCH</th>
+                <th>Tên đại diện</th>
+                <th>Số SP</th>
+                <th>Số sàn</th>
+                <th>Tương đồng</th>
+                <th>Khoảng giá</th>
+                <th>Gắn</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {danhSachNhomTheoTrang.map((nhom) => (
+                <tr key={nhom.maSPCH}>
+                  <td>{formatMaSPCH(nhom.maSPCH)}</td>
+                  <td className="ten-spch-goi-y">{nhom.tenDaiDien}</td>
+                  <td>{nhom.soSanPham}</td>
+                  <td>{nhom.soSan}</td>
+                  <td>
+                    <strong>{nhom.diemTuongDong}%</strong>
+                  </td>
+                  <td>
+                    {formatVND(nhom.giaThapNhat)} - {formatVND(nhom.giaCaoNhat)}
+                  </td>
+                  <td>
+                    <button
+                      className="nut-gan-gom-nhom"
+                      type="button"
+                      disabled={
+                        !sanPhamDangChon ||
+                        Boolean(sanPhamDangChon.maSPCH) ||
+                        dangGanNhom
+                      }
+                      onClick={() => ganSanPhamVaoNhom(nhom.maSPCH)}
+                    >
+                      {dangGanNhom ? "Đang gắn..." : "Gắn"}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+
+              {danhSachNhomCoTuongDong.length === 0 && (
+                <tr>
+                  <td colSpan="7">
+                    Chưa có nhóm sản phẩm chuẩn hóa nào trong dữ liệu hiện tại.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+
+          {danhSachNhomCoTuongDong.length > 0 && (
+            <div className="phan-trang-admin">
+              <button
+                type="button"
+                onClick={() => setTrangNhomHienTai((trang) => Math.max(1, trang - 1))}
+                disabled={trangNhomHienTai === 1}
+              >
+                ‹
+              </button>
+
+              {Array.from({ length: tongSoTrangNhom }, (_, index) => {
+                const soTrang = index + 1;
+
+                return (
+                  <button
+                    type="button"
+                    key={soTrang}
+                    className={trangNhomHienTai === soTrang ? "trang-dang-chon" : ""}
+                    onClick={() => setTrangNhomHienTai(soTrang)}
+                  >
+                    {soTrang}
+                  </button>
+                );
+              })}
+
+              <button
+                type="button"
+                onClick={() =>
+                  setTrangNhomHienTai((trang) => Math.min(tongSoTrangNhom, trang + 1))
+                }
+                disabled={trangNhomHienTai === tongSoTrangNhom}
+              >
+                ›
+              </button>
+            </div>
+          )}
+        </div>
+
         <div className="cot-san-pham-tho-chua-gom">
-          <div className="tieu-de-kem-hanh-dong-admin">
-            <h2>Danh sách sản phẩm thô chưa gom nhóm</h2>
-          </div>
+          <h2>Sản phẩm thô chưa gom nhóm</h2>
+
+          <h3 className="nhan-thong-tin-gom-nhom">Sản phẩm thô đang chọn</h3>
+
+          {sanPhamDangChon ? (
+            <div className="khung-san-pham-dang-chon">
+              <p>
+                <span>Mã sản phẩm thô:</span>{" "}
+                {formatMaSPTho(sanPhamDangChon.maSPTho)}
+              </p>
+              <p>
+                <span>Tên sản phẩm thô:</span> {sanPhamDangChon.tenSanPham}
+              </p>
+              <p>
+                <span>Nguồn:</span> {sanPhamDangChon.sanTMDT}
+              </p>
+              <p>
+                <span>Giá hiện tại:</span> {formatVND(sanPhamDangChon.giaHienTai)}
+              </p>
+              <p>
+                <span>Mã SPCH hiện tại:</span>{" "}
+                {formatMaSPCH(sanPhamDangChon.maSPCH)}
+              </p>
+            </div>
+          ) : (
+            <div className="khung-san-pham-dang-chon">
+              Chưa có sản phẩm thô chưa gom nhóm nào được chọn.
+            </div>
+          )}
 
           <div className="thanh-cong-cu-gom-nhom">
             <div className="o-tim-kiem-gom-nhom">
@@ -514,24 +654,16 @@ function QuanLyGomNhomSanPham() {
             </button>
           </div>
 
-          {loiTaiDuLieu && (
-            <div className="khung-loi-admin">
-              {loiTaiDuLieu}
-            </div>
-          )}
-
-          {thongBao && (
-            <div className={`thong-bao-admin ${thongBao.loai}`}>
-              {thongBao.noiDung}
-            </div>
-          )}
+          {loiTaiDuLieu && <div className="khung-loi-admin">{loiTaiDuLieu}</div>}
 
           {dangTai ? (
             <div className="khung-trang-thai-admin">
               Đang tải dữ liệu gom nhóm...
             </div>
           ) : (
-             <>
+            <>
+              <h4>Danh sách sản phẩm thô chưa gom nhóm</h4>
+
               <table className="bang-san-pham-tho-gom-nhom">
                 <thead>
                   <tr>
@@ -544,7 +676,7 @@ function QuanLyGomNhomSanPham() {
                 </thead>
 
                 <tbody>
-                  {danhSachTheoTrang.map((sanPham) => {
+                  {danhSachSanPhamThoTheoTrang.map((sanPham) => {
                     const trangThai = layTrangThaiGomNhom(sanPham);
 
                     return (
@@ -558,9 +690,7 @@ function QuanLyGomNhomSanPham() {
                         onClick={() => setSanPhamDangChon(sanPham)}
                       >
                         <td>{formatMaSPTho(sanPham.maSPTho)}</td>
-                        <td className="ten-spt-gom-nhom">
-                          {sanPham.tenSanPham}
-                        </td>
+                        <td className="ten-spt-gom-nhom">{sanPham.tenSanPham}</td>
                         <td>{sanPham.sanTMDT}</td>
                         <td>{formatVND(sanPham.giaHienTai)}</td>
                         <td>
@@ -590,128 +720,46 @@ function QuanLyGomNhomSanPham() {
                 <div className="phan-trang-admin">
                   <button
                     type="button"
-                    onClick={() => setTrangHienTai((trang) => Math.max(1, trang - 1))}
-                    disabled={trangHienTai === 1}
+                    onClick={() =>
+                      setTrangSanPhamThoHienTai((trang) => Math.max(1, trang - 1))
+                    }
+                    disabled={trangSanPhamThoHienTai === 1}
                   >
-                    Trước
+                    ‹
                   </button>
 
-                  {Array.from({ length: tongSoTrang }, (_, index) => index + 1).map(
-                    (soTrang) => (
+                  {Array.from({ length: tongSoTrangSanPhamTho }, (_, index) => {
+                    const soTrang = index + 1;
+
+                    return (
                       <button
                         type="button"
                         key={soTrang}
-                        className={soTrang === trangHienTai ? "trang-dang-chon" : ""}
-                        onClick={() => setTrangHienTai(soTrang)}
+                        className={
+                          trangSanPhamThoHienTai === soTrang ? "trang-dang-chon" : ""
+                        }
+                        onClick={() => setTrangSanPhamThoHienTai(soTrang)}
                       >
                         {soTrang}
                       </button>
-                    )
-                  )}
+                    );
+                  })}
 
                   <button
                     type="button"
                     onClick={() =>
-                      setTrangHienTai((trang) => Math.min(tongSoTrang, trang + 1))
+                      setTrangSanPhamThoHienTai((trang) =>
+                        Math.min(tongSoTrangSanPhamTho, trang + 1)
+                      )
                     }
-                    disabled={trangHienTai === tongSoTrang}
+                    disabled={trangSanPhamThoHienTai === tongSoTrangSanPhamTho}
                   >
-                    Sau
+                    ›
                   </button>
                 </div>
               )}
             </>
           )}
-        </div>
-
-        <div className="cot-goi-y-gom-nhom">
-          <h2>Nhóm sản phẩm đã có</h2>
-
-          <p className="nhan-thong-tin-gom-nhom">Sản phẩm thô đang chọn</p>
-
-          {sanPhamDangChon ? (
-            <div className="khung-san-pham-dang-chon">
-              <p>
-                <span>Mã sản phẩm thô:</span>{" "}
-                {formatMaSPTho(sanPhamDangChon.maSPTho)}
-              </p>
-              <p>
-                <span>Tên sản phẩm thô:</span> {sanPhamDangChon.tenSanPham}
-              </p>
-              <p>
-                <span>Nguồn:</span> {sanPhamDangChon.sanTMDT}
-              </p>
-              <p>
-                <span>Giá hiện tại:</span>{" "}
-                {formatVND(sanPhamDangChon.giaHienTai)}
-              </p>
-              <p>
-                <span>Mã SPCH hiện tại:</span>{" "}
-                {formatMaSPCH(sanPhamDangChon.maSPCH)}
-              </p>
-            </div>
-          ) : (
-            <div className="khung-san-pham-dang-chon">
-              Chưa có sản phẩm nào được chọn.
-            </div>
-          )}
-
-          <h3>Danh sách nhóm chuẩn hóa hiện có</h3>
-
-          <table className="bang-goi-y-gom-nhom">
-            <thead>
-              <tr>
-                <th>Mã SPCH</th>
-                <th>Tên đại diện</th>
-                <th>Số SP</th>
-                <th>Số sàn</th>
-                <th>Tương đồng</th>
-                <th>Khoảng giá</th>
-                <th>Gắn</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {danhSachNhomCoTuongDong.map((nhom) => (
-                <tr key={nhom.maSPCH}>
-                  <td>{formatMaSPCH(nhom.maSPCH)}</td>
-                  <td className="ten-spch-goi-y">{nhom.tenDaiDien}</td>
-                  <td>{nhom.soSanPham}</td>
-                  <td>{nhom.soSan}</td>
-                  <td>
-                    <strong>{nhom.diemTuongDong}%</strong>
-                  </td>
-                  <td>
-                    {formatVND(nhom.giaThapNhat)} -{" "}
-                    {formatVND(nhom.giaCaoNhat)}
-                  </td>
-                  <td>
-                    <button
-                      className="nut-gan-gom-nhom"
-                      type="button"
-                      disabled={!sanPhamDangChon || Boolean(sanPhamDangChon.maSPCH) || dangGanNhom}
-                      onClick={() => ganSanPhamVaoNhom(nhom.maSPCH)}
-                    >
-                      {dangGanNhom ? "Đang gắn..." : "Gắn"}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-
-              {danhSachNhomCoTuongDong.length === 0 && (
-                <tr>
-                  <td colSpan="7">
-                    Chưa có nhóm sản phẩm chuẩn hóa nào trong dữ liệu hiện tại.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-
-          <p className="mo-ta-trang-admin">
-            Chọn một sản phẩm thô chưa gom nhóm ở bảng bên trái, sau đó bấm Gắn
-            vào nhóm chuẩn hóa phù hợp ở bảng bên phải.
-          </p>
         </div>
       </div>
     </section>
