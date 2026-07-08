@@ -1,6 +1,9 @@
 from typing import Any, cast
+import unicodedata
+
 from fastapi import APIRouter, Query, status, Depends
 from fastapi.responses import JSONResponse
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from backend.app.core.database import get_db
@@ -14,25 +17,167 @@ router = APIRouter(
 )
 
 
-from sqlalchemy import and_, or_
-
 ACCESSORY_KEYWORDS = [
-    "dán", "dan", "cường lực", "cuong luc", "ốp", "op lung", "case", "mocoll", 
-    "miếng dán", "mieng dan", "kính cường lực", "kinh cuong luc", "sạc", "sac", "cáp", "cap"
+    "dan",
+    "cuong luc",
+    "op",
+    "op lung",
+    "case",
+    "mocoll",
+    "mieng dan",
+    "kinh cuong luc",
+    "sac",
+    "cap",
+    "tai nghe",
+    "adapter",
+    "pin du phong",
 ]
 
+REPAIR_SERVICE_KEYWORDS = [
+    "thay",
+    "sua",
+    "sua chua",
+    "ep kinh",
+    "thay man hinh",
+    "thay pin",
+    "thay camera",
+    "thay kinh",
+    "oled",
+    "lcd",
+    "pisen",
+]
+
+PHONE_KEYWORDS = [
+    "iphone",
+    "samsung",
+    "galaxy",
+    "xiaomi",
+    "redmi",
+    "poco",
+    "oppo",
+    "vivo",
+    "realme",
+    "honor",
+    "nokia",
+    "dien thoai",
+    "smartphone",
+]
+
+
+def normalize_search_text(text: str) -> str:
+    text = text or ""
+    text = text.lower()
+    text = unicodedata.normalize("NFD", text)
+    text = "".join(
+        char for char in text
+        if unicodedata.category(char) != "Mn"
+    )
+    text = text.replace("đ", "d")
+    text = " ".join(text.split())
+
+    return text
+
+
 def is_accessory(ten_san_pham: str) -> bool:
-    if not ten_san_pham:
-        return False
-    ten_lower = ten_san_pham.lower()
-    for kw in ACCESSORY_KEYWORDS:
-        if kw in ten_lower:
-            return True
-    return False
+    normalized_name = normalize_search_text(ten_san_pham)
+
+    return any(
+        keyword in normalized_name
+        for keyword in ACCESSORY_KEYWORDS
+    )
+
+
+def is_repair_service(ten_san_pham: str) -> bool:
+    normalized_name = normalize_search_text(ten_san_pham)
+
+    return any(
+        keyword in normalized_name
+        for keyword in REPAIR_SERVICE_KEYWORDS
+    )
+
+
+def detect_expected_product_type(keyword: str) -> str | None:
+    normalized_keyword = normalize_search_text(keyword)
+
+    if any(keyword in normalized_keyword for keyword in REPAIR_SERVICE_KEYWORDS):
+        return "repair_service"
+
+    if any(keyword in normalized_keyword for keyword in ACCESSORY_KEYWORDS):
+        return "accessory"
+
+    if any(keyword in normalized_keyword for keyword in PHONE_KEYWORDS):
+        return "phone"
+
+    return None
+
+def build_query_tokens(
+    keyword: str,
+    expected_product_type: str | None
+) -> list[str]:
+    normalized_keyword = normalize_search_text(keyword)
+    tokens = normalized_keyword.split()
+
+    removable_words = set()
+
+    if expected_product_type == "repair_service":
+        removable_words.update([
+            "thay",
+            "sua",
+            "chua",
+            "ep",
+            "kinh",
+            "man",
+            "hinh",
+            "pin",
+            "camera",
+            "oled",
+            "lcd",
+            "pisen",
+        ])
+
+    elif expected_product_type == "accessory":
+        removable_words.update([
+            "op",
+            "lung",
+            "dan",
+            "kinh",
+            "cuong",
+            "luc",
+            "mieng",
+            "bao",
+            "da",
+            "case",
+            "cover",
+            "magsafe",
+            "sac",
+            "cap",
+            "tai",
+            "nghe",
+            "adapter",
+            "pin",
+            "du",
+            "phong",
+            "mocoll",
+        ])
+
+    elif expected_product_type == "phone":
+        removable_words.update([
+            "dien",
+            "thoai",
+            "smartphone",
+        ])
+
+    query_tokens = [
+        token for token in tokens
+        if token not in removable_words
+    ]
+
+    return query_tokens or tokens
 
 def build_search_data(keyword: str, db: Session):
     keyword = " ".join(keyword.strip().split())
-    tokens = keyword.split()
+    expected_product_type = detect_expected_product_type(keyword)
+    tokens = build_query_tokens(keyword, expected_product_type)
 
     conditions = []
     for token in tokens:
@@ -47,27 +192,39 @@ def build_search_data(keyword: str, db: Session):
         )
 
     query = db.query(SanPhamChuanHoa).filter(and_(*conditions))
+
+    if expected_product_type:
+        query = query.filter(SanPhamChuanHoa.productType == expected_product_type)
     spch_list = query.all()
 
     groups = []
     all_items = []
     sources = set()
     
-    kw_lower = keyword.lower()
-    is_accessory_search = any(kw in kw_lower for kw in ACCESSORY_KEYWORDS)
 
     for spch in spch_list:
         items = db.query(SanPhamTho).filter(
             SanPhamTho.maSPCH == spch.maSPCH
         ).all()
         
-        # Lọc bỏ phụ kiện nếu không phải đang search phụ kiện
+       # Lọc lại ở cấp item để tránh dữ liệu cũ trong DB làm sai kết quả.
         filtered_items = []
+
         for item in items:
-            if not is_accessory_search and is_accessory(item.tenSanPham):
-                continue
+            if expected_product_type == "phone":
+                if is_accessory(item.tenSanPham) or is_repair_service(item.tenSanPham):
+                    continue
+
+            if expected_product_type == "accessory":
+                if not is_accessory(item.tenSanPham):
+                    continue
+
+            if expected_product_type == "repair_service":
+                if not is_repair_service(item.tenSanPham):
+                    continue
+
             filtered_items.append(item)
-            
+
         items = filtered_items
 
         if not items:

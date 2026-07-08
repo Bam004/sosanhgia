@@ -87,7 +87,7 @@ class TextMatchingService:
     # Ngưỡng điểm để quyết định hai sản phẩm có thuộc cùng nhóm hay không.
     MATCH_THRESHOLD = 0.82
 
-    # Hàm chính: nhận danh sách sản phẩm và gom các sản phẩm tương đồng thành nhóm.
+        # Hàm chính: nhận danh sách sản phẩm và gom các sản phẩm tương đồng thành nhóm.
     def group_products(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         enriched_items = []
 
@@ -125,6 +125,82 @@ class TextMatchingService:
             or self._extract_android_model_key(normalized_keyword)
         )
 
+        repair_search_keywords = [
+            "thay",
+            "sua",
+            "sua chua",
+            "ep kinh",
+            "thay man hinh",
+            "thay pin",
+            "thay camera",
+            "thay kinh",
+            "oled",
+            "lcd",
+            "pisen",
+        ]
+
+        accessory_search_keywords = [
+            "op",
+            "op lung",
+            "dan",
+            "dan kinh",
+            "kinh cuong luc",
+            "cuong luc",
+            "mieng dan",
+            "bao da",
+            "case",
+            "cover",
+            "magsafe",
+            "sac",
+            "cap",
+            "tai nghe",
+            "adapter",
+            "pin du phong",
+        ]
+
+        phone_search_keywords = [
+            "iphone",
+            "samsung",
+            "galaxy",
+            "xiaomi",
+            "redmi",
+            "poco",
+            "oppo",
+            "vivo",
+            "realme",
+            "honor",
+            "nokia",
+            "dien thoai",
+            "smartphone",
+        ]
+
+        is_repair_search = any(
+            search_keyword in normalized_keyword
+            for search_keyword in repair_search_keywords
+        )
+
+        is_accessory_search = any(
+            search_keyword in normalized_keyword
+            for search_keyword in accessory_search_keywords
+        )
+
+        is_phone_search = (
+            keyword_model_key is not None
+            or any(
+                search_keyword in normalized_keyword
+                for search_keyword in phone_search_keywords
+            )
+        )
+
+        expected_product_type = None
+
+        if is_repair_search:
+            expected_product_type = "repair_service"
+        elif is_accessory_search:
+            expected_product_type = "accessory"
+        elif is_phone_search:
+            expected_product_type = "phone"
+
         filtered_items = []
 
         for item in items:
@@ -133,9 +209,11 @@ class TextMatchingService:
 
             enriched_item = self._enrich_item(item)
             matching_data = enriched_item["_matching"]
+            product_type = matching_data.get("product_type")
 
-            # Loại phụ kiện: ốp lưng, kính cường lực, dán camera, sạc, cáp...
-            if matching_data.get("is_accessory"):
+            # Nếu hệ thống đã nhận diện được ý định tìm kiếm,
+            # chỉ giữ đúng loại sản phẩm tương ứng.
+            if expected_product_type and product_type != expected_product_type:
                 continue
 
             # Nếu keyword có model rõ ràng, chỉ giữ sản phẩm cùng dòng model.
