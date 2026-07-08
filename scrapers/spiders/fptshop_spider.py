@@ -74,11 +74,17 @@ class FptshopSpider(scrapy.Spider):
             if not self.is_keyword_related_product(title):
                 continue
 
+            card_text = self.extract_card_text(anchor)
+            fallback_price = self.parse_price(card_text)
+            fallback_image = self.extract_card_image(anchor, response)
+
             seen_links.add(full_url)
 
             candidates.append({
                 "url": full_url,
                 "title": title,
+                "price": fallback_price,
+                "image": fallback_image,
                 "priority": self.get_candidate_priority(title, full_url),
             })
 
@@ -92,7 +98,12 @@ class FptshopSpider(scrapy.Spider):
         for candidate in selected_candidates:
             yield scrapy.Request(
                 url=candidate["url"],
-                callback=self.parse_product_detail
+                callback=self.parse_product_detail,
+                meta={
+                    "fallback_title": candidate.get("title"),
+                    "fallback_price": candidate.get("price"),
+                    "fallback_image": candidate.get("image"),
+                }
             )
 
         self.logger.info(
@@ -103,28 +114,31 @@ class FptshopSpider(scrapy.Spider):
     def parse_product_detail(self, response):
         self.logger.info(f"Đang cào chi tiết sản phẩm: {response.url}")
 
-        if "iphone-15-plus" in response.url:
-            with open("debug_fpt_iphone15_plus.html", "w", encoding="utf-8") as file:
-                file.write(response.text)
-
         page_text = " ".join(response.css("body *::text").getall())
 
         if self.is_listing_page(response, page_text):
             self.logger.warning(f"Bỏ qua trang danh mục/listing: {response.url}")
             return
 
+        fallback_title = self.clean_text(response.meta.get("fallback_title"))
+        fallback_price = response.meta.get("fallback_price")
+        fallback_image = response.meta.get("fallback_image")
+
         ten_san_pham = self.clean_text(
             response.css("h1::text").get()
             or response.css("meta[property='og:title']::attr(content)").get()
             or response.css("title::text").get()
+            or fallback_title
         )
 
         hinh_anh = (
             response.css("meta[property='og:image']::attr(content)").get()
+            or fallback_image
             or response.css("img::attr(src)").get()
         )
 
-        gia_hien_tai = self.extract_price(response, page_text, ten_san_pham)
+        gia_tu_chi_tiet = self.extract_price(response, page_text, ten_san_pham)
+        gia_hien_tai = gia_tu_chi_tiet or fallback_price
 
         if not self.is_keyword_related_product(ten_san_pham):
             self.logger.info(
@@ -149,7 +163,9 @@ class FptshopSpider(scrapy.Spider):
         item["attributes"] = {
             "nguon": "fptshop",
             "keyword": self.keyword,
-            "loai": "tim-kiem"
+            "loai": "tim-kiem",
+            "giaLayTuListing": fallback_price,
+            "coGiaTuTrangChiTiet": bool(gia_tu_chi_tiet),
         }
         item["ngayCapNhat"] = datetime.now().isoformat()
 
@@ -159,6 +175,41 @@ class FptshopSpider(scrapy.Spider):
             self.logger.warning(
                 f"Bỏ qua sản phẩm thiếu tên, giá hoặc link: {response.url}"
             )
+
+    def extract_card_text(self, anchor):
+        text_candidates = [
+            " ".join(anchor.xpath("ancestor::div[1]//text()").getall()),
+            " ".join(anchor.xpath("ancestor::div[2]//text()").getall()),
+            " ".join(anchor.xpath("ancestor::div[3]//text()").getall()),
+            " ".join(anchor.xpath("ancestor::li[1]//text()").getall()),
+            " ".join(anchor.xpath(".//text()").getall()),
+        ]
+
+        for text in text_candidates:
+            clean_text = self.clean_text(text)
+
+            if clean_text and self.parse_price(clean_text):
+                return clean_text
+
+        return self.clean_text(" ".join(anchor.xpath(".//text()").getall()))
+
+
+    def extract_card_image(self, anchor, response):
+        image_url = (
+            anchor.css("img::attr(src)").get()
+            or anchor.css("img::attr(data-src)").get()
+            or anchor.xpath("ancestor::div[1]//img/@src").get()
+            or anchor.xpath("ancestor::div[2]//img/@src").get()
+            or anchor.xpath("ancestor::div[3]//img/@src").get()
+            or anchor.xpath("ancestor::div[1]//img/@data-src").get()
+            or anchor.xpath("ancestor::div[2]//img/@data-src").get()
+            or anchor.xpath("ancestor::div[3]//img/@data-src").get()
+        )
+
+        if not image_url:
+            return None
+
+        return response.urljoin(image_url)
 
     def is_invalid_product_url(self, url):
         invalid_paths = {
@@ -276,6 +327,19 @@ class FptshopSpider(scrapy.Spider):
         if price is None:
             return True
 
+        if price <= 0:
+            return True
+
+        is_accessory_product = (
+            self.is_accessory_text(product_name)
+            or self.is_accessory_url(url)
+        )
+
+        # Phụ kiện như ốp lưng, miếng dán, cáp sạc có thể dưới 1 triệu,
+        # nên không được xem là giá bất thường.
+        if is_accessory_product:
+            return False
+
         normalized_text = self.normalize_keyword_match_text(
             f"{product_name or ''} {url or ''}"
         )
@@ -298,9 +362,6 @@ class FptshopSpider(scrapy.Spider):
         )
 
         if is_phone_product and price < 1000000:
-            return True
-
-        if price <= 0:
             return True
 
         return False
