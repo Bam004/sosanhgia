@@ -71,6 +71,7 @@ export const productService = {
               thuongHieu: group.thuongHieu || firstItem.attributes?.brand || 'Khác',
               dungLuong: group.dungLuong,
               danhMuc: group.productType || 'Điện thoại',
+              tinhTrang: group.tinhTrang || firstItem.tinhTrang || 'new',
               hinhAnh: group.sanPhamGiaThapNhat?.hinhAnh || firstItem.hinhAnh || '',
               giaThapNhat: group.giaThapNhat || 0,
               giaCaoNhat: group.giaCaoNhat || 0,
@@ -93,7 +94,8 @@ export const productService = {
                 hinhAnh: item.hinhAnh,
                 danhGia: item.danhGia,
                 soLuongDanhGia: item.soLuongDanhGia,
-                ngayCapNhat: item.ngayCapNhat
+                ngayCapNhat: item.ngayCapNhat,
+                tinhTrang: item.tinhTrang || group.tinhTrang || 'new'
               })),
               items: group.items || []
             };
@@ -110,6 +112,7 @@ export const productService = {
               thuongHieu: item.attributes?.brand || 'Khác',
               dungLuong: null,
               danhMuc: 'Điện thoại',
+              tinhTrang: item.tinhTrang || 'new',
               hinhAnh: item.hinhAnh || '',
               giaThapNhat: item.giaHienTai || 0,
               giaCaoNhat: item.giaHienTai || 0,
@@ -132,7 +135,8 @@ export const productService = {
                 hinhAnh: item.hinhAnh,
                 danhGia: item.danhGia,
                 soLuongDanhGia: item.soLuongDanhGia,
-                ngayCapNhat: item.ngayCapNhat
+                ngayCapNhat: item.ngayCapNhat,
+                tinhTrang: item.tinhTrang || 'new'
               }],
               items: [item]
             };

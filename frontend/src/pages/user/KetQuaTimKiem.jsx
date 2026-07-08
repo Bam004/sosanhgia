@@ -17,6 +17,7 @@ export default function KetQuaTimKiem() {
   const [error, setError] = useState(null);
   const [boLocActive, setBoLocActive] = useState({});
   const [sortOrder, setSortOrder] = useState('asc');
+  const [retryKey, setRetryKey] = useState(0);
 
   const sanPhamMoiTrang = 6;
 
@@ -46,6 +47,12 @@ export default function KetQuaTimKiem() {
       setError(null);
       try {
         const res = await productService.timKiemSanPham(q || danhMucParam, true, {});
+
+        if (res.errorMessage) {
+          setError(res.errorMessage);
+          toast.error(res.errorMessage);
+        }
+
         let data = res.data || [];
 
         // Lọc thêm theo danh mục nếu có tham số từ URL
@@ -65,7 +72,7 @@ export default function KetQuaTimKiem() {
     };
 
     fetchResults();
-  }, [q, danhMucParam]);
+  }, [q, danhMucParam, retryKey]);
 
   // 2. Chạy bộ lọc cục bộ trực tiếp trên danh sách gốc khi boLocActive hoặc danhSachGoc thay đổi
   useEffect(() => {
@@ -166,9 +173,7 @@ export default function KetQuaTimKiem() {
   };
 
   const handleRetry = () => {
-    // Kích hoạt gọi lại API bằng cách gán lại từ khóa q
-    const currentQ = q;
-    setDanhSachGoc([]);
+    setRetryKey((current) => current + 1);
   };
 
   // Phân trang
