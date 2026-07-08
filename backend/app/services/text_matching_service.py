@@ -83,6 +83,37 @@ class TextMatchingService:
         "lcd",
         "pisen",
     }
+    
+    USED_CONDITION_KEYWORDS = {
+        "cu",
+        "may cu",
+        "hang cu",
+        "da qua su dung",
+        "like new",
+        "99",
+        "95",
+        "tray",
+        "xuoc",
+        "can",
+        "mop",
+        "dep",
+        "ngoai hinh",
+    }
+
+    ACTIVATED_CONDITION_KEYWORDS = {
+        "da kich hoat",
+        "kich hoat",
+        "troi bao hanh",
+        "bh kich hoat",
+        "bao hanh dien tu",
+    }
+
+    REFURBISHED_CONDITION_KEYWORDS = {
+        "refurbished",
+        "renew",
+        "tan trang",
+        "doi tra",
+    }
 
     # Ngưỡng điểm để quyết định hai sản phẩm có thuộc cùng nhóm hay không.
     MATCH_THRESHOLD = 0.82
@@ -201,6 +232,10 @@ class TextMatchingService:
         elif is_phone_search:
             expected_product_type = "phone"
 
+        expected_condition = None
+        if expected_product_type == "phone":
+            expected_condition = self._detect_condition(normalized_keyword)
+
         filtered_items = []
 
         for item in items:
@@ -216,6 +251,11 @@ class TextMatchingService:
             if expected_product_type and product_type != expected_product_type:
                 continue
 
+            condition = matching_data.get("condition", "new")
+            if expected_condition and condition != expected_condition:
+                continue
+
+
             # Nếu keyword có model rõ ràng, chỉ giữ sản phẩm cùng dòng model.
             if keyword_model_key:
                 model_key = matching_data.get("model_key") or ""
@@ -229,6 +269,48 @@ class TextMatchingService:
 
         return filtered_items
 
+    def _has_condition_keyword(
+        self,
+        normalized_text: str,
+        keywords: set[str]
+    ) -> bool:
+        for keyword in keywords:
+            normalized_keyword = self._normalize_text(keyword)
+            if not normalized_keyword:
+                continue
+
+            pattern = (
+                r"(?<!\w)"
+                + re.escape(normalized_keyword).replace(r"\ ", r"\s+")
+                + r"(?!\w)"
+            )
+
+            if re.search(pattern, normalized_text):
+                return True
+
+        return False
+
+    def _detect_condition(self, normalized_name: str) -> str:
+        if self._has_condition_keyword(
+            normalized_name,
+            self.REFURBISHED_CONDITION_KEYWORDS
+        ):
+            return "refurbished"
+
+        if self._has_condition_keyword(
+            normalized_name,
+            self.ACTIVATED_CONDITION_KEYWORDS
+        ):
+            return "activated"
+
+        if self._has_condition_keyword(
+            normalized_name,
+            self.USED_CONDITION_KEYWORDS
+        ):
+            return "used"
+
+        return "new"
+
     # Hàm này bổ sung dữ liệu phục vụ matching cho từng sản phẩm.
     def _enrich_item(self, item: dict[str, Any]) -> dict[str, Any]:
         product_name = item.get("tenSanPham", "")
@@ -238,6 +320,7 @@ class TextMatchingService:
         storage = self._extract_storage(normalized_name)
         is_accessory = self._is_accessory(normalized_name)
         product_type = self._classify_product_type(normalized_name, is_accessory)
+        condition = self._detect_condition(normalized_name)
 
         model_key = self._extract_model_key(
             normalized_name=normalized_name,
@@ -254,7 +337,9 @@ class TextMatchingService:
             "storage": storage,
             "model_key": model_key,
             "is_accessory": is_accessory,
-            "product_type": product_type
+            "product_type": product_type,
+            "condition": condition,
+            "tinhTrang": condition
         }
 
         return enriched_item
@@ -291,6 +376,9 @@ class TextMatchingService:
         data_b = item_b["_matching"]
 
         if data_a.get("product_type") != data_b.get("product_type"):
+            return 0.0
+
+        if data_a.get("condition", "new") != data_b.get("condition", "new"):
             return 0.0
 
         brand_a = data_a["brand"]
@@ -385,6 +473,7 @@ class TextMatchingService:
             "dungLuong": matching_data.get("storage"),
             "modelKey": matching_data.get("model_key"),
             "productType": matching_data.get("product_type"),
+            "tinhTrang": matching_data.get("condition", "new"),
             "soNguon": len(sources),
             "nguon": sources,
             "soSanPham": len(items),

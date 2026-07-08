@@ -35,6 +35,7 @@ class DataSyncService:
                 model_key = group.get("modelKey")
                 product_type = group.get("productType")
                 dung_luong = group.get("dungLuong")
+                tinh_trang = group.get("tinhTrang") or group.get("condition") or "new"
                 ten_chuan_hoa = group.get("tenChuanHoa", "Unknown Product")
 
                 # Try to find existing
@@ -43,7 +44,8 @@ class DataSyncService:
                     spch = self.db.query(SanPhamChuanHoa).filter(
                         SanPhamChuanHoa.productType == product_type,
                         SanPhamChuanHoa.modelKey == model_key,
-                        SanPhamChuanHoa.dungLuong == dung_luong
+                        SanPhamChuanHoa.dungLuong == dung_luong,
+                        SanPhamChuanHoa.tinhTrang == tinh_trang
                     ).first()
 
                 if not spch:
@@ -54,6 +56,7 @@ class DataSyncService:
                         dungLuong=dung_luong,
                         modelKey=model_key,
                         productType=product_type,
+                        tinhTrang=tinh_trang,
                         anhDaiDien=group.get("sanPhamGiaThapNhat", {}).get("hinhAnh")
                     )
                     self.db.add(spch)

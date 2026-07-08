@@ -1,4 +1,4 @@
-from datetime import datetime
+﻿from datetime import datetime
 
 from sqlalchemy import Column, DateTime, Integer, String, UniqueConstraint
 from sqlalchemy.orm import relationship
@@ -15,13 +15,15 @@ class SanPhamChuanHoa(Base):
     dungLuong = Column(String(50), nullable=True)
     modelKey = Column(String(100), nullable=True)
     productType = Column(String(50), nullable=True)
+    tinhTrang = Column(String(30), nullable=False, default="new")
     anhDaiDien = Column(String(500), nullable=True)
     
     ngayTao = Column(DateTime, nullable=False, default=datetime.utcnow)
     ngayCapNhat = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     __table_args__ = (
-        UniqueConstraint("productType", "modelKey", "dungLuong", name="uix_product_type_model_storage"),
+        UniqueConstraint("productType", "modelKey", "dungLuong", "tinhTrang", name="uix_product_type_model_storage_condition"),
     )
 
     san_pham_tho = relationship("SanPhamTho", back_populates="san_pham_chuan_hoa")
+
