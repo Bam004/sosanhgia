@@ -199,6 +199,25 @@ export default function ChiTietSanPham() {
   const phanTramGiam = sanPham.phanTramGiam || 17;
   const giaGoc = sanPham.giaGoc || Math.round(sanPham.giaThapNhat * 1.2);
   const domainTarget = sanPham.domain || 'fptshop.com.vn';
+  // Thống kê số nơi bán và số sàn TMĐT trong bảng so sánh
+  const noiBanChiTiet = sanPham.noiBanChiTiet || [];
+  const soNoiBan = noiBanChiTiet.length;
+
+  const layTenSanTMDT = (noiBan) =>
+    noiBan.san ||
+    noiBan.sanTMDT ||
+    noiBan.tenSanTMDT ||
+    noiBan.tenSan ||
+    noiBan.tenNguon ||
+    noiBan.nguon ||
+    noiBan.nhaBan ||
+    '';
+
+  const soSanTMDT = new Set(
+    noiBanChiTiet
+      .map(layTenSanTMDT)
+      .filter(Boolean)
+  ).size;
 
   return (
     <main className="user-page">
@@ -330,7 +349,7 @@ export default function ChiTietSanPham() {
         {/* Accordion 2: Bảng so sánh giá bán lẻ */}
         <section className="accordion-section">
           <div className="accordion-header flex-between" onClick={() => setHienSoSanh(!hienSoSanh)}>
-            <h3>So sánh giá giữa các sàn {hienSoSanh ? '▼' : '▲'}</h3>
+            <h3>So sánh giá từ các nơi bán {hienSoSanh ? '▼' : '▲'}</h3>
             <div className="sort-wrapper" onClick={(e) => e.stopPropagation()}>
               <label htmlFor="sort-price" style={{ fontSize: 13, marginRight: 8, fontWeight: 'normal' }}>
                 Sắp xếp giá:
@@ -348,7 +367,20 @@ export default function ChiTietSanPham() {
           </div>
           {hienSoSanh && (
             <div className="accordion-body">
-              <BangSoSanhGia noiBanChiTiet={sanPham.noiBanChiTiet} sapXepKieu={kieuSapXep} />
+              {soNoiBan > 0 && (
+                <p
+                  className="compare-summary"
+                  style={{
+                    margin: '0 0 12px',
+                    fontSize: 13,
+                    color: '#64748b',
+                  }}
+                >
+                  Hiển thị {soNoiBan} nơi bán từ {soSanTMDT} sàn TMĐT.
+                </p>
+              )}
+
+              <BangSoSanhGia noiBanChiTiet={noiBanChiTiet} sapXepKieu={kieuSapXep} />
             </div>
           )}
         </section>
