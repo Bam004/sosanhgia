@@ -1,5 +1,37 @@
 import { Link } from 'react-router-dom';
 import { dinhDangTien } from '../../utils/dinhDangTien';
+import { SinhLogoSan } from './BangSoSanhGia';
+
+const layNhanTinhTrang = (tinhTrang) => {
+  const mapping = {
+    new: 'Hàng mới',
+    used: 'Hàng cũ',
+    activated: 'Đã kích hoạt',
+    refurbished: 'Tân trang'
+  };
+
+  return mapping[tinhTrang] || tinhTrang || '';
+};
+
+const layDanhSachNguon = (sanPham) => {
+  const sources = [];
+
+  if (Array.isArray(sanPham.sanDangBan)) {
+    sources.push(...sanPham.sanDangBan);
+  }
+
+  if (Array.isArray(sanPham.nguon)) {
+    sources.push(...sanPham.nguon);
+  }
+
+  if (Array.isArray(sanPham.items)) {
+    sanPham.items.forEach((item) => {
+      if (item.sanTMDT) sources.push(item.sanTMDT);
+    });
+  }
+
+  return [...new Set(sources.filter(Boolean))];
+};
 
 export function SinhIconSanPham({ danhMuc, width = 64, height = 64 }) {
   if (danhMuc === 'Điện thoại') {
@@ -51,6 +83,9 @@ export default function TheSanPham({ sanPham }) {
     return null;
   }
 
+  const danhSachNguon = layDanhSachNguon(sanPham);
+  const tinhTrang = sanPham.tinhTrang || 'new';
+
   return (
     <article className="product-card">
       <Link to={`/san-pham/${sanPham.maSPCH || sanPham.id}`} state={{ sanPham }} className="product-card__image-link">
@@ -87,6 +122,24 @@ export default function TheSanPham({ sanPham }) {
           return null;
         })()}
 
+        {tinhTrang && (
+          <div
+            className="product-card__condition"
+            style={{
+              fontSize: 12,
+              color: tinhTrang === 'new' ? '#047857' : '#b45309',
+              background: tinhTrang === 'new' ? '#ecfdf5' : '#fffbeb',
+              borderRadius: 999,
+              padding: '3px 8px',
+              display: 'inline-block',
+              marginBottom: 8,
+              fontWeight: 600
+            }}
+          >
+            {layNhanTinhTrang(tinhTrang)}
+          </div>
+        )}
+
         <div className="product-card__price-section">
           <div className="product-card__price">
             Giá từ: {dinhDangTien(sanPham.giaThapNhat)}
@@ -116,15 +169,24 @@ export default function TheSanPham({ sanPham }) {
         </div>
 
         <div className="product-card__shops">
-          {sanPham.sanDangBan?.map((san) => (
-            <span key={san} className={`product-card__shop-tag product-card__shop-tag--${san.toLowerCase().replace(/\s/g, '')}`}>
+          {danhSachNguon.slice(0, 4).map((san) => (
+            <span
+              key={san}
+              className="product-card__shop-tag"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5
+              }}
+            >
+              <SinhLogoSan brand={san} width={18} height={18} />
               {san}
             </span>
           ))}
         </div>
 
         <div className="product-card__actions">
-          <Link to={`/san-pham/${sanPham.id}`} className="product-card__secondary">
+          <Link to={`/san-pham/${sanPham.maSPCH || sanPham.id}`} className="product-card__secondary">
             Xem so sánh
           </Link>
           <a
