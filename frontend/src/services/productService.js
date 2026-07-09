@@ -57,6 +57,44 @@ const getDomainName = (sanTMDT, linkGoc) => {
   return 'lazada.vn';
 };
 
+const hienThiThuongHieu = (brand) => {
+  const normalized = normalizeText(brand);
+
+  const mapping = {
+    apple: 'Apple',
+    samsung: 'Samsung',
+    xiaomi: 'Xiaomi',
+    redmi: 'Redmi',
+    poco: 'POCO',
+    oppo: 'OPPO',
+    vivo: 'Vivo',
+    realme: 'Realme',
+    honor: 'Honor',
+    nokia: 'Nokia'
+  };
+
+  return mapping[normalized] || brand || 'Khác';
+};
+
+const hienThiDanhMuc = (productType) => {
+  const normalized = normalizeText(productType);
+
+  const mapping = {
+    phone: 'Điện thoại',
+    accessory: 'Phụ kiện',
+    repair_service: 'Dịch vụ sửa chữa',
+    laptop: 'Laptop',
+    tablet: 'Máy tính bảng',
+    tv: 'Tivi',
+    monitor: 'Màn hình',
+    pc: 'PC',
+    audio: 'Âm thanh'
+  };
+
+  return mapping[normalized] || productType || 'Điện thoại';
+};
+
+
 export const productService = {
   // Lấy sản phẩm nổi bật cho trang chủ
   laySanPhamNoiBat: async () => {
@@ -82,9 +120,9 @@ export const productService = {
               maSPCH: group.maSPCH || group.maNhomTam,
               tenSanPham: group.tenChuanHoa || 'Sản phẩm',
               tenChuanHoa: group.tenChuanHoa || 'Sản phẩm',
-              thuongHieu: group.thuongHieu || firstItem.attributes?.brand || 'Khác',
+              thuongHieu: hienThiThuongHieu(group.thuongHieu || firstItem.attributes?.brand || 'Khác'),
               dungLuong: group.dungLuong,
-              danhMuc: group.productType || 'Điện thoại',
+              danhMuc: hienThiDanhMuc(group.productType || 'Điện thoại'),
               tinhTrang: group.tinhTrang || firstItem.tinhTrang || 'new',
               hinhAnh: group.sanPhamGiaThapNhat?.hinhAnh || firstItem.hinhAnh || '',
               giaThapNhat: group.giaThapNhat || 0,
@@ -123,9 +161,9 @@ export const productService = {
               maSPCH: item.maSPCH,
               tenSanPham: item.tenSanPham || 'Sản phẩm',
               tenChuanHoa: item.tenSanPham || 'Sản phẩm',
-              thuongHieu: item.attributes?.brand || 'Khác',
+              thuongHieu: hienThiThuongHieu(item.attributes?.brand || 'Khác'),
               dungLuong: null,
-              danhMuc: 'Điện thoại',
+              danhMuc: hienThiDanhMuc('phone'),
               tinhTrang: item.tinhTrang || 'new',
               hinhAnh: item.hinhAnh || '',
               giaThapNhat: item.giaHienTai || 0,
@@ -241,8 +279,8 @@ export const productService = {
         const standardizedProduct = rawData.standardized_product || {};
         const tenChuanHoa = standardizedProduct.tenChuanHoa || firstItem.tenSanPham || 'Sản phẩm';
         const tinhTrang = standardizedProduct.tinhTrang || firstItem.tinhTrang || 'new';
-        const thuongHieu = standardizedProduct.thuongHieu || firstItem.attributes?.brand || 'Khác';
-        const danhMuc = standardizedProduct.productType || 'Điện thoại';
+        const thuongHieu = hienThiThuongHieu(standardizedProduct.thuongHieu || firstItem.attributes?.brand || 'Khác');
+        const danhMuc = hienThiDanhMuc(standardizedProduct.productType || 'Điện thoại');
         const hinhAnh = standardizedProduct.anhDaiDien || firstItem.hinhAnh || '';
 
         const sanDangBan = [

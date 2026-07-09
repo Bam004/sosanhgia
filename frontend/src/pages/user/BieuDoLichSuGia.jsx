@@ -108,6 +108,10 @@ export default function BieuDoLichSuGia() {
     );
   }
 
+  const soNgayGhiNhan = new Set(
+    lichSuGia.map((item) => new Date(item.ngayGhiNhan).toLocaleDateString('vi-VN'))
+  ).size;
+
   return (
     <main className="user-page">
       <div className="user-container price-history-layout">
@@ -163,9 +167,9 @@ export default function BieuDoLichSuGia() {
             {/* Render data table for raw history */}
             <div className="history-table-container" style={{ marginTop: '30px' }}>
               <h4 style={{ marginBottom: '15px' }}>Dữ liệu lịch sử chi tiết theo sản phẩm thô ({lichSuGia.length} điểm)</h4>
-              {lichSuGia.length <= 5 && (
+              {(lichSuGia.length <= 5 || soNgayGhiNhan <= 1) && (
                 <p style={{ color: '#009688', fontSize: '14px', marginBottom: '15px' }}>
-                  Hiện mới có {lichSuGia.length} lần ghi nhận giá, biểu đồ sẽ rõ hơn khi hệ thống có thêm dữ liệu theo thời gian.
+                  Hiện mới có {lichSuGia.length} điểm giá trong {soNgayGhiNhan} ngày ghi nhận. Biểu đồ sẽ thể hiện xu hướng rõ hơn khi hệ thống thu thập thêm dữ liệu theo thời gian.
                 </p>
               )}
               <div style={{ overflowX: 'auto' }}>
