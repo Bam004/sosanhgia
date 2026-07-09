@@ -2071,3 +2071,34 @@ a {
   color: #92400e;
 }
 
+.trang-tong-quan-admin .nhan-tien-trinh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 82px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.trang-tong-quan-admin .nhan-tien-trinh.hoan-tat {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.trang-tong-quan-admin .nhan-tien-trinh.dang-chay {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.trang-tong-quan-admin .nhan-tien-trinh.dang-cho {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.trang-tong-quan-admin .nhan-tien-trinh.co-loi {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+

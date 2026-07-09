@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import unicodedata
 from decimal import Decimal
 
@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from backend.app.core.database import get_db
 from backend.app.models.san_pham_tho import SanPhamTho
+from backend.app.models.san_pham_chuan_hoa import SanPhamChuanHoa
 
 router = APIRouter(
     prefix="/api/scraping",
@@ -605,6 +606,163 @@ def get_scraping_sources(db: Session = Depends(get_db)):
             content={
                 "success": False,
                 "message": "Không thể tải danh sách nguồn cào dữ liệu.",
+                "error": str(error),
+            },
+        )
+
+TEN_THU_TRONG_TUAN = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
+
+
+def lay_ngay_tu_gia_tri(gia_tri):
+    if not gia_tri:
+        return None
+
+    if isinstance(gia_tri, datetime):
+        return gia_tri.date()
+
+    try:
+        return datetime.fromisoformat(str(gia_tri).replace("Z", "+00:00")).date()
+    except ValueError:
+        return None
+
+
+def tao_bieu_do_san_pham_tuan(danh_sach_san_pham):
+    hom_nay = datetime.now().date()
+    ngay_bat_dau = hom_nay - timedelta(days=6)
+
+    thong_ke_theo_ngay = {}
+
+    for san_pham in danh_sach_san_pham:
+        ngay_cap_nhat = lay_ngay_tu_gia_tri(getattr(san_pham, "ngayCapNhat", None))
+
+        if ngay_cap_nhat and ngay_bat_dau <= ngay_cap_nhat <= hom_nay:
+            thong_ke_theo_ngay[ngay_cap_nhat] = (
+                thong_ke_theo_ngay.get(ngay_cap_nhat, 0) + 1
+            )
+
+    return [
+        {
+            "ngay": TEN_THU_TRONG_TUAN[(ngay_bat_dau + timedelta(days=index)).weekday()],
+            "soLuong": thong_ke_theo_ngay.get(
+                ngay_bat_dau + timedelta(days=index),
+                0,
+            ),
+        }
+        for index in range(7)
+    ]
+
+
+def tao_danh_sach_nguon_cao_dashboard(danh_sach_san_pham):
+    danh_sach_nguon_cao = []
+
+    for index, ten_nguon in enumerate(CAU_HINH_NGUON_CAO.keys(), start=1):
+        san_pham_theo_nguon = [
+            san_pham for san_pham in danh_sach_san_pham
+            if chuan_hoa_ten_nguon(san_pham.sanTMDT) == ten_nguon
+        ]
+
+        loi_theo_nguon = []
+        for san_pham in san_pham_theo_nguon:
+            loi_theo_nguon.extend(tao_loi_san_pham_tho(san_pham))
+
+        tien_trinh = tao_tien_trinh_theo_nguon(
+            nguon=ten_nguon,
+            danh_sach_san_pham=san_pham_theo_nguon,
+            danh_sach_loi=loi_theo_nguon,
+        )
+
+        danh_sach_nguon_cao.append(
+            tao_nguon_cao_tu_tien_trinh(
+                ma_nguon=index,
+                ten_nguon=ten_nguon,
+                tien_trinh=tien_trinh,
+            )
+        )
+
+    return danh_sach_nguon_cao
+
+
+@router.get("/dashboard")
+def get_scraping_dashboard(db: Session = Depends(get_db)):
+    try:
+        danh_sach_san_pham_tho = db.query(SanPhamTho).all()
+        tong_san_pham_tho = len(danh_sach_san_pham_tho)
+        tong_san_pham_chuan_hoa = db.query(SanPhamChuanHoa).count()
+
+        danh_sach_nguon_cao = tao_danh_sach_nguon_cao_dashboard(
+            danh_sach_san_pham_tho
+        )
+
+        danh_sach_nguon_hoat_dong = [
+            nguon for nguon in danh_sach_nguon_cao
+            if nguon["trangThai"] == "Hoạt động"
+        ]
+
+        danh_sach_loi = []
+        for san_pham in danh_sach_san_pham_tho:
+            danh_sach_loi.extend(tao_loi_san_pham_tho(san_pham))
+
+        ten_nguon_hoat_dong = ", ".join(
+            [nguon["tenNguon"] for nguon in danh_sach_nguon_hoat_dong]
+        )
+
+        thong_ke_tong_quan = [
+            {
+                "tieuDe": "Tổng sản phẩm thô",
+                "giaTri": tong_san_pham_tho,
+                "moTa": "Sản phẩm thu thập từ các nguồn cào",
+            },
+            {
+                "tieuDe": "Nhóm sản phẩm chuẩn hóa",
+                "giaTri": tong_san_pham_chuan_hoa,
+                "moTa": "Sản phẩm đại diện sau khi gom nhóm",
+            },
+            {
+                "tieuDe": "Nguồn cào hoạt động",
+                "giaTri": len(danh_sach_nguon_hoat_dong),
+                "moTa": ten_nguon_hoat_dong or "Chưa có nguồn hoạt động",
+            },
+            {
+                "tieuDe": "Lỗi Scraping",
+                "giaTri": len(danh_sach_loi),
+                "moTa": "Lỗi dữ liệu cần kiểm tra trong nhật ký",
+            },
+        ]
+
+        trang_thai_he_thong = [
+            "API Backend: Hoạt động",
+            "PostgreSQL: Hoạt động",
+            f"Nguồn cào hoạt động: {len(danh_sach_nguon_hoat_dong)}/{len(danh_sach_nguon_cao)}",
+            f"Sản phẩm thô: {tong_san_pham_tho}",
+            f"Lỗi dữ liệu: {len(danh_sach_loi)}",
+        ]
+
+        tien_trinh_gan_day = [
+            {
+                "nguon": nguon["tenNguon"],
+                "spider": nguon["spider"],
+                "trangThai": nguon["trangThaiTienTrinh"],
+                "lanChay": nguon["lanChayGanNhat"],
+                "sanPham": nguon["soSanPham"],
+                "loi": nguon["soLoi"],
+            }
+            for nguon in danh_sach_nguon_cao
+        ]
+
+        return {
+            "success": True,
+            "stats": thong_ke_tong_quan,
+            "chart": tao_bieu_do_san_pham_tuan(danh_sach_san_pham_tho),
+            "systemStatus": trang_thai_he_thong,
+            "recentJobs": tien_trinh_gan_day,
+        }
+
+    except SQLAlchemyError as error:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "success": False,
+                "message": "Không thể tải dữ liệu tổng quan hệ thống.",
                 "error": str(error),
             },
         )
