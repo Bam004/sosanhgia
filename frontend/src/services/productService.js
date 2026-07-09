@@ -200,6 +200,22 @@ export const productService = {
         ? 'Yêu cầu tìm kiếm bị quá hạn. Vui lòng thử lại.' 
         : (error.message || 'Lỗi kết nối máy chủ API.');
 
+      if (isTimeout && autoScrape) {
+        try {
+          const cachedResult = await productService.timKiemSanPham(keyword, false, filters);
+
+          if (cachedResult.data && cachedResult.data.length > 0) {
+            return {
+              data: cachedResult.data,
+              errorMessage: 'Dữ liệu mới đang được cập nhật lâu hơn dự kiến. Tạm hiển thị kết quả đã lưu gần nhất.',
+              fromCache: true
+            };
+          }
+        } catch (fallbackError) {
+          console.warn('Cache fallback search failed:', fallbackError.message);
+        }
+      }
+
       return {
         data: [],
 

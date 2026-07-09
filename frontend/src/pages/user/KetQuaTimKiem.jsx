@@ -20,6 +20,7 @@ export default function KetQuaTimKiem() {
   const [retryKey, setRetryKey] = useState(0);
 
   const sanPhamMoiTrang = 6;
+  const SEARCH_CACHE_TTL_MS = 5 * 60 * 1000;
 
   // Hàm chuẩn hóa tên chuỗi để đối sánh
   const normalizeString = (str) => {
@@ -33,45 +34,140 @@ export default function KetQuaTimKiem() {
       .trim();
   };
 
-  // 1. Chỉ gọi API khi keyword hoặc danh mục thay đổi
+  // 1. Gọi API khi keyword hoặc danh mục thay đổi
+  // Quy trình UX:
+  // - Ưu tiên lấy cache DB trước để người dùng có kết quả nhanh.
+  // - Sau đó mới chạy realtime scrape để cập nhật dữ liệu mới.
+  // - Nếu realtime lâu hoặc timeout, vẫn giữ cache thay vì để trang trắng.
   useEffect(() => {
+    let isCancelled = false;
+
     const fetchResults = async () => {
-      // Clear data cũ ngay lập tức
+      const keyword = q || danhMucParam;
+      const cacheKey = `user-search:${keyword}`;
+
+      if (!keyword) {
+        setDanhSachGoc([]);
+        setDanhSachHienThi([]);
+        setLoading(false);
+        return;
+      }
+
       setDanhSachGoc([]);
       setDanhSachHienThi([]);
       setBoLocActive({});
       setSortOrder('asc');
       setTrangHienTai(1);
+      setError(null);
+
+      // 1. Ưu tiên sessionStorage khi quay lại cùng keyword
+      if (retryKey === 0) {
+        try {
+          const cached = sessionStorage.getItem(cacheKey);
+
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            const isFresh = Date.now() - parsed.timestamp < SEARCH_CACHE_TTL_MS;
+
+            if (isFresh && Array.isArray(parsed.data) && parsed.data.length > 0) {
+              if (!isCancelled) {
+                setDanhSachGoc(parsed.data);
+                setDanhSachHienThi(parsed.data);
+                setLoading(false);
+              }
+
+              return;
+            }
+          }
+        } catch (cacheError) {
+          console.warn('Search session cache read failed:', cacheError);
+        }
+      }
 
       setLoading(true);
-      setError(null);
+
       try {
-        const res = await productService.timKiemSanPham(q || danhMucParam, true, {});
+        // 2. Lấy cache DB trước, không scrape, để trả kết quả nhanh.
+        const cacheRes = await productService.timKiemSanPham(keyword, false, {});
+        let cacheData = cacheRes.data || [];
 
-        if (res.errorMessage) {
-          setError(res.errorMessage);
-          toast.error(res.errorMessage);
-        }
-
-        let data = res.data || [];
-
-        // Lọc thêm theo danh mục nếu có tham số từ URL
         if (danhMucParam) {
-          data = data.filter(sp => sp.danhMuc === danhMucParam);
+          cacheData = cacheData.filter(sp => sp.danhMuc === danhMucParam);
         }
 
-        setDanhSachGoc(data);
+        if (!isCancelled && cacheData.length > 0) {
+          setDanhSachGoc(cacheData);
+          setLoading(false);
+
+          try {
+            sessionStorage.setItem(
+              cacheKey,
+              JSON.stringify({
+                timestamp: Date.now(),
+                data: cacheData
+              })
+            );
+          } catch (cacheError) {
+            console.warn('Search cache write failed:', cacheError);
+          }
+        }
+
+        // 3. Nếu chưa có cache thì tiếp tục hiện skeleton.
+        if (!isCancelled && cacheData.length === 0) {
+          setLoading(true);
+        }
+
+        // 4. Chạy realtime scrape để cập nhật kết quả mới.
+        const realtimeRes = await productService.timKiemSanPham(keyword, true, {});
+        let realtimeData = realtimeRes.data || [];
+
+        if (danhMucParam) {
+          realtimeData = realtimeData.filter(sp => sp.danhMuc === danhMucParam);
+        }
+
+        if (!isCancelled) {
+          if (realtimeData.length > 0) {
+            setDanhSachGoc(realtimeData);
+            setError(null);
+
+            try {
+              sessionStorage.setItem(
+                cacheKey,
+                JSON.stringify({
+                  timestamp: Date.now(),
+                  data: realtimeData
+                })
+              );
+            } catch (cacheError) {
+              console.warn('Search cache write failed:', cacheError);
+            }
+          } else if (cacheData.length === 0) {
+            setDanhSachGoc([]);
+            setError(realtimeRes.errorMessage || null);
+          } else if (realtimeRes.errorMessage) {
+            setError('Dữ liệu mới đang cập nhật lâu hơn dự kiến. Tạm hiển thị kết quả đã lưu gần nhất.');
+          }
+        }
       } catch (err) {
         console.error(err);
-        setError(err.message || 'Lỗi kết nối máy chủ API.');
-        toast.error(err.message || 'Lỗi kết nối máy chủ API.');
-        setDanhSachGoc([]);
+
+        if (!isCancelled) {
+          setError(err.message || 'Lỗi kết nối máy chủ API.');
+          toast.error(err.message || 'Lỗi kết nối máy chủ API.');
+          setDanhSachGoc([]);
+        }
       } finally {
-        setLoading(false);
+        if (!isCancelled) {
+          setLoading(false);
+        }
       }
     };
 
     fetchResults();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [q, danhMucParam, retryKey]);
 
   // 2. Chạy bộ lọc cục bộ trực tiếp trên danh sách gốc khi boLocActive hoặc danhSachGoc thay đổi
@@ -245,7 +341,7 @@ export default function KetQuaTimKiem() {
             <>
               <div className="search-loading" style={{ textAlign: 'center', marginBottom: '20px' }}>
                 <p style={{ color: '#64748b', fontSize: '15px' }}>
-                  Đang tìm kiếm sản phẩm. Nếu từ khóa chưa có trong hệ thống, quá trình này có thể mất vài giây để cào dữ liệu mới...
+                  Đang thu thập và tổng hợp dữ liệu mới từ các nguồn bán. Quá trình này có thể mất vài giây đến vài phút tùy từng sàn TMĐT...
                 </p>
               </div>
               <div className="product-offer-grid">
