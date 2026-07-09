@@ -350,6 +350,7 @@ def search_products(
         keyword = " ".join(keyword.strip().split())
         scraped = False
         scrape_error = None
+        scrape_result = None
 
         # Realtime-first:
         # Khi User tìm kiếm, hệ thống ưu tiên kích hoạt scraper theo keyword,
@@ -357,7 +358,7 @@ def search_products(
         # auto_scrape=false chỉ dùng cho cache/fallback/trang chủ/test nhanh.
         if auto_scrape:
             try:
-                scrape_and_sync_keyword(keyword, db)
+                scrape_result = scrape_and_sync_keyword(keyword, db)
                 db.expire_all()
                 scraped = True
             except Exception as error:
@@ -374,6 +375,7 @@ def search_products(
                 "scraped": scraped,
                 "mode": "realtime" if auto_scrape else "cache",
                 "scrape_error": scrape_error,
+                "scrape_result": scrape_result,
             }
         }
 
