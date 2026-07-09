@@ -1,14 +1,13 @@
-﻿from datetime import datetime
-from typing import Any
+﻿from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from backend.app.api.search import normalize_search_text
-from backend.app.core.database import SessionLocal, get_db
+from backend.app.core.database import get_db
 from backend.app.models.search_job import SearchJob, SearchJobSourceStatus
-from backend.app.services.scrape_pipeline_service import scrape_and_sync_keyword
+from backend.app.tasks.search_tasks import run_search_job_task
 
 router = APIRouter(
     prefix="/api/search/jobs",
@@ -109,91 +108,15 @@ def serialize_search_job(job: SearchJob) -> dict[str, Any]:
     }
 
 
-def run_search_job(job_id: int, keyword: str) -> None:
-    db = SessionLocal()
-
-    try:
-        job = db.get(SearchJob, job_id)
-        if not job:
-            return
-
-        now = datetime.utcnow()
-        job.trangThai = "running"
-        job.batDauLuc = now
-        job.errorMessage = None
-
-        for source_status in job.source_statuses:
-            source_status.trangThai = "running"
-            source_status.batDauLuc = now
-            source_status.errorMessage = None
-
-        db.commit()
-
-        scrape_result = scrape_and_sync_keyword(keyword, db)
-
-        source_result_map = {
-            item.get("source_code"): item
-            for item in scrape_result.get("source_status", [])
-        }
-
-        finished_at = datetime.utcnow()
-
-        job = db.get(SearchJob, job_id)
-        if not job:
-            return
-
-        job.trangThai = "completed"
-        job.tongRawItems = scrape_result.get("total_raw_items", 0)
-        job.tongFilteredItems = scrape_result.get("total_filtered_items", 0)
-        job.tongGroups = scrape_result.get("total_groups", 0)
-        job.ketThucLuc = finished_at
-        job.errorMessage = None
-
-        for source_status in job.source_statuses:
-            source_code = get_source_code(source_status.nguon)
-            result = source_result_map.get(source_code, {})
-
-            source_status.trangThai = result.get("status", "no_result")
-            source_status.rawCount = result.get("raw_count", 0)
-            source_status.matchedCount = result.get("matched_count", 0)
-            source_status.errorMessage = result.get("error")
-            source_status.ketThucLuc = finished_at
-
-        db.commit()
-
-    except Exception as error:
-        db.rollback()
-
-        failed_at = datetime.utcnow()
-        job = db.get(SearchJob, job_id)
-
-        if job:
-            job.trangThai = "failed"
-            job.errorMessage = str(error)
-            job.ketThucLuc = failed_at
-
-            for source_status in job.source_statuses:
-                if source_status.trangThai == "running":
-                    source_status.trangThai = "error"
-                    source_status.errorMessage = str(error)
-                    source_status.ketThucLuc = failed_at
-
-            db.commit()
-
-    finally:
-        db.close()
-
-
 @router.post("", status_code=status.HTTP_201_CREATED)
 def create_search_job(
-    background_tasks: BackgroundTasks,
     keyword: str = Query(..., min_length=1),
     db: Session = Depends(get_db)
 ):
-    try:
-        keyword = " ".join(keyword.strip().split())
-        keyword_normalized = normalize_search_text(keyword)
+    keyword = " ".join(keyword.strip().split())
+    keyword_normalized = normalize_search_text(keyword)
 
+    try:
         job = SearchJob(
             keyword=keyword,
             keywordChuanHoa=keyword_normalized,
@@ -215,11 +138,32 @@ def create_search_job(
         db.commit()
         db.refresh(job)
 
-        background_tasks.add_task(run_search_job, job.maSearchJob, keyword)
+        try:
+            celery_result = run_search_job_task.delay(job.maSearchJob, keyword)
+        except Exception as enqueue_error:
+            job.trangThai = "failed"
+            job.errorMessage = f"Cannot enqueue Celery task: {enqueue_error}"
+
+            for source_status_item in job.source_statuses:
+                source_status_item.trangThai = "error"
+                source_status_item.errorMessage = job.errorMessage
+
+            db.commit()
+            db.refresh(job)
+
+            return JSONResponse(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                content={
+                    "success": False,
+                    "error": job.errorMessage,
+                    "data": serialize_search_job(job),
+                }
+            )
 
         return {
             "success": True,
-            "message": "Search job created",
+            "message": "Search job created and queued",
+            "celery_task_id": celery_result.id,
             "data": serialize_search_job(job),
         }
 
@@ -255,4 +199,3 @@ def get_search_job(
         "success": True,
         "data": serialize_search_job(job),
     }
-
