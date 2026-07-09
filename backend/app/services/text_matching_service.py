@@ -65,6 +65,7 @@ class TextMatchingService:
         "pin",
         "du",
         "phong",
+        "khacten",
     }
 
     REPAIR_SERVICE_KEYWORDS = {
@@ -173,20 +174,29 @@ class TextMatchingService:
         accessory_search_keywords = [
             "op",
             "op lung",
+            "op dien thoai",
+            "op iphone",
             "dan",
+            "dan da",
             "dan kinh",
+            "dan man hinh",
             "kinh cuong luc",
             "cuong luc",
             "mieng dan",
             "bao da",
+            "vi da",
             "case",
             "cover",
             "magsafe",
             "sac",
             "cap",
+            "cap sac",
+            "cu sac",
             "tai nghe",
             "adapter",
             "pin du phong",
+            "phu kien",
+            "khacten",
         ]
 
         phone_search_keywords = [
@@ -806,17 +816,28 @@ class TextMatchingService:
 
         accessory_patterns = [
             r"\bop\s+lung\b",
+            r"\bop\s+dien\s+thoai\b",
+            r"\bop\s+iphone\b",
             r"\bdan\s+kinh\b",
+            r"\bdan\s+da\b",
             r"\bkinh\s+dan\b",
             r"\bdan\s+man\s+hinh\b",
             r"\bkinh\s+dan\s+man\s+hinh\b",
             r"\btam\s+dan\b",
             r"\bcuong\s+luc\b",
+            r"\bkinh\s+cuong\s+luc\b",
             r"\bmieng\s+dan\b",
             r"\bbao\s+da\b",
+            r"\bvi\s+da\b",
             r"\bcase\b",
             r"\bcover\b",
             r"\bmagsafe\b",
+            r"\bcap\s+sac\b",
+            r"\bcu\s+sac\b",
+            r"\bsac\b",
+            r"\btai\s+nghe\b",
+            r"\bphu\s+kien\b",
+            r"\bkhacten\b",
         ]
 
         for pattern in accessory_patterns:
