@@ -487,3 +487,125 @@ def get_scraping_jobs(db: Session = Depends(get_db)):
             }
         )
 
+CAU_HINH_NGUON_CAO = {
+    "Lazada": {
+        "website": "lazada.vn",
+        "congCu": "Playwright",
+        "tanSuat": "6 giờ/lần",
+        "userAgent": "Chrome Windows",
+        "delayRequest": "2 - 5 giây",
+        "xuLyJavascript": "Có",
+    },
+    "Tiki": {
+        "website": "tiki.vn",
+        "congCu": "Scrapy",
+        "tanSuat": "8 giờ/lần",
+        "userAgent": "Chrome Windows",
+        "delayRequest": "3 - 6 giây",
+        "xuLyJavascript": "Không",
+    },
+    "FPT Shop": {
+        "website": "fptshop.com.vn",
+        "congCu": "Scrapy",
+        "tanSuat": "12 giờ/lần",
+        "userAgent": "Chrome Windows",
+        "delayRequest": "2 - 4 giây",
+        "xuLyJavascript": "Không",
+    },
+    "CellphoneS": {
+        "website": "cellphones.com.vn",
+        "congCu": "Playwright",
+        "tanSuat": "12 giờ/lần",
+        "userAgent": "Chrome Windows",
+        "delayRequest": "4 - 7 giây",
+        "xuLyJavascript": "Có",
+    },
+    "Hoang Ha Mobile": {
+        "website": "hoanghamobile.com",
+        "congCu": "Scrapy",
+        "tanSuat": "12 giờ/lần",
+        "userAgent": "Chrome Windows",
+        "delayRequest": "2 - 5 giây",
+        "xuLyJavascript": "Không",
+    },
+}
+
+
+def tao_trang_thai_nguon_cao(trang_thai_tien_trinh):
+    if trang_thai_tien_trinh == "Có lỗi":
+        return "Có lỗi"
+
+    if trang_thai_tien_trinh == "Đang chờ":
+        return "Đang chờ"
+
+    return "Hoạt động"
+
+
+def tao_nguon_cao_tu_tien_trinh(ma_nguon, ten_nguon, tien_trinh):
+    cau_hinh = CAU_HINH_NGUON_CAO[ten_nguon]
+
+    return {
+        "id": ma_nguon,
+        "tenNguon": ten_nguon,
+        "website": cau_hinh["website"],
+        "congCu": cau_hinh["congCu"],
+        "tanSuat": cau_hinh["tanSuat"],
+        "trangThai": tao_trang_thai_nguon_cao(tien_trinh["trangThai"]),
+        "lanChayGanNhat": tien_trinh["batDau"],
+        "userAgent": cau_hinh["userAgent"],
+        "delayRequest": cau_hinh["delayRequest"],
+        "xuLyJavascript": cau_hinh["xuLyJavascript"],
+        "spider": tien_trinh["spider"],
+        "soSanPham": tien_trinh["sanPham"],
+        "soLoi": tien_trinh["loi"],
+        "tienDo": tien_trinh["tienDo"],
+        "trangThaiTienTrinh": tien_trinh["trangThai"],
+    }
+
+
+@router.get("/sources")
+def get_scraping_sources(db: Session = Depends(get_db)):
+    try:
+        danh_sach_san_pham = db.query(SanPhamTho).all()
+        danh_sach_nguon_cao = []
+
+        for index, ten_nguon in enumerate(CAU_HINH_NGUON_CAO.keys(), start=1):
+            san_pham_theo_nguon = [
+                san_pham for san_pham in danh_sach_san_pham
+                if chuan_hoa_ten_nguon(san_pham.sanTMDT) == ten_nguon
+            ]
+
+            loi_theo_nguon = []
+            for san_pham in san_pham_theo_nguon:
+                loi_theo_nguon.extend(tao_loi_san_pham_tho(san_pham))
+
+            tien_trinh = tao_tien_trinh_theo_nguon(
+                nguon=ten_nguon,
+                danh_sach_san_pham=san_pham_theo_nguon,
+                danh_sach_loi=loi_theo_nguon,
+            )
+
+            danh_sach_nguon_cao.append(
+                tao_nguon_cao_tu_tien_trinh(
+                    ma_nguon=index,
+                    ten_nguon=ten_nguon,
+                    tien_trinh=tien_trinh,
+                )
+            )
+
+        return {
+            "success": True,
+            "data": danh_sach_nguon_cao,
+            "total": len(danh_sach_nguon_cao),
+        }
+
+    except SQLAlchemyError as error:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "success": False,
+                "message": "Không thể tải danh sách nguồn cào dữ liệu.",
+                "error": str(error),
+            },
+        )
+
