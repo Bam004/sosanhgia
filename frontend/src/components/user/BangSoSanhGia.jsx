@@ -1,7 +1,30 @@
 import { dinhDangTien } from '../../utils/dinhDangTien';
 
+const normalizeBrand = (value) => {
+  if (!value) return '';
+  return value
+    .toString()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+const layNhanTinhTrang = (tinhTrang) => {
+  const mapping = {
+    new: 'Hàng mới',
+    used: 'Hàng cũ',
+    activated: 'Đã kích hoạt',
+    refurbished: 'Tân trang'
+  };
+
+  return mapping[tinhTrang] || tinhTrang || '';
+};
+
 export function SinhLogoSan({ brand, width = 36, height = 36 }) {
-  const brandLower = brand.toLowerCase();
+  const brandLower = normalizeBrand(brand);
   if (brandLower.includes('tiki')) {
     return (
       <div className="brand-logo-container brand-logo-container--tiki" style={{ width, height }}>
@@ -93,6 +116,7 @@ export default function BangSoSanhGia({ noiBanChiTiet, sapXepKieu = 'asc' }) {
               <div className="col-title">
                 <span className="offer-title">{seller.tenNoiBan}</span>
                 <div className="offer-meta">
+                  {seller.tinhTrang && <span className="offer-condition">{layNhanTinhTrang(seller.tinhTrang)}</span>}
                   {seller.danhGia && <span className="offer-rating">⭐ {seller.danhGia}</span>}
                   {seller.capNhat && <span className="offer-updated">Cập nhật: {seller.capNhat}</span>}
                 </div>

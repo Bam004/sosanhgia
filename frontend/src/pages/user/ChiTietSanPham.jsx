@@ -195,6 +195,17 @@ export default function ChiTietSanPham() {
     );
   }
 
+  const layNhanTinhTrang = (tinhTrang) => {
+    const mapping = {
+      new: 'Hàng mới',
+      used: 'Hàng cũ',
+      activated: 'Đã kích hoạt',
+      refurbished: 'Tân trang'
+    };
+
+    return mapping[tinhTrang] || tinhTrang || 'Không rõ';
+  };
+
   // Tỷ lệ giảm giá giả lập
   const phanTramGiam = sanPham.phanTramGiam || 17;
   const giaGoc = sanPham.giaGoc || Math.round(sanPham.giaThapNhat * 1.2);
@@ -258,6 +269,11 @@ export default function ChiTietSanPham() {
                 const brand = sanPham.thuongHieu || sanPham.brand || sanPham.attributes?.brand || (sanPham.items && sanPham.items[0]?.attributes?.brand);
                 return brand && brand !== 'Khác' ? <span className="brand-badge" style={{ marginRight: '16px', fontWeight: '500' }}>Thương hiệu: {brand}</span> : null;
               })()}
+              {sanPham.tinhTrang && (
+                <span className="condition-badge" style={{ marginRight: '16px', fontWeight: '500' }}>
+                  Tình trạng: {layNhanTinhTrang(sanPham.tinhTrang)}
+                </span>
+              )}
               <span className="rating-badge">
                 {sanPham.danhGia ? `⭐ ${sanPham.danhGia.toFixed(1)}/5 (Từ ${sanPham.soLuongDanhGia} đánh giá)` : 'Chưa có đánh giá'}
               </span>

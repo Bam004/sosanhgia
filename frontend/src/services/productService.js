@@ -11,15 +11,28 @@ const extractData = (res) => {
   return data;
 };
 
+// Helper function to normalize text for source/platform matching
+const normalizeText = (value) => {
+  if (!value) return '';
+  return value
+    .toString()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
 // Helper function to format platform name to class/logo
 const getLogoName = (sanTMDT) => {
-  if (!sanTMDT) return 'lazada';
-  const name = sanTMDT.toLowerCase();
+  const name = normalizeText(sanTMDT);
+  if (!name) return 'lazada';
   if (name.includes('lazada')) return 'lazada';
   if (name.includes('tiki')) return 'tiki';
   if (name.includes('fpt')) return 'fptshop';
   if (name.includes('cellphone')) return 'cellphones';
-  if (name.includes('hoangha')) return 'hoanghamobile';
+  if (name.includes('hoangha') || name.includes('hoang ha')) return 'hoanghamobile';
   return 'lazada';
 };
 
@@ -30,16 +43,17 @@ const getDomainName = (sanTMDT, linkGoc) => {
       const url = new URL(linkGoc);
       return url.hostname.replace('www.', '');
     } catch (e) {
-      // fallback
+      // fallback to platform name
     }
   }
-  if (!sanTMDT) return 'lazada.vn';
-  const name = sanTMDT.toLowerCase();
+
+  const name = normalizeText(sanTMDT);
+  if (!name) return 'lazada.vn';
   if (name.includes('lazada')) return 'lazada.vn';
   if (name.includes('tiki')) return 'tiki.vn';
   if (name.includes('fpt')) return 'fptshop.com.vn';
   if (name.includes('cellphone')) return 'cellphones.com.vn';
-  if (name.includes('hoangha')) return 'hoanghamobile.com';
+  if (name.includes('hoangha') || name.includes('hoang ha')) return 'hoanghamobile.com';
   return 'lazada.vn';
 };
 
@@ -201,43 +215,68 @@ export const productService = {
       const rawData = extractData(response);
 
       if (rawData && rawData.items) {
-        const items = rawData.items;
+        const items = [...rawData.items].sort((a, b) => {
+          const giaA = Number(a.giaHienTai) || Infinity;
+          const giaB = Number(b.giaHienTai) || Infinity;
+          return giaA - giaB;
+        });
+
         const firstItem = items[0] || {};
+        const standardizedProduct = rawData.standardized_product || {};
+        const tenChuanHoa = standardizedProduct.tenChuanHoa || firstItem.tenSanPham || 'Sản phẩm';
+        const tinhTrang = standardizedProduct.tinhTrang || firstItem.tinhTrang || 'new';
+        const thuongHieu = standardizedProduct.thuongHieu || firstItem.attributes?.brand || 'Khác';
+        const danhMuc = standardizedProduct.productType || 'Điện thoại';
+        const hinhAnh = standardizedProduct.anhDaiDien || firstItem.hinhAnh || '';
+
+        const sanDangBan = [
+          ...new Set(items.map(item => item.sanTMDT).filter(Boolean))
+        ];
 
         return {
           data: {
             id: Number(id),
             maSPCH: Number(id),
-            tenSanPham: firstItem.tenSanPham || 'Sản phẩm',
-            thuongHieu: firstItem.attributes?.brand || 'Khác',
-            danhMuc: 'Điện thoại',
-            hinhAnh: firstItem.hinhAnh || '',
+            tenSanPham: tenChuanHoa,
+            tenChuanHoa,
+            thuongHieu,
+            dungLuong: standardizedProduct.dungLuong || null,
+            modelKey: standardizedProduct.modelKey || null,
+            tinhTrang,
+            danhMuc,
+            hinhAnh,
             giaThapNhat: rawData.lowest_price || firstItem.giaHienTai || 0,
             giaCaoNhat: rawData.highest_price || firstItem.giaHienTai || 0,
-            giaGoc: (rawData.lowest_price || firstItem.giaHienTai) * 1.15,
+            giaGoc: (rawData.lowest_price || firstItem.giaHienTai || 0) * 1.15,
             phanTramGiam: 15,
-            soNoiBan: rawData.total_merchants || items.length || 1,
+            soNoiBan: rawData.total_merchants || items.length || 0,
             danhGia: firstItem.danhGia,
             soLuongDanhGia: firstItem.soLuongDanhGia || 0,
-            sanDangBan: items.map(item => item.sanTMDT),
+            sanDangBan,
             linkMuaTotNhat: firstItem.linkGoc || '',
             domain: getDomainName(firstItem.sanTMDT, firstItem.linkGoc),
             thongSoKyThuat: firstItem.attributes || {},
-            noiBanChiTiet: items.map((item, idx) => ({
+            standardizedProduct,
+            items,
+            noiBanChiTiet: items.map((item) => ({
+              maSPTho: item.maSPTho,
               logo: getLogoName(item.sanTMDT),
               san: item.sanTMDT,
               domain: getDomainName(item.sanTMDT, item.linkGoc),
               tenNoiBan: item.tenSanPham,
               gia: Number(item.giaHienTai),
               danhGia: item.danhGia,
-              capNhat: 'Vừa cập nhật',
-              link: item.linkGoc
+              soLuongDanhGia: item.soLuongDanhGia || 0,
+              capNhat: item.ngayCapNhat ? new Date(item.ngayCapNhat).toLocaleString('vi-VN') : 'Vừa cập nhật',
+              link: item.linkGoc,
+              tinhTrang: item.tinhTrang || tinhTrang
             }))
           },
 
           errorMessage: null
         };
       }
+
       throw new Error('Không tìm thấy thông tin sản phẩm chuẩn hóa.');
     } catch (error) {
       console.warn('API Detail failed:', error.message);
@@ -256,16 +295,28 @@ export const productService = {
       const rawData = extractData(response);
 
       if (rawData && rawData.items) {
-        const mappedOffers = rawData.items.map((item) => ({
-          logo: getLogoName(item.sanTMDT),
-          san: item.sanTMDT,
-          domain: getDomainName(item.sanTMDT, item.linkGoc),
-          tenNoiBan: item.tenSanPham,
-          gia: Number(item.giaHienTai),
-          danhGia: item.danhGia,
-          capNhat: 'Vừa cập nhật',
-          link: item.linkGoc
-        }));
+        const standardizedProduct = rawData.standardized_product || {};
+        const tinhTrang = standardizedProduct.tinhTrang || 'new';
+
+        const mappedOffers = [...rawData.items]
+          .sort((a, b) => {
+            const giaA = Number(a.giaHienTai) || Infinity;
+            const giaB = Number(b.giaHienTai) || Infinity;
+            return giaA - giaB;
+          })
+          .map((item) => ({
+            maSPTho: item.maSPTho,
+            logo: getLogoName(item.sanTMDT),
+            san: item.sanTMDT,
+            domain: getDomainName(item.sanTMDT, item.linkGoc),
+            tenNoiBan: item.tenSanPham,
+            gia: Number(item.giaHienTai),
+            danhGia: item.danhGia,
+            soLuongDanhGia: item.soLuongDanhGia || 0,
+            capNhat: item.ngayCapNhat ? new Date(item.ngayCapNhat).toLocaleString('vi-VN') : 'Vừa cập nhật',
+            link: item.linkGoc,
+            tinhTrang: item.tinhTrang || tinhTrang
+          }));
 
         return {
           data: mappedOffers,
@@ -273,6 +324,7 @@ export const productService = {
           errorMessage: null
         };
       }
+
       throw new Error('Không tìm thấy thông tin so sánh.');
     } catch (error) {
       console.warn('API Compare failed:', error.message);
