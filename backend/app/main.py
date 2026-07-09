@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, status
+﻿from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.app.api.items import router as items_router
 from backend.app.api.products import router as products_router
 from backend.app.api.search import router as search_router
+from backend.app.api.search_jobs import router as search_jobs_router
 from backend.app.api.scrape import router as scrape_router
 from backend.app.api.auth import router as auth_router
 from backend.app.api.theo_doi_gia import router as theo_doi_gia_router
@@ -58,6 +59,7 @@ async def validation_exception_handler(
 app.include_router(items_router)
 app.include_router(products_router)
 app.include_router(search_router)
+app.include_router(search_jobs_router)
 app.include_router(scrape_router)
 app.include_router(auth_router)
 app.include_router(theo_doi_gia_router)
