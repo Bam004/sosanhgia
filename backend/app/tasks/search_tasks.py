@@ -1,9 +1,10 @@
-﻿from datetime import datetime
+from datetime import datetime
 
 from backend.app.core.celery_app import celery_app
 from backend.app.core.database import SessionLocal
 from backend.app.models.search_job import SearchJob
 from backend.app.services.scrape_pipeline_service import scrape_and_sync_keyword
+from backend.app.services.search_cache_service import invalidate_search_cache
 
 
 @celery_app.task(name="search.run_search_job")
@@ -76,6 +77,8 @@ def run_search_job_task(job_id: int, keyword: str) -> dict:
             source_status.ketThucLuc = finished_at
 
         db.commit()
+
+        invalidate_search_cache(keyword)
 
         return {
             "success": True,

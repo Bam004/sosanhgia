@@ -1,3 +1,7 @@
+from backend.app.services.search_cache_service import (
+    get_cached_search_result,
+    set_cached_search_result,
+)
 from typing import Any, cast
 import unicodedata
 
@@ -348,14 +352,24 @@ def search_products(
 ):
     try:
         keyword = " ".join(keyword.strip().split())
+
+        if not auto_scrape:
+            cached_data = get_cached_search_result(keyword)
+            if cached_data is not None:
+                return {
+                    "success": True,
+                    "data": {
+                        **cached_data,
+                        "scraped": False,
+                        "mode": "cache",
+                        "cache_hit": True,
+                    }
+                }
+
         scraped = False
         scrape_error = None
         scrape_result = None
 
-        # Realtime-first:
-        # Khi User tìm kiếm, hệ thống ưu tiên kích hoạt scraper theo keyword,
-        # sau đó mới đọc dữ liệu đã được sync vào DB để trả kết quả mới nhất.
-        # auto_scrape=false chỉ dùng cho cache/fallback/trang chủ/test nhanh.
         if auto_scrape:
             try:
                 scrape_result = scrape_and_sync_keyword(keyword, db)
@@ -368,12 +382,16 @@ def search_products(
 
         data = build_search_data(keyword, db)
 
+        if not auto_scrape:
+            set_cached_search_result(keyword, data)
+
         return {
             "success": True,
             "data": {
                 **data,
                 "scraped": scraped,
                 "mode": "realtime" if auto_scrape else "cache",
+                "cache_hit": False,
                 "scrape_error": scrape_error,
                 "scrape_result": scrape_result,
             }
