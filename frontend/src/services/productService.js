@@ -1,4 +1,4 @@
-import api from './api';
+﻿import api from './api';
 
 // Helper function to safely extract data from various response shapes
 const extractData = (res) => {
@@ -19,7 +19,7 @@ const normalizeText = (value) => {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/đ/g, 'd')
+    .replace(/Ä‘/g, 'd')
     .replace(/\s+/g, ' ')
     .trim();
 };
@@ -73,30 +73,30 @@ const hienThiThuongHieu = (brand) => {
     nokia: 'Nokia'
   };
 
-  return mapping[normalized] || brand || 'Khác';
+  return mapping[normalized] || brand || 'KhÃ¡c';
 };
 
 const hienThiDanhMuc = (productType) => {
   const normalized = normalizeText(productType);
 
   const mapping = {
-    phone: 'Điện thoại',
-    accessory: 'Phụ kiện',
-    repair_service: 'Dịch vụ sửa chữa',
+    phone: 'Äiá»‡n thoáº¡i',
+    accessory: 'Phá»¥ kiá»‡n',
+    repair_service: 'Dá»‹ch vá»¥ sá»­a chá»¯a',
     laptop: 'Laptop',
-    tablet: 'Máy tính bảng',
+    tablet: 'MÃ¡y tÃ­nh báº£ng',
     tv: 'Tivi',
-    monitor: 'Màn hình',
+    monitor: 'MÃ n hÃ¬nh',
     pc: 'PC',
-    audio: 'Âm thanh'
+    audio: 'Ã‚m thanh'
   };
 
-  return mapping[normalized] || productType || 'Điện thoại';
+  return mapping[normalized] || productType || 'Äiá»‡n thoáº¡i';
 };
 
 
 export const productService = {
-  // Lấy sản phẩm nổi bật cho trang chủ
+  // Láº¥y sáº£n pháº©m ná»•i báº­t cho trang chá»§
   laySanPhamNoiBat: async () => {
     return await productService.timKiemSanPham('iphone 15', false);
   },
@@ -110,7 +110,7 @@ export const productService = {
       if (rawData) {
         let mappedProducts = [];
         
-        // Ưu tiên render data.groups nếu có
+        // Æ¯u tiÃªn render data.groups náº¿u cÃ³
         if (rawData.groups && rawData.groups.length > 0) {
           mappedProducts = rawData.groups.map(group => {
             const firstItem = group.items && group.items[0] ? group.items[0] : {};
@@ -118,11 +118,11 @@ export const productService = {
             return {
               id: group.maSPCH || group.maNhomTam,
               maSPCH: group.maSPCH || group.maNhomTam,
-              tenSanPham: group.tenChuanHoa || 'Sản phẩm',
-              tenChuanHoa: group.tenChuanHoa || 'Sản phẩm',
+              tenSanPham: group.tenChuanHoa || 'Sáº£n pháº©m',
+              tenChuanHoa: group.tenChuanHoa || 'Sáº£n pháº©m',
               thuongHieu: hienThiThuongHieu(group.thuongHieu || firstItem.attributes?.brand || 'Khác'),
               dungLuong: group.dungLuong,
-              danhMuc: hienThiDanhMuc(group.productType || 'Điện thoại'),
+              danhMuc: hienThiDanhMuc(group.productType || 'Äiá»‡n thoáº¡i'),
               tinhTrang: group.tinhTrang || firstItem.tinhTrang || 'new',
               hinhAnh: group.sanPhamGiaThapNhat?.hinhAnh || firstItem.hinhAnh || '',
               giaThapNhat: group.giaThapNhat || 0,
@@ -153,14 +153,14 @@ export const productService = {
             };
           });
         } 
-        // Fallback sang items thô nếu không có groups
+        // Fallback sang items thÃ´ náº¿u khÃ´ng cÃ³ groups
         else if (rawData.items && rawData.items.length > 0) {
           mappedProducts = rawData.items.map(item => {
             return {
               id: item.maSPCH || item.maSPTho || Math.floor(Math.random() * 10000),
               maSPCH: item.maSPCH,
-              tenSanPham: item.tenSanPham || 'Sản phẩm',
-              tenChuanHoa: item.tenSanPham || 'Sản phẩm',
+              tenSanPham: item.tenSanPham || 'Sáº£n pháº©m',
+              tenChuanHoa: item.tenSanPham || 'Sáº£n pháº©m',
               thuongHieu: hienThiThuongHieu(item.attributes?.brand || 'Khác'),
               dungLuong: null,
               danhMuc: hienThiDanhMuc('phone'),
@@ -195,7 +195,7 @@ export const productService = {
           });
         }
 
-        // Áp dụng bộ lọc cục bộ trên danh sách sản phẩm lấy từ API
+        // Ãp dá»¥ng bá»™ lá»c cá»¥c bá»™ trÃªn danh sÃ¡ch sáº£n pháº©m láº¥y tá»« API
         let filtered = mappedProducts;
         if (filters.website && filters.website.length > 0) {
           filtered = filtered.filter(p => p.sanDangBan.some(s => filters.website.includes(s)));
@@ -230,13 +230,13 @@ export const productService = {
           errorMessage: null
         };
       }
-      throw new Error('Không nhận được dữ liệu hợp lệ từ máy chủ API.');
+      throw new Error('KhÃ´ng nháº­n Ä‘Æ°á»£c dá»¯ liá»‡u há»£p lá»‡ tá»« mÃ¡y chá»§ API.');
     } catch (error) {
       console.warn('API Search failed:', error.message);
       const isTimeout = error.code === 'ECONNABORTED' || error.message?.toLowerCase().includes('timeout');
       const errorMessage = isTimeout 
         ? 'Yêu cầu tìm kiếm bị quá hạn. Vui lòng thử lại.' 
-        : (error.message || 'Lỗi kết nối máy chủ API.');
+        : (error.message || 'Lá»—i káº¿t ná»‘i mÃ¡y chá»§ API.');
 
       if (isTimeout && autoScrape) {
         try {
@@ -245,7 +245,7 @@ export const productService = {
           if (cachedResult.data && cachedResult.data.length > 0) {
             return {
               data: cachedResult.data,
-              errorMessage: 'Dữ liệu mới đang được cập nhật lâu hơn dự kiến. Tạm hiển thị kết quả đã lưu gần nhất.',
+              errorMessage: 'Dá»¯ liá»‡u má»›i Ä‘ang Ä‘Æ°á»£c cáº­p nháº­t lÃ¢u hÆ¡n dá»± kiáº¿n. Táº¡m hiá»ƒn thá»‹ káº¿t quáº£ Ä‘Ã£ lÆ°u gáº§n nháº¥t.',
               fromCache: true
             };
           }
@@ -262,7 +262,45 @@ export const productService = {
     }
   },
 
-  // 2. Get product detail
+  // 2. Create search job for background scraping
+  taoSearchJob: async (keyword) => {
+    try {
+      const response = await api.post('/search/jobs', null, {
+        params: { keyword }
+      });
+
+      return {
+        data: extractData(response),
+        errorMessage: null
+      };
+    } catch (error) {
+      console.warn('Create search job failed:', error.message);
+      return {
+        data: null,
+        errorMessage: error.message || 'Không thể tạo tác vụ tìm kiếm.'
+      };
+    }
+  },
+
+  // 3. Get search job status for polling
+  layTrangThaiSearchJob: async (jobId) => {
+    try {
+      const response = await api.get(`/search/jobs/${jobId}`);
+
+      return {
+        data: extractData(response),
+        errorMessage: null
+      };
+    } catch (error) {
+      console.warn('Get search job status failed:', error.message);
+      return {
+        data: null,
+        errorMessage: error.message || 'Không thể lấy trạng thái tác vụ tìm kiếm.'
+      };
+    }
+  },
+
+  // 4. Get product detail
   layChiTietSanPham: async (id) => {
     try {
       const response = await api.get(`/products/compare/${id}`);
@@ -277,10 +315,10 @@ export const productService = {
 
         const firstItem = items[0] || {};
         const standardizedProduct = rawData.standardized_product || {};
-        const tenChuanHoa = standardizedProduct.tenChuanHoa || firstItem.tenSanPham || 'Sản phẩm';
+        const tenChuanHoa = standardizedProduct.tenChuanHoa || firstItem.tenSanPham || 'Sáº£n pháº©m';
         const tinhTrang = standardizedProduct.tinhTrang || firstItem.tinhTrang || 'new';
         const thuongHieu = hienThiThuongHieu(standardizedProduct.thuongHieu || firstItem.attributes?.brand || 'Khác');
-        const danhMuc = hienThiDanhMuc(standardizedProduct.productType || 'Điện thoại');
+        const danhMuc = hienThiDanhMuc(standardizedProduct.productType || 'Äiá»‡n thoáº¡i');
         const hinhAnh = standardizedProduct.anhDaiDien || firstItem.hinhAnh || '';
 
         const sanDangBan = [
@@ -331,18 +369,18 @@ export const productService = {
         };
       }
 
-      throw new Error('Không tìm thấy thông tin sản phẩm chuẩn hóa.');
+      throw new Error('KhÃ´ng tÃ¬m tháº¥y thÃ´ng tin sáº£n pháº©m chuáº©n hÃ³a.');
     } catch (error) {
       console.warn('API Detail failed:', error.message);
       return {
         data: null,
 
-        errorMessage: error.message || 'Không tìm thấy sản phẩm'
+        errorMessage: error.message || 'KhÃ´ng tÃ¬m tháº¥y sáº£n pháº©m'
       };
     }
   },
 
-  // 3. Get price comparison table
+  // 5. Get price comparison table
   laySoSanhGia: async (id) => {
     try {
       const response = await api.get(`/products/compare/${id}`);
@@ -379,18 +417,18 @@ export const productService = {
         };
       }
 
-      throw new Error('Không tìm thấy thông tin so sánh.');
+      throw new Error('KhÃ´ng tÃ¬m tháº¥y thÃ´ng tin so sÃ¡nh.');
     } catch (error) {
       console.warn('API Compare failed:', error.message);
       return {
         data: [],
 
-        errorMessage: error.message || 'Lỗi kết nối máy chủ API'
+        errorMessage: error.message || 'Lá»—i káº¿t ná»‘i mÃ¡y chá»§ API'
       };
     }
   },
 
-  // 4. Get price history (Call real backend API)
+  // 6. Get price history (Call real backend API)
   layLichSuGia: async (id, range = '1_month') => {
     try {
       const response = await api.get(`/products/${id}/history`);
@@ -424,3 +462,5 @@ export const productService = {
     }
   }
 };
+
+

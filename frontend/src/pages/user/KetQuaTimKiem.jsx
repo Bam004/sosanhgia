@@ -1,9 +1,33 @@
 import { useSearchParams } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
 import BoLocSanPham from '../../components/user/BoLocSanPham';
 import TheSanPhamOffer from '../../components/user/TheSanPhamOffer';
 import { productService } from '../../services/productService';
+
+const SEARCH_JOB_DEDUP_MS = 30000;
+const searchJobPromiseCache = new Map();
+
+function taoSearchJobMotLan(keyword) {
+  const jobKey = keyword.trim().toLowerCase();
+  const cached = searchJobPromiseCache.get(jobKey);
+
+  if (cached && Date.now() - cached.createdAt < SEARCH_JOB_DEDUP_MS) {
+    return cached.promise;
+  }
+
+  const promise = productService.taoSearchJob(keyword).catch((error) => {
+    searchJobPromiseCache.delete(jobKey);
+    throw error;
+  });
+
+  searchJobPromiseCache.set(jobKey, {
+    createdAt: Date.now(),
+    promise,
+  });
+
+  return promise;
+}
 
 export default function KetQuaTimKiem() {
   const [searchParams] = useSearchParams();
@@ -14,6 +38,7 @@ export default function KetQuaTimKiem() {
   const [danhSachHienThi, setDanhSachHienThi] = useState([]);
   const [trangHienTai, setTrangHienTai] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [dangCapNhat, setDangCapNhat] = useState(false);
   const [error, setError] = useState(null);
   const [boLocActive, setBoLocActive] = useState({});
   const [sortOrder, setSortOrder] = useState('asc');
@@ -22,14 +47,14 @@ export default function KetQuaTimKiem() {
   const sanPhamMoiTrang = 6;
   const SEARCH_CACHE_TTL_MS = 5 * 60 * 1000;
 
-  // Hàm chuẩn hóa tên chuỗi để đối sánh
+  // Hàm chuẩn hóa chuỗi để so sánh (loại bỏ dấu, khoảng trắng, chữ hoa/thường)
   const normalizeString = (str) => {
     if (!str) return '';
     return str
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
-      .replace(/đ/g, 'd')
+      .replace(/Ä‘/g, 'd')
       .replace(/\s+/g, '')
       .trim();
   };
@@ -38,9 +63,94 @@ export default function KetQuaTimKiem() {
   // Quy trình UX:
   // - Ưu tiên lấy cache DB trước để người dùng có kết quả nhanh.
   // - Sau đó mới chạy realtime scrape để cập nhật dữ liệu mới.
-  // - Nếu realtime lâu hoặc timeout, vẫn giữ cache thay vì để trang trắng.
+  // 1. ọi API khi keyword hoặc danh mục thay đổi
+  // Quy trình mới:
+  // - Lay cache DB truoc de nguoi dung co ket qua nhanh.
+  // - Tao Search Job de backend scrape nen.
+  // - Polling trang thai job.
+  // - Khi job completed thi goi lai cache DB de lay du lieu moi nhat.
   useEffect(() => {
     let isCancelled = false;
+
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const locTheoDanhMuc = (data) => {
+      if (!danhMucParam) return data;
+      return data.filter(sp => sp.danhMuc === danhMucParam);
+    };
+
+    const luuSessionCache = (cacheKey, data) => {
+      try {
+        sessionStorage.setItem(
+          cacheKey,
+          JSON.stringify({
+            timestamp: Date.now(),
+            data
+          })
+        );
+      } catch (cacheError) {
+        console.warn('Search cache write failed:', cacheError);
+      }
+    };
+
+    const docSessionCache = (cacheKey) => {
+      try {
+        const cached = sessionStorage.getItem(cacheKey);
+
+        if (!cached) return null;
+
+        const parsed = JSON.parse(cached);
+        const isFresh = Date.now() - parsed.timestamp < SEARCH_CACHE_TTL_MS;
+
+        if (isFresh && Array.isArray(parsed.data) && parsed.data.length > 0) {
+          return parsed.data;
+        }
+      } catch (cacheError) {
+        console.warn('Search session cache read failed:', cacheError);
+      }
+
+      return null;
+    };
+
+    const layCacheTuDb = async (keyword, cacheKey) => {
+      const cacheRes = await productService.timKiemSanPham(keyword, false, {});
+      const cacheData = locTheoDanhMuc(cacheRes.data || []);
+
+      if (cacheData.length > 0) {
+        luuSessionCache(cacheKey, cacheData);
+      }
+
+      return {
+        data: cacheData,
+        errorMessage: cacheRes.errorMessage
+      };
+    };
+
+    const pollSearchJob = async (jobId) => {
+      for (let attempt = 0; attempt < 60; attempt += 1) {
+        if (isCancelled) return null;
+
+        const statusRes = await productService.layTrangThaiSearchJob(jobId);
+
+        if (statusRes.errorMessage) {
+          throw new Error(statusRes.errorMessage);
+        }
+
+        const jobData = statusRes.data;
+
+        if (!jobData) {
+          throw new Error('Không nhận được trạng thái tác vụ tìm kiếm.');
+        }
+
+        if (jobData.status === 'completed' || jobData.status === 'failed') {
+          return jobData;
+        }
+
+        await sleep(2000);
+      }
+
+      throw new Error('Tác vụ cập nhật dữ liệu mất quá nhiều thời gian.');
+    };
 
     const fetchResults = async () => {
       const keyword = q || danhMucParam;
@@ -50,6 +160,7 @@ export default function KetQuaTimKiem() {
         setDanhSachGoc([]);
         setDanhSachHienThi([]);
         setLoading(false);
+        setDangCapNhat(false);
         return;
       }
 
@@ -60,105 +171,80 @@ export default function KetQuaTimKiem() {
       setTrangHienTai(1);
       setError(null);
 
-      // 1. Ưu tiên sessionStorage khi quay lại cùng keyword
       if (retryKey === 0) {
-        try {
-          const cached = sessionStorage.getItem(cacheKey);
+        const sessionData = docSessionCache(cacheKey);
 
-          if (cached) {
-            const parsed = JSON.parse(cached);
-            const isFresh = Date.now() - parsed.timestamp < SEARCH_CACHE_TTL_MS;
-
-            if (isFresh && Array.isArray(parsed.data) && parsed.data.length > 0) {
-              if (!isCancelled) {
-                setDanhSachGoc(parsed.data);
-                setDanhSachHienThi(parsed.data);
-                setLoading(false);
-              }
-
-              return;
-            }
-          }
-        } catch (cacheError) {
-          console.warn('Search session cache read failed:', cacheError);
+        if (sessionData && !isCancelled) {
+          setDanhSachGoc(sessionData);
+          setDanhSachHienThi(sessionData);
+          setLoading(false);
         }
       }
 
       setLoading(true);
 
-      try {
-        // 2. Lấy cache DB trước, không scrape, để trả kết quả nhanh.
-        const cacheRes = await productService.timKiemSanPham(keyword, false, {});
-        let cacheData = cacheRes.data || [];
+      let hasVisibleCache = false;
 
-        if (danhMucParam) {
-          cacheData = cacheData.filter(sp => sp.danhMuc === danhMucParam);
-        }
+      try {
+        const cacheResult = await layCacheTuDb(keyword, cacheKey);
+        const cacheData = cacheResult.data;
 
         if (!isCancelled && cacheData.length > 0) {
+          hasVisibleCache = true;
           setDanhSachGoc(cacheData);
           setLoading(false);
-
-          try {
-            sessionStorage.setItem(
-              cacheKey,
-              JSON.stringify({
-                timestamp: Date.now(),
-                data: cacheData
-              })
-            );
-          } catch (cacheError) {
-            console.warn('Search cache write failed:', cacheError);
-          }
         }
 
-        // 3. Nếu chưa có cache thì tiếp tục hiện skeleton.
         if (!isCancelled && cacheData.length === 0) {
           setLoading(true);
         }
 
-        // 4. Chạy realtime scrape để cập nhật kết quả mới.
-        const realtimeRes = await productService.timKiemSanPham(keyword, true, {});
-        let realtimeData = realtimeRes.data || [];
+        setDangCapNhat(true);
 
-        if (danhMucParam) {
-          realtimeData = realtimeData.filter(sp => sp.danhMuc === danhMucParam);
+        const jobRes = await taoSearchJobMotLan(keyword);
+
+        if (jobRes.errorMessage || !jobRes.data?.job_id) {
+          throw new Error(jobRes.errorMessage || 'Không tạo được tác vụ cập nhật dữ liệu.');
         }
 
-        if (!isCancelled) {
-          if (realtimeData.length > 0) {
-            setDanhSachGoc(realtimeData);
-            setError(null);
+        const completedJob = await pollSearchJob(jobRes.data.job_id);
 
-            try {
-              sessionStorage.setItem(
-                cacheKey,
-                JSON.stringify({
-                  timestamp: Date.now(),
-                  data: realtimeData
-                })
-              );
-            } catch (cacheError) {
-              console.warn('Search cache write failed:', cacheError);
-            }
+        if (!completedJob || isCancelled) return;
+
+        if (completedJob.status === 'failed') {
+          throw new Error(completedJob.error || 'Tác vụ cập nhật dữ liệu thất bại.');
+        }
+
+        const latestResult = await layCacheTuDb(keyword, cacheKey);
+        const latestData = latestResult.data;
+
+        if (!isCancelled) {
+          if (latestData.length > 0) {
+            setDanhSachGoc(latestData);
+            setError(null);
           } else if (cacheData.length === 0) {
             setDanhSachGoc([]);
-            setError(realtimeRes.errorMessage || null);
-          } else if (realtimeRes.errorMessage) {
-            setError('Dữ liệu mới đang cập nhật lâu hơn dự kiến. Tạm hiển thị kết quả đã lưu gần nhất.');
+            setError('Chưa tìm thấy sản phẩm phù hợp sau khi cập nhật dữ liệu.');
           }
         }
       } catch (err) {
         console.error(err);
 
         if (!isCancelled) {
-          setError(err.message || 'Lỗi kết nối máy chủ API.');
-          toast.error(err.message || 'Lỗi kết nối máy chủ API.');
-          setDanhSachGoc([]);
+          const message = err.message || 'Lỗi kết nối máy chủ API.';
+
+          if (hasVisibleCache) {
+            setError('Dữ liệu mới cập nhật chưa thành công. Tạm hiển thị kết quả đã lưu gần nhất.');
+          } else {
+            setError(message);
+            toast.error(message);
+            setDanhSachGoc([]);
+          }
         }
       } finally {
         if (!isCancelled) {
           setLoading(false);
+          setDangCapNhat(false);
         }
       }
     };
@@ -170,11 +256,10 @@ export default function KetQuaTimKiem() {
     };
   }, [q, danhMucParam, retryKey]);
 
-  // 2. Chạy bộ lọc cục bộ trực tiếp trên danh sách gốc khi boLocActive hoặc danhSachGoc thay đổi
   useEffect(() => {
     let ketQua = [...danhSachGoc];
 
-    // Lọc theo Sàn TMĐT (Chuẩn hóa)
+    // Lọc theo Sản TMĐT (Chuẩn hóa)
     const activeShorthands = Object.keys(boLocActive.san || {})
       .filter((key) => boLocActive.san[key])
       .map(normalizeString);
@@ -217,7 +302,7 @@ export default function KetQuaTimKiem() {
       });
     }
 
-    // Lọc theo Khoảng giá Checkbox
+    // Lọc theo khoảng giá Checkbox
     const activePrices = Object.keys(boLocActive.mucGia || {}).filter((key) => boLocActive.mucGia[key]);
     if (activePrices.length > 0) {
       ketQua = ketQua.filter((sp) => {
@@ -231,7 +316,7 @@ export default function KetQuaTimKiem() {
       });
     }
 
-    // Lọc theo Khoảng giá Nhập tay
+    // Lọc theo khoảng giá nhập tay
     if (boLocActive.giaMin) {
       ketQua = ketQua.filter((sp) => (sp.giaThapNhat || 0) >= Number(boLocActive.giaMin));
     }
@@ -285,10 +370,10 @@ export default function KetQuaTimKiem() {
   return (
     <main className="user-page">
       <div className="user-container search-layout">
-        {/* Cột Trái - Bộ lọc */}
+        {/* Cột trái - Bộ lọc */}
         <BoLocSanPham onFilterChange={xuLyApDungBoLoc} danhSachGoc={danhSachGoc} />
 
-        {/* Cột Phải - Danh sách kết quả */}
+        {/* Cột phải - Danh sách kết quả */}
         <section className="search-results">
           {/* Breadcrumb */}
           <div className="breadcrumb">
@@ -297,7 +382,7 @@ export default function KetQuaTimKiem() {
 
           <div className="search-results__header">
             <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-              <h2>Kết quả tìm kiếm siêu tổng hợp</h2>
+              <h2>Kết quả tìm kiếm siêu thị</h2>
               {error && !loading && (
                 <div style={{ color: '#ef4444', marginBottom: '16px' }}>{error}</div>
               )}
@@ -326,6 +411,21 @@ export default function KetQuaTimKiem() {
             )}
           </div>
 
+          {dangCapNhat && danhSachHienThi.length > 0 && (
+            <div
+              style={{
+                margin: '0 0 16px',
+                padding: '10px 12px',
+                borderRadius: '8px',
+                background: '#eff6ff',
+                color: '#1d4ed8',
+                fontSize: '14px'
+              }}
+            >
+              Đang cập nhật dữ liệu mới từ các sàn TMĐT. Tạm hiển thị kết quả đã lưu gần nhất.
+            </div>
+          )}
+
           {error && danhSachHienThi.length === 0 ? (
             <div className="search-results__error" style={{ textAlign: 'center', padding: '40px 20px' }}>
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.5" style={{ marginBottom: '16px' }}>
@@ -341,7 +441,7 @@ export default function KetQuaTimKiem() {
             <>
               <div className="search-loading" style={{ textAlign: 'center', marginBottom: '20px' }}>
                 <p style={{ color: '#64748b', fontSize: '15px' }}>
-                  Đang thu thập và tổng hợp dữ liệu mới từ các nguồn bán. Quá trình này có thể mất vài giây đến vài phút tùy từng sàn TMĐT...
+                  Đang thu thập và tổng hợp dữ liệu mới từ các nguồn bán. Quá trình này có thể mất vài giây ...
                 </p>
               </div>
               <div className="product-offer-grid">
@@ -358,7 +458,7 @@ export default function KetQuaTimKiem() {
             </>
           ) : sanPhamPhanTrang.length > 0 ? (
             <>
-              {/* Lưới sản phẩm */}
+              {/* Liệt kê sản phẩm */}
               <div className="product-offer-grid">
                 {sanPhamPhanTrang.map((sanPham) => (
                   <TheSanPhamOffer key={sanPham.id} sanPham={sanPham} />
@@ -409,3 +509,4 @@ export default function KetQuaTimKiem() {
     </main>
   );
 }
+
