@@ -3,7 +3,9 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
+
 
 from backend.app.api.search import normalize_search_text
 from backend.app.core.database import get_db
@@ -134,7 +136,7 @@ def create_search_job(
                         "success": True,
                         "message": "Found existing active search job",
                         "celery_task_id": None,
-                        "data": serialize_search_job(active_job),
+                        "data": jsonable_encoder(serialize_search_job(active_job)),
                         "reused": True
                     }
                 )
@@ -183,19 +185,20 @@ def create_search_job(
                 content={
                     "success": False,
                     "error": job.errorMessage,
-                    "data": serialize_search_job(job),
+                    "data": jsonable_encoder(serialize_search_job(job)),
                 }
             )
 
-        return {
+        return jsonable_encoder({
             "success": True,
             "message": "Search job created and queued",
             "celery_task_id": celery_result.id,
             "data": serialize_search_job(job),
-        }
+        })
 
     except Exception as error:
         db.rollback()
+        import traceback; traceback.print_exc()
 
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
