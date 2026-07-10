@@ -52,6 +52,8 @@ function QuanLySanPhamChuanHoa() {
   const thongBaoTimeoutRef = useRef(null);
   const [trangHienTai, setTrangHienTai] = useState(1);
   const [sanPhamDangXem, setSanPhamDangXem] = useState(null);
+  const [lichSuGiaDangXem, setLichSuGiaDangXem] = useState(null);
+  const [dangTaiLichSuGia, setDangTaiLichSuGia] = useState(false);
   const soSanPhamMoiTrang = 5;
 
   const hienThongBao = useCallback((noiDung, loai = "thanh-cong") => {
@@ -92,6 +94,27 @@ function QuanLySanPhamChuanHoa() {
         }
       } finally {
         setDangTaiDuLieu(false);
+      }
+    },
+    [hienThongBao]
+  );
+
+  const taiLichSuGiaSanPham = useCallback(
+    async (sanPham) => {
+      try {
+        setDangTaiLichSuGia(true);
+        setLichSuGiaDangXem(null);
+
+        const response = await api.get(
+          `/scraping/price-history/standardized/${sanPham.maSPCH}`
+        );
+
+        setLichSuGiaDangXem(response.data?.data || null);
+      } catch (error) {
+        console.error("Lỗi tải lịch sử giá:", error);
+        hienThongBao("Không thể tải lịch sử giá sản phẩm.", "loi");
+      } finally {
+        setDangTaiLichSuGia(false);
       }
     },
     [hienThongBao]
@@ -336,13 +359,22 @@ function QuanLySanPhamChuanHoa() {
                     </span>
                   </td>
 
-                  <td>
+                  <td className="cot-thao-tac-san-pham-chuan-hoa">
                     <button
                       className="nut-xem-admin"
                       type="button"
                       onClick={() => setSanPhamDangXem(sanPham)}
                     >
                       Xem
+                    </button>
+
+                    <button
+                      className="nut-xem-admin nut-lich-su-gia-admin"
+                      type="button"
+                      onClick={() => taiLichSuGiaSanPham(sanPham)}
+                      disabled={dangTaiLichSuGia}
+                    >
+                      Lịch sử giá
                     </button>
                   </td>
                 </tr>
@@ -469,6 +501,106 @@ function QuanLySanPhamChuanHoa() {
             <div className="attributes-san-pham-tho">
               <strong>Mô tả:</strong>
               <pre>{sanPhamDangXem.moTa || "Chưa có mô tả"}</pre>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {lichSuGiaDangXem && (
+        <div className="modal-nen-admin">
+          <div className="modal-san-pham-tho modal-lich-su-gia-admin">
+            <div className="modal-tieu-de-admin">
+              <h2>Lịch sử giá sản phẩm</h2>
+
+              <button
+                type="button"
+                className="nut-dong-modal-admin"
+                onClick={() => setLichSuGiaDangXem(null)}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="noi-dung-lich-su-gia-admin">
+              <div className="tom-tat-lich-su-gia-admin">
+                <p>
+                  <strong>Mã SPCH:</strong>{" "}
+                  {formatMaSPCH(lichSuGiaDangXem.sanPhamChuanHoa?.maSPCH)}
+                </p>
+
+                <p>
+                  <strong>Tên sản phẩm:</strong>{" "}
+                  {lichSuGiaDangXem.sanPhamChuanHoa?.tenChuan}
+                </p>
+
+                <p>
+                  <strong>Thương hiệu:</strong>{" "}
+                  {lichSuGiaDangXem.sanPhamChuanHoa?.thuongHieu || "Chưa xác định"}
+                </p>
+
+                <p>
+                  <strong>Khoảng giá hiện tại:</strong>{" "}
+                  {dinhDangTien(lichSuGiaDangXem.sanPhamChuanHoa?.giaThapNhat)} -{" "}
+                  {dinhDangTien(lichSuGiaDangXem.sanPhamChuanHoa?.giaCaoNhat)}
+                </p>
+
+                <p>
+                  <strong>Số sản phẩm thô:</strong>{" "}
+                  {lichSuGiaDangXem.tongSanPhamTho}
+                </p>
+
+                <p>
+                  <strong>Tổng bản ghi lịch sử:</strong>{" "}
+                  {lichSuGiaDangXem.tongBanGhiLichSuGia}
+                </p>
+              </div>
+
+              {lichSuGiaDangXem.items?.length === 0 ? (
+                <p className="mo-ta-trang-admin">
+                  Chưa có dữ liệu lịch sử giá cho sản phẩm này.
+                </p>
+              ) : (
+                lichSuGiaDangXem.items.map((item) => (
+                  <div className="khoi-nguon-lich-su-gia" key={item.maSPTho}>
+                    <div className="dau-khoi-nguon-lich-su-gia">
+                      <div>
+                        <h3>{item.sanTMDT}</h3>
+                        <p>{item.tenSanPham}</p>
+                      </div>
+
+                      <strong>{dinhDangTien(item.giaHienTai)}</strong>
+                    </div>
+
+                    <table className="bang-lich-su-gia-admin">
+                      <thead>
+                        <tr>
+                          <th>Mã LSG</th>
+                          <th>Thời điểm ghi nhận</th>
+                          <th>Giá ghi nhận</th>
+                        </tr>
+                      </thead>
+
+                      <tbody>
+                        {item.lichSuGia?.length === 0 ? (
+                          <tr>
+                            <td colSpan="3" className="o-khong-co-du-lieu">
+                              Chưa có lịch sử giá.
+                            </td>
+                          </tr>
+                        ) : (
+                          item.lichSuGia.map((lichSu) => (
+                            <tr key={lichSu.maLSG}>
+                              <td>LSG-{lichSu.maLSG}</td>
+                              <td>{lichSu.ngayGhiNhan}</td>
+                              <td>{dinhDangTien(lichSu.gia)}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

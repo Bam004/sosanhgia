@@ -767,3 +767,141 @@ def get_scraping_dashboard(db: Session = Depends(get_db)):
             },
         )
 
+
+from fastapi import Depends, HTTPException
+from sqlalchemy.orm import Session
+
+from backend.app.core.database import get_db
+from backend.app.models.lich_su_gia import LichSuGia
+from backend.app.models.san_pham_tho import SanPhamTho
+from backend.app.models.san_pham_chuan_hoa import SanPhamChuanHoa
+
+
+def _dinh_dang_thoi_gian_lich_su_gia(gia_tri):
+    if not gia_tri:
+        return None
+    return gia_tri.strftime("%d/%m/%Y %H:%M")
+
+
+def _lich_su_gia_to_dict(item: LichSuGia):
+    return {
+        "maLSG": item.maLSG,
+        "maSPTho": item.maSPTho,
+        "gia": float(item.gia) if item.gia is not None else 0,
+        "ngayGhiNhan": _dinh_dang_thoi_gian_lich_su_gia(item.ngayGhiNhan),
+    }
+
+
+@router.get("/price-history/raw/{ma_sp_tho}")
+def lay_lich_su_gia_san_pham_tho(
+    ma_sp_tho: int,
+    db: Session = Depends(get_db),
+):
+    san_pham = (
+        db.query(SanPhamTho)
+        .filter(SanPhamTho.maSPTho == ma_sp_tho)
+        .first()
+    )
+
+    if not san_pham:
+        raise HTTPException(
+            status_code=404,
+            detail="Không tìm thấy sản phẩm thô",
+        )
+
+    lich_su = (
+        db.query(LichSuGia)
+        .filter(LichSuGia.maSPTho == ma_sp_tho)
+        .order_by(LichSuGia.ngayGhiNhan.asc())
+        .all()
+    )
+
+    gia_dau_tien = float(lich_su[0].gia) if lich_su else None
+    gia_gan_nhat = float(lich_su[-1].gia) if lich_su else None
+
+    return {
+        "success": True,
+        "data": {
+            "sanPhamTho": {
+                "maSPTho": san_pham.maSPTho,
+                "maSPCH": san_pham.maSPCH,
+                "tenSanPham": san_pham.tenSanPham,
+                "sanTMDT": san_pham.sanTMDT,
+                "giaHienTai": float(san_pham.giaHienTai) if san_pham.giaHienTai is not None else 0,
+                "linkGoc": san_pham.linkGoc,
+                "hinhAnh": san_pham.hinhAnh,
+                "ngayCapNhat": _dinh_dang_thoi_gian_lich_su_gia(san_pham.ngayCapNhat),
+            },
+            "tongLanGhiNhan": len(lich_su),
+            "giaDauTien": gia_dau_tien,
+            "giaGanNhat": gia_gan_nhat,
+            "bienDong": (gia_gan_nhat - gia_dau_tien) if gia_dau_tien is not None and gia_gan_nhat is not None else 0,
+            "lichSuGia": [_lich_su_gia_to_dict(item) for item in lich_su],
+        },
+    }
+
+
+@router.get("/price-history/standardized/{ma_sp_ch}")
+def lay_lich_su_gia_san_pham_chuan_hoa(
+    ma_sp_ch: int,
+    db: Session = Depends(get_db),
+):
+    san_pham_chuan_hoa = (
+        db.query(SanPhamChuanHoa)
+        .filter(SanPhamChuanHoa.maSPCH == ma_sp_ch)
+        .first()
+    )
+
+    if not san_pham_chuan_hoa:
+        raise HTTPException(
+            status_code=404,
+            detail="Không tìm thấy sản phẩm chuẩn hóa",
+        )
+
+    danh_sach_san_pham_tho = (
+        db.query(SanPhamTho)
+        .filter(SanPhamTho.maSPCH == ma_sp_ch)
+        .order_by(SanPhamTho.sanTMDT.asc(), SanPhamTho.tenSanPham.asc())
+        .all()
+    )
+
+    items = []
+    tong_ban_ghi = 0
+
+    for san_pham in danh_sach_san_pham_tho:
+        lich_su = (
+            db.query(LichSuGia)
+            .filter(LichSuGia.maSPTho == san_pham.maSPTho)
+            .order_by(LichSuGia.ngayGhiNhan.asc())
+            .all()
+        )
+
+        tong_ban_ghi += len(lich_su)
+
+        items.append({
+            "maSPTho": san_pham.maSPTho,
+            "tenSanPham": san_pham.tenSanPham,
+            "sanTMDT": san_pham.sanTMDT,
+            "giaHienTai": float(san_pham.giaHienTai) if san_pham.giaHienTai is not None else 0,
+            "linkGoc": san_pham.linkGoc,
+            "hinhAnh": san_pham.hinhAnh,
+            "ngayCapNhat": _dinh_dang_thoi_gian_lich_su_gia(san_pham.ngayCapNhat),
+            "tongLanGhiNhan": len(lich_su),
+            "lichSuGia": [_lich_su_gia_to_dict(item) for item in lich_su],
+        })
+
+    return {
+        "success": True,
+        "data": {
+            "sanPhamChuanHoa": {
+                "maSPCH": san_pham_chuan_hoa.maSPCH,
+                "tenChuan": san_pham_chuan_hoa.tenChuan,
+                "thuongHieu": san_pham_chuan_hoa.thuongHieu,
+                "giaThapNhat": float(san_pham_chuan_hoa.giaThapNhat) if san_pham_chuan_hoa.giaThapNhat is not None else None,
+                "giaCaoNhat": float(san_pham_chuan_hoa.giaCaoNhat) if san_pham_chuan_hoa.giaCaoNhat is not None else None,
+            },
+            "tongSanPhamTho": len(danh_sach_san_pham_tho),
+            "tongBanGhiLichSuGia": tong_ban_ghi,
+            "items": items,
+        },
+    }
