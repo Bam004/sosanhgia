@@ -40,6 +40,7 @@ export default function KetQuaTimKiem() {
   const [loading, setLoading] = useState(false);
   const [dangCapNhat, setDangCapNhat] = useState(false);
   const [error, setError] = useState(null);
+  const [jobError, setJobError] = useState(null);
   const [boLocActive, setBoLocActive] = useState({});
   const [sortOrder, setSortOrder] = useState('asc');
   const [retryKey, setRetryKey] = useState(0);
@@ -114,6 +115,11 @@ export default function KetQuaTimKiem() {
 
     const layCacheTuDb = async (keyword, cacheKey) => {
       const cacheRes = await productService.timKiemSanPham(keyword, false, {});
+      
+      if (cacheRes.errorMessage) {
+        throw new Error(cacheRes.errorMessage);
+      }
+
       const cacheData = locTheoDanhMuc(cacheRes.data || []);
 
       if (cacheData.length > 0) {
@@ -122,7 +128,6 @@ export default function KetQuaTimKiem() {
 
       return {
         data: cacheData,
-        errorMessage: cacheRes.errorMessage,
         cache_hit: cacheRes.cache_hit
       };
     };
@@ -171,6 +176,7 @@ export default function KetQuaTimKiem() {
       setSortOrder('asc');
       setTrangHienTai(1);
       setError(null);
+      setJobError(null);
 
       if (retryKey === 0) {
         const sessionData = docSessionCache(cacheKey);
@@ -229,9 +235,11 @@ export default function KetQuaTimKiem() {
           if (latestData.length > 0) {
             setDanhSachGoc(latestData);
             setError(null);
+            setJobError(null);
           } else if (cacheData.length === 0) {
             setDanhSachGoc([]);
             setError(null);
+            setJobError(null);
           }
         }
       } catch (err) {
@@ -240,16 +248,26 @@ export default function KetQuaTimKiem() {
         if (!isCancelled) {
           const message = err.message || 'Lỗi kết nối máy chủ API.';
 
-          if (hasVisibleCache) {
-            // Silently ignore or show subtle message
+          // Phân biệt lỗi Job (Cập nhật nền) và lỗi Network API
+          const isJobError = message.includes('Tác vụ cập nhật') || message.includes('Không tạo được') || message.includes('trạng thái tác vụ');
+
+          if (isJobError) {
+            setJobError(message);
+            // Nếu là lỗi job (cập nhật nền), giữ dữ liệu cũ, chỉ báo vàng nếu đã có dữ liệu
+            if (hasVisibleCache) {
+              toast.warn('Quá trình cập nhật dữ liệu mới gặp sự cố. Bạn đang xem kết quả đã lưu.');
+            } else {
+              // Nếu chưa có kết quả (lần đầu rỗng) mà scrape lỗi, thì nó là error state
+              setError(message);
+            }
           } else {
-            if (message.includes('Tác vụ cập nhật') || message.includes('Không tạo được')) {
-              setError(null);
+            // Lỗi Network hoặc Backend thật sự
+            if (hasVisibleCache) {
+              toast.error(message);
             } else {
               setError(message);
-              toast.error(message);
+              setDanhSachGoc([]);
             }
-            setDanhSachGoc([]);
           }
         }
       } finally {

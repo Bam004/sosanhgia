@@ -108,9 +108,17 @@ def is_repair_service(ten_san_pham: str) -> bool:
 
 def detect_expected_product_type(keyword: str) -> str | None:
     normalized_keyword = normalize_search_text(keyword)
-    
+
     # Accessory intent
-    accessory_tokens = ["vi da", "dan da", "op", "op lung", "kinh cuong luc", "cuong luc", "mieng dan", "case", "khacten", "cap sac", "cu sac", "tai nghe", "adapter"]
+    accessory_tokens = [
+        "vi da", "dan da", "op", "op lung", "op da", "kinh cuong luc",
+        "cuong luc", "mieng dan", "case", "khacten", "cap sac", "cu sac",
+        "tai nghe", "adapter", "kem vi", "vi dung the", "dung the",
+        "card holder", "mentor", "de giu dien thoai", "gia do dien thoai",
+        "gia do", "day deo dien thoai", "vong giu dien thoai", "de sac",
+        "sac khong day", "kiem sac", "den livestream", "remote",
+        "baseus primetrip", "haiyuan", "uag magnetic", "zagg"
+    ]
     # We must check carefully. "sac" as standalone is dangerous, so we check " sac " or similar.
     # But since it's just intent detection on search query, if user types "sac iphone", it's accessory.
     if any(token in normalized_keyword for token in accessory_tokens) or "sac" in normalized_keyword.split():
@@ -183,9 +191,36 @@ def build_query_tokens(
             "nghe",
             "adapter",
             "pin",
-            "du",
             "phong",
             "mocoll",
+            "kem",
+            "vi",
+            "dung",
+            "the",
+            "card",
+            "holder",
+            "mentor",
+            "de",
+            "giu",
+            "dien",
+            "thoai",
+            "gia",
+            "do",
+            "day",
+            "deo",
+            "vong",
+            "sac",
+            "khong",
+            "kiem",
+            "den",
+            "livestream",
+            "remote",
+            "baseus",
+            "primetrip",
+            "haiyuan",
+            "uag",
+            "magnetic",
+            "zagg",
         ])
 
     elif expected_product_type == "phone":
@@ -262,7 +297,7 @@ def build_search_data(keyword: str, db: Session):
             normalized_item_name = matching_service._normalize_text(item.tenSanPham)
             is_acc = matching_service._is_accessory(normalized_item_name)
             item_product_type = matching_service._classify_product_type(normalized_item_name, is_acc)
-            
+
             if expected_product_type == "phone":
                 if item_product_type != "phone":
                     continue
