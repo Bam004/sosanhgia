@@ -194,41 +194,45 @@ export default function KetQuaTimKiem() {
 
       try {
         const cacheResult = await layCacheTuDb(keyword, cacheKey);
+        if (isCancelled) return;
+
         const cacheData = cacheResult.data;
         const isCacheHit = cacheResult.cache_hit;
 
-        if (!isCancelled && cacheData.length > 0) {
+        if (cacheData.length > 0) {
           hasVisibleCache = true;
           setDanhSachGoc(cacheData);
           setLoading(false);
         }
 
-        if (!isCancelled && isCacheHit && cacheData.length > 0) {
+        if (isCacheHit && cacheData.length > 0) {
           setDangCapNhat(false);
           return;
         }
 
-        if (!isCancelled && cacheData.length === 0) {
+        if (cacheData.length === 0) {
           setLoading(true);
         }
 
         setDangCapNhat(true);
 
         const jobRes = await taoSearchJobMotLan(keyword);
+        if (isCancelled) return;
 
         if (jobRes.errorMessage || !jobRes.data?.job_id) {
           throw new Error(jobRes.errorMessage || 'Không tạo được tác vụ cập nhật dữ liệu.');
         }
 
         const completedJob = await pollSearchJob(jobRes.data.job_id);
-
-        if (!completedJob || isCancelled) return;
+        if (isCancelled || !completedJob) return;
 
         if (completedJob.status === 'failed') {
           throw new Error(completedJob.error || 'Tác vụ cập nhật dữ liệu thất bại.');
         }
 
         const latestResult = await layCacheTuDb(keyword, cacheKey);
+        if (isCancelled) return;
+        
         const latestData = latestResult.data;
 
         if (!isCancelled) {

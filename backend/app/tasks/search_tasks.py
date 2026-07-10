@@ -76,9 +76,12 @@ def run_search_job_task(job_id: int, keyword: str) -> dict:
             source_status.errorMessage = result.get("error")
             source_status.ketThucLuc = finished_at
 
-        db.commit()
-
+        # Xóa cache TRƯỚC KHI commit trạng thái completed.
+        # Nếu commit thành công, cache đã sạch, frontend đọc sẽ gọi db lấy data mới.
+        # Nếu commit thất bại, cache bị xóa sớm nhưng data cũ không bị sai (chỉ tốn DB 1 lần lấy).
         invalidate_search_cache(keyword)
+
+        db.commit()
 
         return {
             "success": True,

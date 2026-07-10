@@ -1,4 +1,5 @@
-﻿from typing import Any
+from datetime import datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import JSONResponse
@@ -117,6 +118,32 @@ def create_search_job(
     keyword_normalized = normalize_search_text(keyword)
 
     try:
+        # 1. Chống duplicate: Kiểm tra xem có job nào đang pending/running cho keyword này không
+        active_job = db.query(SearchJob).filter(
+            SearchJob.keywordChuanHoa == keyword_normalized,
+            SearchJob.trangThai.in_(["pending", "running"])
+        ).order_by(SearchJob.ngayTao.desc()).first()
+
+        if active_job:
+            now = datetime.utcnow()
+            # Nếu job tạo chưa quá 5 phút thì tái sử dụng
+            if (now - active_job.ngayTao).total_seconds() < 300:
+                return JSONResponse(
+                    status_code=status.HTTP_200_OK,
+                    content={
+                        "success": True,
+                        "message": "Found existing active search job",
+                        "celery_task_id": None,
+                        "data": serialize_search_job(active_job),
+                        "reused": True
+                    }
+                )
+            else:
+                # Job quá cũ (treo), đánh dấu failed và đi tiếp để tạo job mới
+                active_job.trangThai = "failed"
+                active_job.errorMessage = "Job timed out and was abandoned"
+                db.commit()
+
         job = SearchJob(
             keyword=keyword,
             keywordChuanHoa=keyword_normalized,
