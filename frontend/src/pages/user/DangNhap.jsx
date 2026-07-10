@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { authService } from '../../services/authService';
+import { sanitizeReturnUrl } from '../../utils/returnUrl';
 
 export default function DangNhap() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnUrl = sanitizeReturnUrl(searchParams.get('returnUrl'));
   const [formData, setFormData] = useState({
     email: '',
     matKhau: ''
@@ -31,12 +34,21 @@ export default function DangNhap() {
         localStorage.setItem("accessToken", res.data.accessToken);
         localStorage.setItem("user", JSON.stringify(res.data.user));
         toast.success("Đăng nhập thành công");
-        navigate('/');
+        navigate(returnUrl, { replace: true });
       } else {
-        toast.error("Sai email hoặc mật khẩu");
+        toast.error(res.message || "Sai email hoặc mật khẩu");
       }
     } catch (error) {
-      toast.error("Sai email hoặc mật khẩu");
+      const errorMessage = error.response?.data?.error || error.response?.data?.detail || "Sai email hoặc mật khẩu";
+      if (error.response?.status === 403) {
+        toast.error("Tài khoản đã bị vô hiệu hóa");
+      } else if (error.response?.status === 401) {
+        toast.error("Sai email hoặc mật khẩu");
+      } else if (!error.response) {
+        toast.error("Lỗi kết nối máy chủ. Vui lòng kiểm tra mạng và thử lại.");
+      } else {
+        toast.error(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
@@ -91,7 +103,7 @@ export default function DangNhap() {
           </button>
         </form>
         <p style={{ textAlign: 'center', marginTop: '24px', color: '#64748b' }}>
-          Chưa có tài khoản? <Link to="/dang-ky" style={{ color: 'var(--color-primary)', fontWeight: '500', textDecoration: 'none' }}>Đăng ký</Link>
+          Chưa có tài khoản? <Link to={returnUrl !== '/' ? `/dang-ky?returnUrl=${encodeURIComponent(returnUrl)}` : '/dang-ky'} style={{ color: 'var(--color-primary)', fontWeight: '500', textDecoration: 'none' }}>Đăng ký</Link>
         </p>
       </div>
     </main>

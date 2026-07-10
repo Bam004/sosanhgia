@@ -12,6 +12,7 @@ import ThongTinTaiKhoan from './pages/user/ThongTinTaiKhoan';
 import SanPhamTheoDoi from './pages/user/SanPhamTheoDoi';
 import DangNhap from './pages/user/DangNhap';
 import DangKy from './pages/user/DangKy';
+import ProtectedRoute from './components/user/ProtectedRoute';
 
 import TongQuanQuanTri from './pages/admin/TongQuanQuanTri';
 import QuanLyNguonCao from './pages/admin/QuanLyNguonCao';
@@ -29,10 +30,10 @@ export default function App() {
         <Route path="/tim-kiem" element={<KetQuaTimKiem />} />
         <Route path="/san-pham/:id" element={<ChiTietSanPham />} />
         <Route path="/san-pham/:id/lich-su-gia" element={<BieuDoLichSuGia />} />
-        <Route path="/theo-doi-gia" element={<TheoDoiGia />} />
-        <Route path="/tai-khoan" element={<ThongTinTaiKhoan />} />
-        <Route path="/tai-khoan/thong-tin" element={<ThongTinTaiKhoan />} />
-        <Route path="/tai-khoan/san-pham-theo-doi" element={<SanPhamTheoDoi />} />
+        <Route path="/theo-doi-gia" element={<ProtectedRoute><TheoDoiGia /></ProtectedRoute>} />
+        <Route path="/tai-khoan" element={<ProtectedRoute><ThongTinTaiKhoan /></ProtectedRoute>} />
+        <Route path="/tai-khoan/thong-tin" element={<ProtectedRoute><ThongTinTaiKhoan /></ProtectedRoute>} />
+        <Route path="/tai-khoan/san-pham-theo-doi" element={<ProtectedRoute><SanPhamTheoDoi /></ProtectedRoute>} />
         <Route path="/dang-nhap" element={<DangNhap />} />
         <Route path="/dang-ky" element={<DangKy />} />
       </Route>

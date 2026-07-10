@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { authService } from '../../services/authService';
+import { sanitizeReturnUrl } from '../../utils/returnUrl';
 
 export default function DangKy() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnUrl = sanitizeReturnUrl(searchParams.get('returnUrl'));
   const [formData, setFormData] = useState({
     hoTen: '',
     email: '',
@@ -37,7 +40,7 @@ export default function DangKy() {
       const res = await authService.dangKy(formData);
       if (res.success) {
         toast.success("Đăng ký thành công. Vui lòng đăng nhập.");
-        navigate('/dang-nhap');
+        navigate(returnUrl !== '/' ? `/dang-nhap?returnUrl=${encodeURIComponent(returnUrl)}` : '/dang-nhap');
       } else {
         toast.error(res.message || "Đăng ký thất bại");
       }
@@ -120,7 +123,7 @@ export default function DangKy() {
           </button>
         </form>
         <p style={{ textAlign: 'center', marginTop: '24px', color: '#64748b' }}>
-          Đã có tài khoản? <Link to="/dang-nhap" style={{ color: 'var(--color-primary)', fontWeight: '500', textDecoration: 'none' }}>Đăng nhập</Link>
+          Đã có tài khoản? <Link to={returnUrl !== '/' ? `/dang-nhap?returnUrl=${encodeURIComponent(returnUrl)}` : '/dang-nhap'} style={{ color: 'var(--color-primary)', fontWeight: '500', textDecoration: 'none' }}>Đăng nhập</Link>
         </p>
       </div>
     </main>
