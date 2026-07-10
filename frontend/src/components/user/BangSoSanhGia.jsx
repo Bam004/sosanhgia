@@ -77,6 +77,17 @@ export default function BangSoSanhGia({ noiBanChiTiet, sapXepKieu = 'asc' }) {
     return <div className="no-offers">Không có dữ liệu nơi bán.</div>;
   }
 
+  if (!noiBanChiTiet || noiBanChiTiet.length === 0) {
+    return (
+      <div className="price-compare-table" style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
+        <p>Chưa có nơi bán phù hợp cho sản phẩm này.</p>
+      </div>
+    );
+  }
+
+  // Calculate lowest price for highlighting
+  const lowestPrice = Math.min(...noiBanChiTiet.map(s => s.gia).filter(p => !isNaN(p) && p > 0));
+
   // Sắp xếp các nơi bán theo giá
   const noiBanDaSapXep = [...noiBanChiTiet].sort((a, b) => {
     if (sapXepKieu === 'asc') {
@@ -97,17 +108,15 @@ export default function BangSoSanhGia({ noiBanChiTiet, sapXepKieu = 'asc' }) {
 
       <div className="price-compare-table__rows">
         {noiBanDaSapXep.map((seller, index) => {
-          // Dòng đầu tiên khi xếp tăng dần (hoặc dòng rẻ nhất nói chung)
-          // Có badge "Giá tốt nhất" nếu là rẻ nhất tuyệt đối
-          const laGiaTotNhat = sapXepKieu === 'asc' ? index === 0 : index === noiBanDaSapXep.length - 1;
+          const laGiaTotNhat = seller.gia === lowestPrice;
 
           return (
-            <div key={`${seller.san}-${index}`} className={`price-compare-table__row ${laGiaTotNhat ? 'price-compare-table__row--best' : ''}`}>
+            <div key={`${seller.maSPTho || seller.san}-${index}`} className={`price-compare-table__row ${laGiaTotNhat ? 'price-compare-table__row--best' : ''}`}>
               {/* Nơi bán + Logo */}
               <div className="col-shop">
-                <SinhLogoSan brand={seller.san} width={40} height={40} />
+                <SinhLogoSan brand={seller.sourceCode || seller.san} width={40} height={40} />
                 <div className="shop-details">
-                  <span className="shop-name">{seller.san}</span>
+                  <span className="shop-name">{seller.tenSan || seller.san}</span>
                   <span className="shop-domain">{seller.domain}</span>
                 </div>
               </div>
@@ -130,14 +139,20 @@ export default function BangSoSanhGia({ noiBanChiTiet, sapXepKieu = 'asc' }) {
 
               {/* Nút tới nơi bán */}
               <div className="col-action">
-                <a
-                  href={seller.link}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn-go-to-seller"
-                >
-                  Tới nơi bán
-                </a>
+                {seller.link && seller.link.match(/^https?:\/\//) ? (
+                  <a
+                    href={seller.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-go-to-seller"
+                  >
+                    Đến nơi bán
+                  </a>
+                ) : (
+                  <button disabled className="btn-go-to-seller" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+                    Nơi bán bị lỗi
+                  </button>
+                )}
               </div>
             </div>
           );

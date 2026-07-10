@@ -3,6 +3,7 @@ from backend.app.services.search_cache_service import (
     set_cached_search_result,
     get_search_cache_version,
 )
+from backend.app.utils.source_normalization import normalize_source_code
 from typing import Any, cast
 import unicodedata
 
@@ -319,24 +320,43 @@ def build_search_data(keyword: str, db: Session):
         )
 
         prices = []
-        group_sources = set()
         raw_items = []
+        
+        # Để gom nhóm source
+        source_dict = {}
 
         for item in items:
             gia_hien_tai = cast(Any, item.giaHienTai)
+            valid_price = None
             if gia_hien_tai is not None and gia_hien_tai > 0:
-                prices.append(gia_hien_tai)
+                valid_price = float(gia_hien_tai)
+                prices.append(valid_price)
 
             san_tmdt = cast(Any, item.sanTMDT)
-            if san_tmdt:
-                group_sources.add(san_tmdt)
+            source_code, source_name = normalize_source_code(san_tmdt or "")
+            if source_code != "unknown":
+                if source_code not in source_dict:
+                    source_dict[source_code] = {
+                        "sourceCode": source_code,
+                        "sourceName": source_name,
+                        "giaThapNhat": None,
+                        "offerCount": 0
+                    }
+                
+                source_dict[source_code]["offerCount"] += 1
+                
+                # Cập nhật giá thấp nhất cho source này nếu có giá hợp lệ
+                if valid_price is not None:
+                    current_min = source_dict[source_code]["giaThapNhat"]
+                    if current_min is None or valid_price < current_min:
+                        source_dict[source_code]["giaThapNhat"] = valid_price
 
             raw_item = {
                 "maSPTho": item.maSPTho,
                 "maSPCH": item.maSPCH,
                 "tenSanPham": item.tenSanPham,
                 "sanTMDT": item.sanTMDT,
-                "giaHienTai": float(gia_hien_tai) if gia_hien_tai is not None else None,
+                "giaHienTai": valid_price,
                 "linkGoc": item.linkGoc,
                 "hinhAnh": item.hinhAnh,
                 "danhGia": item.danhGia,
@@ -347,7 +367,14 @@ def build_search_data(keyword: str, db: Session):
             raw_items.append(raw_item)
             all_items.append(raw_item)
 
-        sources.update(group_sources)
+        # Build mảng sources
+        group_sources = list(source_dict.values())
+        # Loại bỏ các sources không có giá hợp lệ, sau đó sort theo giá min
+        group_sources = [s for s in group_sources if s["giaThapNhat"] is not None]
+        group_sources.sort(key=lambda x: x["giaThapNhat"])
+        
+        for s in group_sources:
+            sources.add(s["sourceCode"])
 
         group_data = {
             "maNhomTam": spch.maSPCH,
@@ -359,7 +386,9 @@ def build_search_data(keyword: str, db: Session):
             "productType": spch.productType,
             "tinhTrang": spch.tinhTrang,
             "soNguon": len(group_sources),
-            "nguon": sorted(group_sources),
+            "soOffer": len(raw_items),
+            "nguon": [s["sourceName"] for s in group_sources],
+            "sources": group_sources,
             "soSanPham": len(items),
             "giaThapNhat": float(min(prices)) if prices else None,
             "giaCaoNhat": float(max(prices)) if prices else None,
@@ -372,7 +401,7 @@ def build_search_data(keyword: str, db: Session):
         "keyword": keyword,
         "total_items": len(all_items),
         "total_groups": len(groups),
-        "sources": sorted(sources),
+        "sources": sorted(list(sources)),
         "groups": groups,
         "items": all_items,
     }

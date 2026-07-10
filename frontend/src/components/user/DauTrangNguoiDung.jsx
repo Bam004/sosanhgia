@@ -1,6 +1,7 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
+import { buildLoginUrl } from '../../utils/returnUrl';
 
 export default function DauTrangNguoiDung() {
   const location = useLocation();
@@ -92,9 +93,9 @@ export default function DauTrangNguoiDung() {
               const token = localStorage.getItem("accessToken");
               if (!token) {
                 toast.info("Vui l?ng ??ng nh?p ?? s? d?ng ch?c n?ng theo d?i gi?");
-                navigate('/dang-nhap');
+                navigate(buildLoginUrl('/tai-khoan/san-pham-theo-doi'));
               } else {
-                navigate('/theo-doi-gia');
+                navigate('/tai-khoan/san-pham-theo-doi');
               }
             }} 
             className="user-header__track-button"

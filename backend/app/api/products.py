@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -79,6 +79,20 @@ def filter_items_for_standard_product(
 
             if item_condition != expected_condition:
                 continue
+                
+            item_capacity = matching_service._extract_storage(normalized_item_name)
+            if spch.dungLuong and item_capacity and item_capacity != spch.dungLuong:
+                continue
+
+            item_brand = matching_service._extract_brand(normalized_item_name)
+            item_model_key = matching_service._extract_model_key(
+                normalized_item_name,
+                normalized_item_name.split(),
+                item_brand,
+                item_capacity
+            )
+            if spch.modelKey and item_model_key and item_model_key != spch.modelKey:
+                continue
 
         elif expected_product_type == "accessory":
             if not is_accessory(item_name):
@@ -133,38 +147,66 @@ def compare_product_prices(
 
         items = filter_items_for_standard_product(spch, items)
 
-        if len(items) == 0:
+        # Filter out invalid prices and sort
+        valid_items = []
+        for item in items:
+            if item.giaHienTai and float(item.giaHienTai) > 0:
+                valid_items.append(item)
+                
+        sorted_items = sort_items_by_price(valid_items)
+
+        if not sorted_items:
+            # Group exists but no valid offers
             return JSONResponse(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=status.HTTP_200_OK,
                 content={
-                    "success": False,
-                    "error": "Product not found or all items filtered out"
+                    "success": True,
+                    "data": {
+                        "product": standardized_product_to_response(spch),
+                        "items": [],
+                        "summary": {
+                            "lowest_price": None,
+                            "highest_price": None,
+                            "source_count": 0,
+                            "offer_count": 0
+                        }
+                    }
                 }
             )
 
-        items = sort_items_by_price(items)
+        lowest_price = float(sorted_items[0].giaHienTai)
+        highest_price = float(sorted_items[-1].giaHienTai)
+        offer_count = len(sorted_items)
+        
+        # Calculate unique normalized source codes
+        from backend.app.utils.source_normalization import normalize_source_code
+        unique_sources = set()
+        for item in sorted_items:
+            sc, _ = normalize_source_code(item.sanTMDT or "")
+            if sc:
+                unique_sources.add(sc)
+                
+        source_count = len(unique_sources)
 
-        prices = [
-            float(item.giaHienTai)
-            for item in items
-            if item.giaHienTai is not None and item.giaHienTai > 0
-        ]
-
-        return {
-            "success": True,
-            "data": {
-                "standardized_product_id": product_id,
-                "standardized_product": standardized_product_to_response(spch),
-                "total_merchants": len(items),
-                "lowest_price": min(prices) if prices else None,
-                "highest_price": max(prices) if prices else None,
-                "items": [
-                    item_to_response(item, spch.tinhTrang)
-                    for item in items
-                ]
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "success": True,
+                "data": {
+                    "product": standardized_product_to_response(spch),
+                    "items": [
+                        item_to_response(item, spch.tinhTrang)
+                        for item in sorted_items
+                    ],
+                    "summary": {
+                        "lowest_price": lowest_price,
+                        "highest_price": highest_price,
+                        "source_count": source_count,
+                        "offer_count": offer_count
+                    }
+                }
             }
-        }
-
+        )
     except SQLAlchemyError as error:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -178,6 +220,7 @@ def compare_product_prices(
 @router.get("/{product_id}/history")
 def get_product_price_history(
     product_id: int,
+    range: str = Query("all", pattern="^(1m|3m|6m|all)$"),
     db: Session = Depends(get_db)
 ):
     try:
@@ -204,44 +247,103 @@ def get_product_price_history(
 
         items = filter_items_for_standard_product(spch, items)
 
-        if not items:
-            return JSONResponse(
-                status_code=status.HTTP_404_NOT_FOUND,
-                content={
-                    "success": False,
-                    "error": "Product not found or all items filtered out"
-                }
-            )
+        from backend.app.utils.source_normalization import normalize_source_code
+        from datetime import datetime
+        from dateutil.relativedelta import relativedelta
+        
+        source_data = {}
+        total_points = 0
 
-        history_data = []
+        now = datetime.utcnow()
+        cutoff_date = None
+        if range == "1m":
+            cutoff_date = now - relativedelta(months=1)
+        elif range == "3m":
+            cutoff_date = now - relativedelta(months=3)
+        elif range == "6m":
+            cutoff_date = now - relativedelta(months=6)
+
+        all_time_low = None
+        all_time_low_dt = None
+        range_low = None
 
         for item in items:
+            source_code, source_name = normalize_source_code(item.sanTMDT or "")
+            if not source_code:
+                continue
+                
+            if source_code not in source_data:
+                source_data[source_code] = {
+                    "sourceName": source_name,
+                    "daily_min": {}
+                }
+                
             history_records = (
                 db.query(LichSuGia)
                 .filter(LichSuGia.maSPTho == item.maSPTho)
-                .order_by(LichSuGia.ngayGhiNhan.asc())
                 .all()
             )
 
-            if history_records:
-                history_data.append({
-                    "maSPTho": item.maSPTho,
-                    "maSPCH": item.maSPCH,
-                    "sanTMDT": item.sanTMDT,
-                    "tenSanPham": item.tenSanPham,
-                    "tinhTrang": spch.tinhTrang,
-                    "history": [
-                        {
-                            "gia": float(record.gia),
-                            "ngayGhiNhan": record.ngayGhiNhan.isoformat()
-                        }
-                        for record in history_records
-                    ]
+            for record in history_records:
+                gia = float(record.gia) if record.gia else 0
+                if gia <= 0:
+                    continue
+                    
+                # Tính ATL trên toàn bộ lịch sử (bất kể range)
+                if all_time_low is None or gia < all_time_low["price"] or (gia == all_time_low["price"] and record.ngayGhiNhan < all_time_low_dt):
+                    all_time_low = {
+                        "price": gia,
+                        "date": record.ngayGhiNhan.strftime("%Y-%m-%d"),
+                        "sourceName": source_name
+                    }
+                    all_time_low_dt = record.ngayGhiNhan
+                
+                # Filter points cho biểu đồ và tính range_low
+                if cutoff_date and record.ngayGhiNhan < cutoff_date:
+                    continue
+                if record.ngayGhiNhan > now:
+                    continue
+
+                if range_low is None or gia < range_low:
+                    range_low = gia
+
+                date_str = record.ngayGhiNhan.strftime("%Y-%m-%d")
+                current_min = source_data[source_code]["daily_min"].get(date_str)
+                
+                if current_min is None or gia < current_min:
+                    source_data[source_code]["daily_min"][date_str] = gia
+
+        series = []
+        for s_code, s_info in source_data.items():
+            daily_min_dict = s_info["daily_min"]
+            if not daily_min_dict:
+                continue
+                
+            points = []
+            for d_str in sorted(daily_min_dict.keys()):
+                points.append({
+                    "date": d_str,
+                    "price": daily_min_dict[d_str]
                 })
+                total_points += 1
+                
+            series.append({
+                "sourceCode": s_code,
+                "sourceName": s_info["sourceName"],
+                "points": points
+            })
 
         return {
             "success": True,
-            "data": history_data
+            "data": {
+                "series": series,
+                "sourceCount": len(series),
+                "pointCount": total_points,
+                "rangeSummary": {
+                    "lowestPrice": range_low
+                } if range_low is None or range_low > 0 else None,
+                "allTimeLow": all_time_low
+            }
         }
 
     except SQLAlchemyError as error:

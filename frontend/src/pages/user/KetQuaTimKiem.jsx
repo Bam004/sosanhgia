@@ -297,9 +297,18 @@ export default function KetQuaTimKiem() {
       .filter((key) => boLocActive.san[key])
       .map(normalizeString);
 
-    if (activeShorthands.length > 0) {
+    // Lọc theo Sàn TMĐT (Chuẩn hóa)
+    const activeSourceCodes = Object.keys(boLocActive.san || {})
+      .filter((key) => boLocActive.san[key]);
+
+    if (activeSourceCodes.length > 0) {
       ketQua = ketQua.filter((sp) => {
         const platforms = [];
+        if (sp.sources && sp.sources.length > 0) {
+          return sp.sources.some(s => activeSourceCodes.includes(s.sourceCode));
+        }
+        
+        // Fallback for old cache structure
         if (sp.sanDangBan) {
           if (Array.isArray(sp.sanDangBan)) platforms.push(...sp.sanDangBan);
           else platforms.push(sp.sanDangBan);
@@ -308,10 +317,6 @@ export default function KetQuaTimKiem() {
           if (Array.isArray(sp.nguon)) platforms.push(...sp.nguon);
           else platforms.push(sp.nguon);
         }
-        if (sp.sources) {
-          if (Array.isArray(sp.sources)) platforms.push(...sp.sources);
-          else platforms.push(sp.sources);
-        }
         if (sp.items) {
           sp.items.forEach(item => { if (item.sanTMDT) platforms.push(item.sanTMDT); });
         }
@@ -319,7 +324,7 @@ export default function KetQuaTimKiem() {
           sp.offers.forEach(offer => { if (offer.sanTMDT) platforms.push(offer.sanTMDT); });
         }
 
-        return platforms.some((p) => activeShorthands.includes(normalizeString(p)));
+        return platforms.some((p) => activeSourceCodes.includes(normalizeString(p)));
       });
     }
 

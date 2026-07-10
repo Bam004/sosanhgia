@@ -49,35 +49,37 @@ export default function BoLocSanPham({ onFilterChange, danhSachGoc = [] }) {
   const availableBrands = getAvailableBrands();
 
   const getAvailableSources = () => {
-    const sourceSet = new Set();
+    const sourceSet = new Map();
     danhSachGoc.forEach((sp) => {
-      const addSource = (s) => {
-        if (s && typeof s === 'string') sourceSet.add(s.trim());
-      };
-      if (sp.sanDangBan) {
-        if (Array.isArray(sp.sanDangBan)) sp.sanDangBan.forEach(addSource);
-        else addSource(sp.sanDangBan);
+      if (sp.sources && sp.sources.length > 0) {
+        sp.sources.forEach(s => {
+          if (s.sourceCode) {
+            sourceSet.set(s.sourceCode, s.sourceName || s.sourceCode);
+          }
+        });
+      } else {
+        const addSource = (s) => {
+          if (s && typeof s === 'string') {
+            const norm = normalizeText(s);
+            if (!sourceSet.has(norm)) {
+              sourceSet.set(norm, s.trim());
+            }
+          }
+        };
+        if (sp.sanDangBan) {
+          if (Array.isArray(sp.sanDangBan)) sp.sanDangBan.forEach(addSource);
+          else addSource(sp.sanDangBan);
+        }
+        if (sp.nguon) {
+          if (Array.isArray(sp.nguon)) sp.nguon.forEach(addSource);
+          else addSource(sp.nguon);
+        }
+        if (sp.items) sp.items.forEach(i => addSource(i.sanTMDT));
+        if (sp.offers) sp.offers.forEach(o => addSource(o.sanTMDT));
       }
-      if (sp.nguon) {
-        if (Array.isArray(sp.nguon)) sp.nguon.forEach(addSource);
-        else addSource(sp.nguon);
-      }
-      if (sp.sources) {
-        if (Array.isArray(sp.sources)) sp.sources.forEach(addSource);
-        else addSource(sp.sources);
-      }
-      if (sp.items) sp.items.forEach(i => addSource(i.sanTMDT));
-      if (sp.offers) sp.offers.forEach(o => addSource(o.sanTMDT));
     });
     
-    const sourcesMap = new Map();
-    sourceSet.forEach(s => {
-      const key = normalizeText(s);
-      if (!sourcesMap.has(key)) {
-        sourcesMap.set(key, s);
-      }
-    });
-    return Array.from(sourcesMap.entries()).map(([key, label]) => ({ key, label }));
+    return Array.from(sourceSet.entries()).map(([key, label]) => ({ key, label }));
   };
 
   const availableSources = getAvailableSources();

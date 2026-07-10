@@ -24,16 +24,36 @@ const normalizeText = (value) => {
     .trim();
 };
 
+const SOURCE_ALIASES = {
+  cellphones: ['cellphones', 'cellphone s', 'cell phone s', 'cellphones.com.vn'],
+  fptshop: ['fptshop', 'fpt shop', 'fptshop.com.vn', 'fpt'],
+  hoangha: ['hoangha', 'hoang ha', 'hoàng hà', 'hoanghamobile', 'hoàng hà mobile', 'hoang ha mobile'],
+  lazada: ['lazada', 'lazadavn', 'lazada.vn'],
+  tiki: ['tiki', 'tiki.vn', 'tikivn'],
+  shopee: ['shopee', 'shopee.vn', 'shopeevn'],
+  tiktok: ['tiktok', 'tiktok shop', 'tiktokshop'],
+  didongviet: ['didongviet', 'di dong viet', 'di động việt'],
+  thegioididong: ['thegioididong', 'thế giới di động', 'tgdd'],
+  dienmayxanh: ['dienmayxanh', 'điện máy xanh', 'dmx']
+};
+
+const getSourceCode = (sanTMDT) => {
+  const name = normalizeText(sanTMDT);
+  if (!name) return 'unknown';
+  for (const [code, aliases] of Object.entries(SOURCE_ALIASES)) {
+    if (aliases.includes(name)) return code;
+  }
+  for (const [code, aliases] of Object.entries(SOURCE_ALIASES)) {
+    if (aliases.some(alias => name.includes(alias))) return code;
+  }
+  return name.replace(/[^a-z0-9]/g, '_');
+};
+
 // Helper function to format platform name to class/logo
 const getLogoName = (sanTMDT) => {
-  const name = normalizeText(sanTMDT);
-  if (!name) return 'lazada';
-  if (name.includes('lazada')) return 'lazada';
-  if (name.includes('tiki')) return 'tiki';
-  if (name.includes('fpt')) return 'fptshop';
-  if (name.includes('cellphone')) return 'cellphones';
-  if (name.includes('hoangha') || name.includes('hoang ha')) return 'hoanghamobile';
-  return 'lazada';
+  const code = getSourceCode(sanTMDT);
+  if (SOURCE_ALIASES[code]) return code;
+  return 'lazada'; // fallback
 };
 
 // Helper function to get domain name
@@ -43,18 +63,24 @@ const getDomainName = (sanTMDT, linkGoc) => {
       const url = new URL(linkGoc);
       return url.hostname.replace('www.', '');
     } catch (e) {
-      // fallback to platform name
+      // fallback
     }
   }
 
-  const name = normalizeText(sanTMDT);
-  if (!name) return 'lazada.vn';
-  if (name.includes('lazada')) return 'lazada.vn';
-  if (name.includes('tiki')) return 'tiki.vn';
-  if (name.includes('fpt')) return 'fptshop.com.vn';
-  if (name.includes('cellphone')) return 'cellphones.com.vn';
-  if (name.includes('hoangha') || name.includes('hoang ha')) return 'hoanghamobile.com';
-  return 'lazada.vn';
+  const code = getSourceCode(sanTMDT);
+  const domainMapping = {
+    cellphones: 'cellphones.com.vn',
+    fptshop: 'fptshop.com.vn',
+    hoangha: 'hoanghamobile.com',
+    lazada: 'lazada.vn',
+    tiki: 'tiki.vn',
+    shopee: 'shopee.vn',
+    tiktok: 'tiktok.com',
+    didongviet: 'didongviet.vn',
+    thegioididong: 'thegioididong.com',
+    dienmayxanh: 'dienmayxanh.com'
+  };
+  return domainMapping[code] || 'lazada.vn';
 };
 
 const hienThiThuongHieu = (brand) => {
@@ -130,8 +156,10 @@ export const productService = {
               giaGoc: (group.giaThapNhat || 0) * 1.15,
               phanTramGiam: 15,
               soNoiBan: group.soNguon || 1,
+              soOffer: group.soOffer || group.items?.length || 1,
               sanDangBan: group.nguon || [],
               nguon: group.nguon || [],
+              sources: group.sources || [],
               danhGia: lowestPriceItem.danhGia,
               soLuongDanhGia: lowestPriceItem.soLuongDanhGia || 0,
               linkMuaTotNhat: lowestPriceItem.linkGoc || '',
@@ -171,8 +199,15 @@ export const productService = {
               giaGoc: item.giaHienTai * 1.15 || 0,
               phanTramGiam: 15,
               soNoiBan: 1,
+              soOffer: 1,
               sanDangBan: [item.sanTMDT],
               nguon: [item.sanTMDT],
+              sources: [{
+                sourceCode: getSourceCode(item.sanTMDT),
+                sourceName: item.sanTMDT,
+                giaThapNhat: item.giaHienTai,
+                offerCount: 1
+              }],
               danhGia: item.danhGia,
               soLuongDanhGia: item.soLuongDanhGia || 0,
               linkMuaTotNhat: item.linkGoc || '',
@@ -314,7 +349,8 @@ export const productService = {
         });
 
         const firstItem = items[0] || {};
-        const standardizedProduct = rawData.standardized_product || {};
+        const standardizedProduct = rawData.product || rawData.standardized_product || {};
+        const summary = rawData.summary || {};
         const tenChuanHoa = standardizedProduct.tenChuanHoa || firstItem.tenSanPham || 'Sản phẩm';
         const tinhTrang = standardizedProduct.tinhTrang || firstItem.tinhTrang || 'new';
         const thuongHieu = hienThiThuongHieu(standardizedProduct.thuongHieu || firstItem.attributes?.brand || 'Khác');
@@ -337,11 +373,12 @@ export const productService = {
             tinhTrang,
             danhMuc,
             hinhAnh,
-            giaThapNhat: rawData.lowest_price || firstItem.giaHienTai || 0,
-            giaCaoNhat: rawData.highest_price || firstItem.giaHienTai || 0,
-            giaGoc: (rawData.lowest_price || firstItem.giaHienTai || 0) * 1.15,
+            giaThapNhat: summary.lowest_price || rawData.lowest_price || firstItem.giaHienTai || 0,
+            giaCaoNhat: summary.highest_price || rawData.highest_price || firstItem.giaHienTai || 0,
+            giaGoc: (summary.lowest_price || rawData.lowest_price || firstItem.giaHienTai || 0) * 1.15,
             phanTramGiam: 15,
-            soNoiBan: rawData.total_merchants || items.length || 0,
+            soNoiBan: summary.source_count || rawData.total_merchants || items.length || 0,
+            soOffer: summary.offer_count || items.length || 0,
             danhGia: firstItem.danhGia,
             soLuongDanhGia: firstItem.soLuongDanhGia || 0,
             sanDangBan,
@@ -353,6 +390,7 @@ export const productService = {
             noiBanChiTiet: items.map((item) => ({
               maSPTho: item.maSPTho,
               logo: getLogoName(item.sanTMDT),
+              sourceCode: getSourceCode(item.sanTMDT),
               san: item.sanTMDT,
               domain: getDomainName(item.sanTMDT, item.linkGoc),
               tenNoiBan: item.tenSanPham,
@@ -387,7 +425,7 @@ export const productService = {
       const rawData = extractData(response);
 
       if (rawData && rawData.items) {
-        const standardizedProduct = rawData.standardized_product || {};
+        const standardizedProduct = rawData.product || rawData.standardized_product || {};
         const tinhTrang = standardizedProduct.tinhTrang || 'new';
 
         const mappedOffers = [...rawData.items]
@@ -399,6 +437,7 @@ export const productService = {
           .map((item) => ({
             maSPTho: item.maSPTho,
             logo: getLogoName(item.sanTMDT),
+            sourceCode: getSourceCode(item.sanTMDT),
             san: item.sanTMDT,
             domain: getDomainName(item.sanTMDT, item.linkGoc),
             tenNoiBan: item.tenSanPham,
@@ -429,34 +468,31 @@ export const productService = {
   },
 
   // 6. Get price history (Call real backend API)
-  layLichSuGia: async (id, range = '1_month') => {
+  layLichSuGia: async (id, range = 'all') => {
     try {
-      const response = await api.get(`/products/${id}/history`);
+      const response = await api.get(`/products/${id}/history?range=${range}`);
       const payload = response?.data?.data || response?.data || response;
-      const rawGroups = Array.isArray(payload) ? payload : [];
       
-      const historyData = [];
-
-      rawGroups.forEach((group) => {
-        const histories = Array.isArray(group.history) ? group.history : [];
-        histories.forEach((point) => {
-          historyData.push({
-            maSPTho: group.maSPTho,
-            sanTMDT: group.sanTMDT,
-            gia: Number(point.gia),
-            ngayGhiNhan: point.ngayGhiNhan
-          });
-        });
-      });
+      const series = payload.series || [];
+      const sourceCount = payload.sourceCount || 0;
+      const pointCount = payload.pointCount || 0;
+      const rangeSummary = payload.rangeSummary || null;
+      const allTimeLow = payload.allTimeLow || null;
 
       return {
-        data: historyData,
+        data: {
+          series,
+          sourceCount,
+          pointCount,
+          rangeSummary,
+          allTimeLow
+        },
         errorMessage: null
       };
     } catch (error) {
       console.error('API History failed:', error?.message);
       return {
-        data: [],
+        data: { series: [], sourceCount: 0, pointCount: 0, rangeSummary: null, allTimeLow: null },
         errorMessage: error?.message || 'Lỗi kết nối lịch sử giá'
       };
     }
