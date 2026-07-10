@@ -122,7 +122,8 @@ export default function KetQuaTimKiem() {
 
       return {
         data: cacheData,
-        errorMessage: cacheRes.errorMessage
+        errorMessage: cacheRes.errorMessage,
+        cache_hit: cacheRes.cache_hit
       };
     };
 
@@ -188,11 +189,17 @@ export default function KetQuaTimKiem() {
       try {
         const cacheResult = await layCacheTuDb(keyword, cacheKey);
         const cacheData = cacheResult.data;
+        const isCacheHit = cacheResult.cache_hit;
 
         if (!isCancelled && cacheData.length > 0) {
           hasVisibleCache = true;
           setDanhSachGoc(cacheData);
           setLoading(false);
+        }
+
+        if (!isCancelled && isCacheHit && cacheData.length > 0) {
+          setDangCapNhat(false);
+          return;
         }
 
         if (!isCancelled && cacheData.length === 0) {
@@ -224,7 +231,7 @@ export default function KetQuaTimKiem() {
             setError(null);
           } else if (cacheData.length === 0) {
             setDanhSachGoc([]);
-            setError('Chưa tìm thấy sản phẩm phù hợp sau khi cập nhật dữ liệu.');
+            setError(null);
           }
         }
       } catch (err) {
@@ -234,10 +241,14 @@ export default function KetQuaTimKiem() {
           const message = err.message || 'Lỗi kết nối máy chủ API.';
 
           if (hasVisibleCache) {
-            setError('Dữ liệu mới cập nhật chưa thành công. Tạm hiển thị kết quả đã lưu gần nhất.');
+            // Silently ignore or show subtle message
           } else {
-            setError(message);
-            toast.error(message);
+            if (message.includes('Tác vụ cập nhật') || message.includes('Không tạo được')) {
+              setError(null);
+            } else {
+              setError(message);
+              toast.error(message);
+            }
             setDanhSachGoc([]);
           }
         }
@@ -422,7 +433,7 @@ export default function KetQuaTimKiem() {
                 fontSize: '14px'
               }}
             >
-              Đang cập nhật dữ liệu mới từ các sàn TMĐT. Tạm hiển thị kết quả đã lưu gần nhất.
+              Đang kiểm tra và cập nhật thêm dữ liệu mới từ các nguồn.
             </div>
           )}
 

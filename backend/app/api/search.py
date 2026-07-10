@@ -36,6 +36,12 @@ ACCESSORY_KEYWORDS = [
     "tai nghe",
     "adapter",
     "pin du phong",
+    "vi da",
+    "dan da",
+    "khacten",
+    "cap sac",
+    "cu sac",
+    "phu kien",
 ]
 
 REPAIR_SERVICE_KEYWORDS = [
@@ -66,6 +72,11 @@ PHONE_KEYWORDS = [
     "nokia",
     "dien thoai",
     "smartphone",
+    "a55",
+    "a56",
+    "15 pro",
+    "15 plus",
+    "pro max",
 ]
 
 
@@ -84,31 +95,29 @@ def normalize_search_text(text: str) -> str:
 
 
 def is_accessory(ten_san_pham: str) -> bool:
-    normalized_name = normalize_search_text(ten_san_pham)
-
-    return any(
-        keyword in normalized_name
-        for keyword in ACCESSORY_KEYWORDS
-    )
+    matching_service = TextMatchingService()
+    normalized_name = matching_service._normalize_text(ten_san_pham)
+    return matching_service._is_accessory(normalized_name)
 
 
 def is_repair_service(ten_san_pham: str) -> bool:
-    normalized_name = normalize_search_text(ten_san_pham)
-
-    return any(
-        keyword in normalized_name
-        for keyword in REPAIR_SERVICE_KEYWORDS
-    )
+    matching_service = TextMatchingService()
+    normalized_name = matching_service._normalize_text(ten_san_pham)
+    return matching_service._classify_product_type(normalized_name, False) == "repair_service"
 
 
 def detect_expected_product_type(keyword: str) -> str | None:
     normalized_keyword = normalize_search_text(keyword)
+    
+    # Accessory intent
+    accessory_tokens = ["vi da", "dan da", "op", "op lung", "kinh cuong luc", "cuong luc", "mieng dan", "case", "khacten", "cap sac", "cu sac", "tai nghe", "adapter"]
+    # We must check carefully. "sac" as standalone is dangerous, so we check " sac " or similar.
+    # But since it's just intent detection on search query, if user types "sac iphone", it's accessory.
+    if any(token in normalized_keyword for token in accessory_tokens) or "sac" in normalized_keyword.split():
+        return "accessory"
 
     if any(keyword in normalized_keyword for keyword in REPAIR_SERVICE_KEYWORDS):
         return "repair_service"
-
-    if any(keyword in normalized_keyword for keyword in ACCESSORY_KEYWORDS):
-        return "accessory"
 
     if any(keyword in normalized_keyword for keyword in PHONE_KEYWORDS):
         return "phone"
@@ -250,22 +259,23 @@ def build_search_data(keyword: str, db: Session):
         filtered_items = []
 
         for item in items:
+            normalized_item_name = matching_service._normalize_text(item.tenSanPham)
+            is_acc = matching_service._is_accessory(normalized_item_name)
+            item_product_type = matching_service._classify_product_type(normalized_item_name, is_acc)
+            
             if expected_product_type == "phone":
-                if is_accessory(item.tenSanPham) or is_repair_service(item.tenSanPham):
+                if item_product_type != "phone":
                     continue
-
-                normalized_item_name = matching_service._normalize_text(item.tenSanPham)
                 item_condition = matching_service._detect_condition(normalized_item_name)
-
                 if expected_condition and item_condition != expected_condition:
                     continue
 
             if expected_product_type == "accessory":
-                if not is_accessory(item.tenSanPham):
+                if item_product_type != "accessory":
                     continue
 
             if expected_product_type == "repair_service":
-                if not is_repair_service(item.tenSanPham):
+                if item_product_type != "repair_service":
                     continue
 
             filtered_items.append(item)

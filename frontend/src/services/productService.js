@@ -1,4 +1,4 @@
-﻿import api from './api';
+import api from './api';
 
 // Helper function to safely extract data from various response shapes
 const extractData = (res) => {
@@ -73,30 +73,30 @@ const hienThiThuongHieu = (brand) => {
     nokia: 'Nokia'
   };
 
-  return mapping[normalized] || brand || 'KhÃ¡c';
+  return mapping[normalized] || brand || 'Khác';
 };
 
 const hienThiDanhMuc = (productType) => {
   const normalized = normalizeText(productType);
 
   const mapping = {
-    phone: 'Äiá»‡n thoáº¡i',
-    accessory: 'Phá»¥ kiá»‡n',
-    repair_service: 'Dá»‹ch vá»¥ sá»­a chá»¯a',
+    phone: 'Điện thoại',
+    accessory: 'Phụ kiện',
+    repair_service: 'Dịch vụ sửa chữa',
     laptop: 'Laptop',
-    tablet: 'MÃ¡y tÃ­nh báº£ng',
+    tablet: 'Máy tính bảng',
     tv: 'Tivi',
-    monitor: 'MÃ n hÃ¬nh',
+    monitor: 'Màn hình',
     pc: 'PC',
-    audio: 'Ã‚m thanh'
+    audio: 'Âm thanh'
   };
 
-  return mapping[normalized] || productType || 'Äiá»‡n thoáº¡i';
+  return mapping[normalized] || productType || 'Điện thoại';
 };
 
 
 export const productService = {
-  // Láº¥y sáº£n pháº©m ná»•i báº­t cho trang chá»§
+  // Lấy sản phẩm nổi bật cho trang chủ
   laySanPhamNoiBat: async () => {
     return await productService.timKiemSanPham('iphone 15', false);
   },
@@ -110,7 +110,7 @@ export const productService = {
       if (rawData) {
         let mappedProducts = [];
         
-        // Æ¯u tiÃªn render data.groups náº¿u cÃ³
+        // Ưu tiên render data.groups nếu có
         if (rawData.groups && rawData.groups.length > 0) {
           mappedProducts = rawData.groups.map(group => {
             const firstItem = group.items && group.items[0] ? group.items[0] : {};
@@ -118,11 +118,11 @@ export const productService = {
             return {
               id: group.maSPCH || group.maNhomTam,
               maSPCH: group.maSPCH || group.maNhomTam,
-              tenSanPham: group.tenChuanHoa || 'Sáº£n pháº©m',
-              tenChuanHoa: group.tenChuanHoa || 'Sáº£n pháº©m',
+              tenSanPham: group.tenChuanHoa || 'Sản phẩm',
+              tenChuanHoa: group.tenChuanHoa || 'Sản phẩm',
               thuongHieu: hienThiThuongHieu(group.thuongHieu || firstItem.attributes?.brand || 'Khác'),
               dungLuong: group.dungLuong,
-              danhMuc: hienThiDanhMuc(group.productType || 'Äiá»‡n thoáº¡i'),
+              danhMuc: hienThiDanhMuc(group.productType || 'Điện thoại'),
               tinhTrang: group.tinhTrang || firstItem.tinhTrang || 'new',
               hinhAnh: group.sanPhamGiaThapNhat?.hinhAnh || firstItem.hinhAnh || '',
               giaThapNhat: group.giaThapNhat || 0,
@@ -153,14 +153,14 @@ export const productService = {
             };
           });
         } 
-        // Fallback sang items thÃ´ náº¿u khÃ´ng cÃ³ groups
+        // Fallback sang items thô nếu không có groups
         else if (rawData.items && rawData.items.length > 0) {
           mappedProducts = rawData.items.map(item => {
             return {
               id: item.maSPCH || item.maSPTho || Math.floor(Math.random() * 10000),
               maSPCH: item.maSPCH,
-              tenSanPham: item.tenSanPham || 'Sáº£n pháº©m',
-              tenChuanHoa: item.tenSanPham || 'Sáº£n pháº©m',
+              tenSanPham: item.tenSanPham || 'Sản phẩm',
+              tenChuanHoa: item.tenSanPham || 'Sản phẩm',
               thuongHieu: hienThiThuongHieu(item.attributes?.brand || 'Khác'),
               dungLuong: null,
               danhMuc: hienThiDanhMuc('phone'),
@@ -195,7 +195,7 @@ export const productService = {
           });
         }
 
-        // Ãp dá»¥ng bá»™ lá»c cá»¥c bá»™ trÃªn danh sÃ¡ch sáº£n pháº©m láº¥y tá»« API
+        // Áp dụng bộ lọc cục bộ trên danh sách sản phẩm lấy từ API
         let filtered = mappedProducts;
         if (filters.website && filters.website.length > 0) {
           filtered = filtered.filter(p => p.sanDangBan.some(s => filters.website.includes(s)));
@@ -226,17 +226,17 @@ export const productService = {
 
         return {
           data: filtered,
-
-          errorMessage: null
+          errorMessage: null,
+          cache_hit: rawData.cache_hit || false
         };
       }
-      throw new Error('KhÃ´ng nháº­n Ä‘Æ°á»£c dá»¯ liá»‡u há»£p lá»‡ tá»« mÃ¡y chá»§ API.');
+      throw new Error('Không nhận được dữ liệu hợp lệ từ máy chủ API.');
     } catch (error) {
       console.warn('API Search failed:', error.message);
       const isTimeout = error.code === 'ECONNABORTED' || error.message?.toLowerCase().includes('timeout');
       const errorMessage = isTimeout 
         ? 'Yêu cầu tìm kiếm bị quá hạn. Vui lòng thử lại.' 
-        : (error.message || 'Lá»—i káº¿t ná»‘i mÃ¡y chá»§ API.');
+        : (error.message || 'Lỗi kết nối máy chủ API.');
 
       if (isTimeout && autoScrape) {
         try {
@@ -245,7 +245,7 @@ export const productService = {
           if (cachedResult.data && cachedResult.data.length > 0) {
             return {
               data: cachedResult.data,
-              errorMessage: 'Dá»¯ liá»‡u má»›i Ä‘ang Ä‘Æ°á»£c cáº­p nháº­t lÃ¢u hÆ¡n dá»± kiáº¿n. Táº¡m hiá»ƒn thá»‹ káº¿t quáº£ Ä‘Ã£ lÆ°u gáº§n nháº¥t.',
+              errorMessage: 'Dữ liệu mới đang được cập nhật lâu hơn dự kiến. Tạm hiển thị kết quả đã lưu gần nhất.',
               fromCache: true
             };
           }
@@ -315,10 +315,10 @@ export const productService = {
 
         const firstItem = items[0] || {};
         const standardizedProduct = rawData.standardized_product || {};
-        const tenChuanHoa = standardizedProduct.tenChuanHoa || firstItem.tenSanPham || 'Sáº£n pháº©m';
+        const tenChuanHoa = standardizedProduct.tenChuanHoa || firstItem.tenSanPham || 'Sản phẩm';
         const tinhTrang = standardizedProduct.tinhTrang || firstItem.tinhTrang || 'new';
         const thuongHieu = hienThiThuongHieu(standardizedProduct.thuongHieu || firstItem.attributes?.brand || 'Khác');
-        const danhMuc = hienThiDanhMuc(standardizedProduct.productType || 'Äiá»‡n thoáº¡i');
+        const danhMuc = hienThiDanhMuc(standardizedProduct.productType || 'Điện thoại');
         const hinhAnh = standardizedProduct.anhDaiDien || firstItem.hinhAnh || '';
 
         const sanDangBan = [
@@ -369,13 +369,13 @@ export const productService = {
         };
       }
 
-      throw new Error('KhÃ´ng tÃ¬m tháº¥y thÃ´ng tin sáº£n pháº©m chuáº©n hÃ³a.');
+      throw new Error('Không tìm thấy thông tin sản phẩm chuẩn hóa.');
     } catch (error) {
       console.warn('API Detail failed:', error.message);
       return {
         data: null,
 
-        errorMessage: error.message || 'KhÃ´ng tÃ¬m tháº¥y sáº£n pháº©m'
+        errorMessage: error.message || 'Không tìm thấy sản phẩm'
       };
     }
   },
@@ -417,13 +417,13 @@ export const productService = {
         };
       }
 
-      throw new Error('KhÃ´ng tÃ¬m tháº¥y thÃ´ng tin so sÃ¡nh.');
+      throw new Error('Không tìm thấy thông tin so sánh.');
     } catch (error) {
       console.warn('API Compare failed:', error.message);
       return {
         data: [],
 
-        errorMessage: error.message || 'Lá»—i káº¿t ná»‘i mÃ¡y chá»§ API'
+        errorMessage: error.message || 'Lỗi kết nối máy chủ API'
       };
     }
   },
