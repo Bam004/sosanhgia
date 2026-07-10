@@ -1,4 +1,5 @@
 import pytest
+import uuid
 from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
 from sqlalchemy.orm import Session
@@ -28,7 +29,8 @@ def test_post_search_job_enqueues_task(mock_delay, db_session: Session):
     mock_celery_result.id = "mock-task-123"
     mock_delay.return_value = mock_celery_result
 
-    response = client.post("/api/search/jobs?keyword=unique_keyword_test_1")
+    keyword = f"unique_keyword_{uuid.uuid4().hex[:8]}"
+    response = client.post(f"/api/search/jobs?keyword={keyword}")
     
     print(response.json())
     assert response.status_code == 201
@@ -68,37 +70,36 @@ def test_post_search_job_enqueue_failure_updates_status(mock_delay, db_session: 
     assert "Redis connection error" in job.errorMessage
 
 @patch("backend.app.tasks.search_tasks.scrape_and_sync_keyword")
-@patch("backend.app.tasks.search_tasks.invalidate_search_cache")
-def test_run_search_job_task_success(mock_invalidate, mock_scrape, db_session: Session):
+@patch("backend.app.tasks.search_tasks.bump_search_cache_version")
+def test_run_search_job_task_success(mock_bump_cache, mock_scrape, db_session: Session):
     """
     Test 3: The Celery worker task correctly transitions states, updates DB, 
     and invalidates cache on success.
     """
-    # First create a pending job directly in DB
-    job = SearchJob(keyword="macbook", keywordChuanHoa="macbook", trangThai="pending")
-    db_session.add(job)
-    db_session.commit()
-    
     mock_scrape.return_value = {
         "total_raw_items": 10,
         "total_filtered_items": 8,
         "total_groups": 1,
         "source_status": []
     }
-
-    # Run the worker task directly
+    
+    # Tạo sẵn một pending job
+    job = SearchJob(keyword="macbook", keywordChuanHoa="macbook", trangThai="pending")
+    db_session.add(job)
+    db_session.commit()
+    
+    # Gọi hàm worker trực tiếp
     from backend.app.tasks.search_tasks import run_search_job_task
     result = run_search_job_task(job.maSearchJob, "macbook")
     
     assert result["success"] is True
     
-    # Check DB status
     db_session.refresh(job)
     assert job.trangThai == "completed"
     assert job.tongRawItems == 10
     
-    # Cache MUST be invalidated
-    mock_invalidate.assert_called_once_with("macbook")
+    # 6. Cache bump được gọi
+    mock_bump_cache.assert_called_once_with("macbook")
 
 @patch("backend.app.tasks.search_tasks.scrape_and_sync_keyword")
 def test_run_search_job_task_exception(mock_scrape, db_session: Session):

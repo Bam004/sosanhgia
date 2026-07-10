@@ -4,7 +4,7 @@ from backend.app.core.celery_app import celery_app
 from backend.app.core.database import SessionLocal
 from backend.app.models.search_job import SearchJob
 from backend.app.services.scrape_pipeline_service import scrape_and_sync_keyword
-from backend.app.services.search_cache_service import invalidate_search_cache
+from backend.app.services.search_cache_service import bump_search_cache_version
 
 
 @celery_app.task(name="search.run_search_job")
@@ -76,12 +76,11 @@ def run_search_job_task(job_id: int, keyword: str) -> dict:
             source_status.errorMessage = result.get("error")
             source_status.ketThucLuc = finished_at
 
-        # Xóa cache TRƯỚC KHI commit trạng thái completed.
-        # Nếu commit thành công, cache đã sạch, frontend đọc sẽ gọi db lấy data mới.
-        # Nếu commit thất bại, cache bị xóa sớm nhưng data cũ không bị sai (chỉ tốn DB 1 lần lấy).
-        invalidate_search_cache(keyword)
-
         db.commit()
+
+        # Tăng cache version và xoá cache cũ SAU KHI commit DB
+        # để đảm bảo request tiếp theo đọc được data mới nhất và tránh race condition
+        bump_search_cache_version(keyword)
 
         return {
             "success": True,

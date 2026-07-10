@@ -7,7 +7,7 @@ from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
 
-from backend.app.api.search import normalize_search_text
+from backend.app.core.utils import normalize_search_text
 from backend.app.core.database import get_db
 from backend.app.models.search_job import SearchJob, SearchJobSourceStatus
 from backend.app.tasks.search_tasks import run_search_job_task

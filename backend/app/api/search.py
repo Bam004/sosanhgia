@@ -1,6 +1,7 @@
 from backend.app.services.search_cache_service import (
     get_cached_search_result,
     set_cached_search_result,
+    get_search_cache_version,
 )
 from typing import Any, cast
 import unicodedata
@@ -11,6 +12,7 @@ from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from backend.app.core.database import get_db
+from backend.app.core.utils import normalize_search_text
 from backend.app.models.san_pham_chuan_hoa import SanPhamChuanHoa
 from backend.app.models.san_pham_tho import SanPhamTho
 from backend.app.services.scrape_pipeline_service import scrape_and_sync_keyword
@@ -79,19 +81,6 @@ PHONE_KEYWORDS = [
     "pro max",
 ]
 
-
-def normalize_search_text(text: str) -> str:
-    text = text or ""
-    text = text.lower()
-    text = unicodedata.normalize("NFD", text)
-    text = "".join(
-        char for char in text
-        if unicodedata.category(char) != "Mn"
-    )
-    text = text.replace("đ", "d")
-    text = " ".join(text.split())
-
-    return text
 
 
 def is_accessory(ten_san_pham: str) -> bool:
@@ -411,6 +400,8 @@ def search_products(
                     }
                 }
 
+        cache_version = get_search_cache_version(keyword)
+
         scraped = False
         scrape_error = None
         scrape_result = None
@@ -428,7 +419,7 @@ def search_products(
         data = build_search_data(keyword, db)
 
         if not auto_scrape:
-            set_cached_search_result(keyword, data)
+            set_cached_search_result(keyword, data, cache_version)
 
         return {
             "success": True,
