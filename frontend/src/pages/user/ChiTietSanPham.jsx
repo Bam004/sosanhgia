@@ -1,11 +1,12 @@
-import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
+﻿import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { dinhDangTien } from '../../utils/dinhDangTien';
 import { SinhIconSanPham } from '../../components/user/TheSanPham';
 import BangSoSanhGia from '../../components/user/BangSoSanhGia';
 import { productService } from '../../services/productService';
-import { theoDoiGiaService } from '../../services/theoDoiGiaService';
+//import { theoDoiGiaService } from '../../services/theoDoiGiaService';
+//import { buildLoginUrl } from '../../utils/returnUrl';
 
 export default function ChiTietSanPham() {
   const { id } = useParams();
@@ -29,9 +30,9 @@ export default function ChiTietSanPham() {
   // Sắp xếp nơi bán
   const [kieuSapXep, setKieuSapXep] = useState('asc');
 
-  const [dangTheoDoi, setDangTheoDoi] = useState(false);
-  const [daTheoDoi, setDaTheoDoi] = useState(false);
-  const [maTheoDoi, setMaTheoDoi] = useState(null);
+  //const [dangTheoDoi, setDangTheoDoi] = useState(false);
+  //const [daTheoDoi, setDaTheoDoi] = useState(false);
+  //const [maTheoDoi, setMaTheoDoi] = useState(null);
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -60,25 +61,6 @@ export default function ChiTietSanPham() {
   }, [id]);
 
 
-  useEffect(() => {
-    const kiemTraTheoDoi = async () => {
-      const token = localStorage.getItem('accessToken');
-      if (!token || !id) return;
-
-      try {
-        const res = await theoDoiGiaService.kiemTraTheoDoi(id);
-
-        if (res.success) {
-          setDaTheoDoi(Boolean(res.data?.isFollowing));
-          setMaTheoDoi(res.data?.maTheoDoi || null);
-        }
-      } catch (err) {
-        console.error('Check price tracking failed:', err);
-      }
-    };
-
-    kiemTraTheoDoi();
-  }, [id]);
 
   const handleRetry = () => {
     setLoading(true);
@@ -97,50 +79,8 @@ export default function ChiTietSanPham() {
     });
   };
 
-  const xuLyTheoDoiGia = async () => {
-    const token = localStorage.getItem('accessToken');
-
-    if (!token) {
-      toast.info('Vui l?ng ??ng nh?p ?? s? d?ng ch?c n?ng theo d?i gi?');
-      navigate('/dang-nhap');
-      return;
-    }
-
-    if (daTheoDoi) {
-      toast.info('S?n ph?m n?y ?? c? trong danh s?ch theo d?i');
-      navigate('/tai-khoan/san-pham-theo-doi');
-      return;
-    }
-
-    setDangTheoDoi(true);
-
-    try {
-      const res = await theoDoiGiaService.taoTheoDoiGia({
-        maSPCH: Number(id),
-      });
-
-      if (res.success) {
-        setDaTheoDoi(true);
-        setMaTheoDoi(res.data?.maTheoDoi || null);
-        toast.success(res.message || 'Theo d?i s?n ph?m th?nh c?ng');
-      } else {
-        toast.error(res.message || 'Kh?ng th? theo d?i s?n ph?m');
-      }
-    } catch (err) {
-      console.error('Create price tracking failed:', err);
-
-      if (err.response?.status === 409) {
-        setDaTheoDoi(true);
-        toast.info('S?n ph?m n?y ?? c? trong danh s?ch theo d?i');
-      } else if (err.response?.status === 401 || err.response?.status === 403) {
-        toast.info('Phi?n ??ng nh?p ?? h?t h?n, vui l?ng ??ng nh?p l?i');
-        navigate('/dang-nhap');
-      } else {
-        toast.error(err.response?.data?.message || 'L?i k?t n?i m?y ch? API');
-      }
-    } finally {
-      setDangTheoDoi(false);
-    }
+  const xuLyTheoDoiGia = () => {
+    navigate(`/theo-doi-gia?maSPCH=${encodeURIComponent(id)}`);
   };
 
   if (error && !sanPham) {
@@ -206,29 +146,10 @@ export default function ChiTietSanPham() {
     return mapping[tinhTrang] || tinhTrang || 'Không rõ';
   };
 
-  // Tỷ lệ giảm giá giả lập
-  const phanTramGiam = sanPham.phanTramGiam || 17;
-  const giaGoc = sanPham.giaGoc || Math.round(sanPham.giaThapNhat * 1.2);
-  const domainTarget = sanPham.domain || 'fptshop.com.vn';
-  // Thống kê số nơi bán và số sàn TMĐT trong bảng so sánh
+  const domainTarget = sanPham.domain || '';
+  const soSanTMDT = sanPham.soNoiBan || 0;
+  const soNoiBan = sanPham.soOffer || 0;
   const noiBanChiTiet = sanPham.noiBanChiTiet || [];
-  const soNoiBan = noiBanChiTiet.length;
-
-  const layTenSanTMDT = (noiBan) =>
-    noiBan.san ||
-    noiBan.sanTMDT ||
-    noiBan.tenSanTMDT ||
-    noiBan.tenSan ||
-    noiBan.tenNguon ||
-    noiBan.nguon ||
-    noiBan.nhaBan ||
-    '';
-
-  const soSanTMDT = new Set(
-    noiBanChiTiet
-      .map(layTenSanTMDT)
-      .filter(Boolean)
-  ).size;
 
   return (
     <main className="user-page">
@@ -281,28 +202,37 @@ export default function ChiTietSanPham() {
 
             <div className="product-main-card__pricing">
               <div className="price-row">
-                <span className="label">Giá khuyến mãi tốt nhất:</span>
-                <span className="price-value">{dinhDangTien(sanPham.giaThapNhat)}</span>
-              </div>
-              <div className="price-original-row">
-                <span className="label">Giá gốc hãng công bố:</span>
-                <span className="price-original-value">{dinhDangTien(giaGoc)}</span>
-                <span className="price-discount-tag">Giảm {phanTramGiam}%</span>
+                <span className="label">Mức giá:</span>
+                <span className="price-value">
+                  {sanPham.items && sanPham.items.length === 0 ? (
+                    'Chưa có giá'
+                  ) : sanPham.giaThapNhat === sanPham.giaCaoNhat ? (
+                    dinhDangTien(sanPham.giaThapNhat)
+                  ) : (
+                    `${dinhDangTien(sanPham.giaThapNhat)} - ${dinhDangTien(sanPham.giaCaoNhat)}`
+                  )}
+                </span>
               </div>
               <p className="price-note">
-                * Giá thấp nhất hiện tại đang được cập nhật tự động từ sàn TMĐT lớn nhất.
+                Tổng hợp từ {sanPham.soNoiBan} nguồn bán ({sanPham.soOffer || sanPham.soNoiBan} offer)
               </p>
             </div>
 
             <div className="product-main-card__actions">
-              <a
-                href={sanPham.linkMuaTotNhat}
-                target="_blank"
-                rel="noreferrer"
-                className="btn-primary-go"
-              >
-                Tới nơi bán rẻ nhất
-              </a>
+              {sanPham.linkMuaTotNhat && sanPham.linkMuaTotNhat.match(/^https?:\/\//) ? (
+                <a
+                  href={sanPham.linkMuaTotNhat}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-primary-go"
+                >
+                  Đến nơi bán
+                </a>
+              ) : (
+                <button disabled className="btn-primary-go" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+                  Chưa có nơi bán hợp lệ
+                </button>
+              )}
               <button
                   type="button"
                   onClick={xuLyTheoDoiGia}

@@ -81,6 +81,10 @@ def run_search_job_task(job_id: int, keyword: str) -> dict:
         # Tăng cache version và xoá cache cũ SAU KHI commit DB
         # để đảm bảo request tiếp theo đọc được data mới nhất và tránh race condition
         bump_search_cache_version(keyword)
+        
+        # Trigger price alert check asynchronously
+        from backend.app.tasks.price_alerts import check_price_alerts_task
+        check_price_alerts_task.delay()
 
         return {
             "success": True,

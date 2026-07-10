@@ -1,4 +1,4 @@
-﻿from datetime import datetime
+from datetime import datetime
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, Numeric, UniqueConstraint
 from sqlalchemy.orm import relationship
@@ -27,6 +27,10 @@ class TheoDoiGia(Base):
 
     giaMongMuon = Column(Numeric(15, 2), nullable=True)
     trangThai = Column(Boolean, nullable=False, default=True, server_default="true")
+
+    daThongBao = Column(Boolean, nullable=False, default=False, server_default="false")
+    ngayThongBao = Column(DateTime, nullable=True)
+    giaLucThongBao = Column(Numeric(15, 2), nullable=True)
 
     ngayTheoDoi = Column(DateTime, nullable=False, default=datetime.utcnow)
     ngayCapNhat = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, status
@@ -24,6 +24,15 @@ def create_theo_doi_gia(
     db: Session = Depends(get_db),
     current_user: TaiKhoan = Depends(get_current_user)
 ):
+    if request.giaMongMuon is None or request.giaMongMuon <= 0:
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content={
+                "success": False,
+                "message": "Giá mong muốn bắt buộc phải lớn hơn 0"
+            }
+        )
+
     product = (
         db.query(SanPhamChuanHoa)
         .filter(SanPhamChuanHoa.maSPCH == request.maSPCH)
@@ -134,6 +143,15 @@ def get_my_theo_doi_gia(
     data = []
 
     for follow, product, gia_thap_nhat, gia_cao_nhat in rows:
+        trang_thai_hien_thi = "dang_theo_doi"
+        
+        if follow.giaMongMuon is None or follow.giaMongMuon <= 0:
+            trang_thai_hien_thi = "chua_dat_gia_mong_muon"
+        elif follow.daThongBao:
+            trang_thai_hien_thi = "da_thong_bao"
+        elif gia_thap_nhat is not None and float(gia_thap_nhat) <= float(follow.giaMongMuon):
+            trang_thai_hien_thi = "da_dat_gia"
+            
         data.append({
             "maTheoDoi": follow.maTheoDoi,
             "maSPCH": product.maSPCH,
@@ -145,6 +163,10 @@ def get_my_theo_doi_gia(
             "giaCaoNhat": gia_cao_nhat,
             "giaMongMuon": follow.giaMongMuon,
             "trangThai": follow.trangThai,
+            "daThongBao": follow.daThongBao,
+            "ngayThongBao": follow.ngayThongBao,
+            "giaLucThongBao": follow.giaLucThongBao,
+            "trangThaiHienThi": trang_thai_hien_thi,
             "ngayTheoDoi": follow.ngayTheoDoi
         })
 
@@ -174,7 +196,8 @@ def check_theo_doi_gia(
         "success": True,
         "data": {
             "isFollowing": follow is not None,
-            "maTheoDoi": follow.maTheoDoi if follow else None
+            "maTheoDoi": follow.maTheoDoi if follow else None,
+            "giaMongMuon": float(follow.giaMongMuon) if follow and follow.giaMongMuon else None
         }
     }
 
@@ -205,6 +228,21 @@ def update_theo_doi_gia(
         )
 
     if request.giaMongMuon is not None:
+        if request.giaMongMuon <= 0:
+            return JSONResponse(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                content={
+                    "success": False,
+                    "message": "Giá mong muốn phải lớn hơn 0"
+                }
+            )
+        
+        # Reset tracking notification if price changes
+        if follow.giaMongMuon != request.giaMongMuon:
+            follow.daThongBao = False
+            follow.ngayThongBao = None
+            follow.giaLucThongBao = None
+            
         follow.giaMongMuon = request.giaMongMuon
 
     if request.trangThai is not None:
@@ -224,6 +262,9 @@ def update_theo_doi_gia(
             "maSPCH": follow.maSPCH,
             "giaMongMuon": follow.giaMongMuon,
             "trangThai": follow.trangThai,
+            "daThongBao": follow.daThongBao,
+            "ngayThongBao": follow.ngayThongBao,
+            "giaLucThongBao": follow.giaLucThongBao,
             "ngayTheoDoi": follow.ngayTheoDoi,
             "ngayCapNhat": follow.ngayCapNhat
         }

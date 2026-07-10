@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
@@ -305,6 +305,21 @@ const xuLyHuyChinhGia = () => {
               >
                 {item.tenChuanHoa}
               </Link>
+              
+              <div style={{ marginBottom: '10px' }}>
+                {item.trangThaiHienThi === 'chua_dat_gia_mong_muon' && (
+                  <span style={{ background: '#fef2f2', color: '#991b1b', padding: '4px 8px', borderRadius: '4px', fontSize: '13px', fontWeight: '600' }}>Chưa đặt giá mong muốn</span>
+                )}
+                {item.trangThaiHienThi === 'dang_theo_doi' && (
+                  <span style={{ background: '#eff6ff', color: '#1e40af', padding: '4px 8px', borderRadius: '4px', fontSize: '13px', fontWeight: '600' }}>Đang theo dõi</span>
+                )}
+                {item.trangThaiHienThi === 'da_dat_gia' && (
+                  <span style={{ background: '#fef3c7', color: '#92400e', padding: '4px 8px', borderRadius: '4px', fontSize: '13px', fontWeight: '600' }}>Đã đạt giá mong muốn</span>
+                )}
+                {item.trangThaiHienThi === 'da_thong_bao' && (
+                  <span style={{ background: '#dcfce7', color: '#166534', padding: '4px 8px', borderRadius: '4px', fontSize: '13px', fontWeight: '600' }}>Đã gửi thông báo{item.ngayThongBao ? ` (${new Date(item.ngayThongBao).toLocaleDateString('vi-VN')})` : ''}</span>
+                )}
+              </div>
 
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', color: '#64748b', fontSize: '14px', marginBottom: '8px' }}>
                 {item.thuongHieu && <span>Thương hiệu: {item.thuongHieu}</span>}

@@ -1,4 +1,4 @@
-﻿from celery import Celery
+from celery import Celery
 
 from backend.app.core.config import settings
 
@@ -8,6 +8,7 @@ celery_app = Celery(
     backend=settings.CELERY_RESULT_BACKEND,
     include=[
         "backend.app.tasks.search_tasks",
+        "backend.app.tasks.price_alerts",
     ],
 )
 
@@ -18,4 +19,10 @@ celery_app.conf.update(
     accept_content=["json"],
     timezone="Asia/Ho_Chi_Minh",
     enable_utc=False,
+    beat_schedule={
+        "check-price-alerts-every-30-minutes": {
+            "task": "tasks.check_price_alerts",
+            "schedule": 1800.0, # 30 minutes in seconds
+        },
+    },
 )

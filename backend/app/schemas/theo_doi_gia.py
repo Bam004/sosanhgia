@@ -1,13 +1,13 @@
-﻿from datetime import datetime
+from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class TheoDoiGiaCreate(BaseModel):
     maSPCH: int
-    giaMongMuon: Optional[Decimal] = None
+    giaMongMuon: Decimal = Field(..., gt=0, description="Giá mong muốn phải lớn hơn 0")
 
 
 class TheoDoiGiaUpdate(BaseModel):
@@ -21,6 +21,9 @@ class TheoDoiGiaResponse(BaseModel):
     maSPCH: int
     giaMongMuon: Optional[Decimal] = None
     trangThai: bool
+    daThongBao: bool
+    ngayThongBao: Optional[datetime] = None
+    giaLucThongBao: Optional[Decimal] = None
     ngayTheoDoi: datetime
     ngayCapNhat: Optional[datetime] = None
 
@@ -38,6 +41,10 @@ class TheoDoiGiaListItem(BaseModel):
     giaCaoNhat: Optional[Decimal] = None
     giaMongMuon: Optional[Decimal] = None
     trangThai: bool
+    daThongBao: bool
+    ngayThongBao: Optional[datetime] = None
+    giaLucThongBao: Optional[Decimal] = None
+    trangThaiHienThi: str
     ngayTheoDoi: datetime
 
     class Config:
