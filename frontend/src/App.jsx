@@ -13,6 +13,7 @@ import SanPhamTheoDoi from './pages/user/SanPhamTheoDoi';
 import DangNhap from './pages/user/DangNhap';
 import DangKy from './pages/user/DangKy';
 import ProtectedRoute from './components/user/ProtectedRoute';
+import AdminRoute from './components/user/AdminRoute';
 
 import TongQuanQuanTri from './pages/admin/TongQuanQuanTri';
 import QuanLyNguonCao from './pages/admin/QuanLyNguonCao';
@@ -38,7 +39,7 @@ export default function App() {
         <Route path="/dang-ky" element={<DangKy />} />
       </Route>
 
-      <Route path="/admin" element={<BoCucQuanTri />}>
+      <Route path="/admin" element={<AdminRoute><BoCucQuanTri /></AdminRoute>}>
         <Route index element={<TongQuanQuanTri />} />
         <Route path="nguon-cao" element={<QuanLyNguonCao />} />
         <Route path="tien-trinh-scraping" element={<QuanLyTienTrinhScraping />} />
