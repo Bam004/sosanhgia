@@ -69,3 +69,10 @@ def health_check():
     return {
         "status": "ok"
     }
+
+from backend.app.services.scheduled_scraping_runner import bat_scheduler_cao_dinh_ky
+
+
+@app.on_event("startup")
+async def khoi_dong_scheduler_cao_du_lieu_dinh_ky():
+    bat_scheduler_cao_dinh_ky()

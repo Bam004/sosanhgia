@@ -905,3 +905,33 @@ def lay_lich_su_gia_san_pham_chuan_hoa(
             "items": items,
         },
     }
+
+
+from backend.app.services.scheduled_scraping_runner import (
+    chay_ngay_dang_nen,
+    lay_trang_thai_scheduler,
+)
+
+
+@router.get("/scheduled-scraping/status")
+def lay_trang_thai_cao_dinh_ky():
+    return lay_trang_thai_scheduler()
+
+
+@router.post("/scheduled-scraping/run-now")
+async def chay_ngay_cao_dinh_ky(
+    gioi_han_keyword: int = 0,
+    spiders: str = "",
+):
+    danh_sach_spider = [
+        spider.strip()
+        for spider in spiders.split(",")
+        if spider.strip()
+    ] or None
+
+    gioi_han = gioi_han_keyword if gioi_han_keyword > 0 else None
+
+    return await chay_ngay_dang_nen(
+        gioi_han_keyword=gioi_han,
+        danh_sach_spider=danh_sach_spider,
+    )
