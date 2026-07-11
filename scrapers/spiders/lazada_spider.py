@@ -119,6 +119,22 @@ class LazadaSpider(scrapy.Spider):
         if iphone_x_match:
             return iphone_x_match.group(0)
 
+        redmi_note_match = re.search(
+            r"\bredmi\s+note\s+\d{1,2}(?:\s+(?:pro max|pro|plus|s|t))?",
+            normalized_keyword
+        )
+
+        if redmi_note_match:
+            return redmi_note_match.group(0)
+
+        xiaomi_redmi_note_match = re.search(
+            r"\bxiaomi\s+redmi\s+note\s+\d{1,2}(?:\s+(?:pro max|pro|plus|s|t))?",
+            normalized_keyword
+        )
+
+        if xiaomi_redmi_note_match:
+            return xiaomi_redmi_note_match.group(0).replace("xiaomi ", "")
+
         return normalized_keyword
 
     def normalize_keyword_match_text(self, text):

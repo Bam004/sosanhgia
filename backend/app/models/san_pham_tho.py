@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Float, Integer, Numeric, String
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, Numeric, String
 from sqlalchemy.dialects.postgresql import JSONB
 
 from backend.app.core.database import Base
@@ -10,7 +10,12 @@ class SanPhamTho(Base):
     __tablename__ = "san_pham_tho"
 
     maSPTho = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    maSPCH = Column(Integer, nullable=True)
+    maSPCH = Column(
+        Integer,
+        ForeignKey("san_pham_chuan_hoa.maSPCH", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     tenSanPham = Column(String(255), nullable=False)
     sanTMDT = Column(String(50), nullable=False)

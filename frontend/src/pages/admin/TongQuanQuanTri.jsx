@@ -1,102 +1,153 @@
-﻿const thongKeTongQuan = [
-  {
-    tieuDe: "Tổng sản phẩm thô",
-    giaTri: "1.480",
-    moTa: "+95 sản phẩm hôm nay",
-  },
-  {
-    tieuDe: "Sản phẩm chuẩn hóa",
-    giaTri: "460",
-    moTa: "Đã gom nhóm từ nhiều nguồn",
-  },
-  {
-  tieuDe: "Nguồn cào hoạt động",
-  giaTri: "5",
-  moTa: "Lazada, Tiki, FPT Shop, CellphoneS, HoangHaMobile",
-  },
-  {
-    tieuDe: "Lỗi Scraping hôm nay",
-    giaTri: "2",
-    moTa: "Cần kiểm tra nhật ký lỗi",
-  },
-];
+﻿import { useEffect, useMemo, useState } from "react";
+import api from "../../services/api";
 
-const duLieuBieuDo = [
-  { ngay: "T2", soLuong: 70 },
-  { ngay: "T3", soLuong: 90 },
-  { ngay: "T4", soLuong: 110 },
-  { ngay: "T5", soLuong: 130 },
-  { ngay: "T6", soLuong: 150 },
-  { ngay: "T7", soLuong: 170 },
-  { ngay: "CN", soLuong: 190 },
-];
+const giaTriMacDinhDashboard = {
+  stats: [
+    {
+      tieuDe: "Tổng sản phẩm thô",
+      giaTri: 0,
+      moTa: "Sản phẩm thu thập từ các nguồn cào",
+    },
+    {
+      tieuDe: "Sản phẩm chuẩn hóa",
+      giaTri: 0,
+      moTa: "Sản phẩm đã được gom nhóm và chuẩn hóa",
+    },
+    {
+      tieuDe: "Nguồn cào hoạt động",
+      giaTri: 0,
+      moTa: "Chưa có nguồn hoạt động",
+    },
+    {
+      tieuDe: "Lỗi Scraping",
+      giaTri: 0,
+      moTa: "Lỗi dữ liệu cần kiểm tra trong nhật ký",
+    },
+  ],
+  chart: [],
+  systemStatus: [],
+  recentJobs: [],
+};
 
-const trangThaiHeThong = [
-  "API Backend: Hoạt động",
-  "PostgreSQL: Hoạt động",
-  "Redis Queue: Hoạt động",
-  "Celery Worker: Đang chạy",
-  "Scrapy/Playwright: Đang chạy",
-];
+function dinhDangSo(giaTri) {
+  const so = Number(giaTri || 0);
+  return so.toLocaleString("vi-VN");
+}
 
-const tienTrinhScraping = [
-  {
-    nguon: "Lazada",
-    spider: "lazada_spider",
-    trangThai: "Hoàn tất",
-    lanChay: "20 phút trước",
-    sanPham: 280,
-    loi: 0,
-  },
-  {
-    nguon: "Tiki",
-    spider: "tiki_spider",
-    trangThai: "Đang chạy",
-    lanChay: "35 phút trước",
-    sanPham: 210,
-    loi: 0,
-  },
-  {
-    nguon: "FPT Shop",
-    spider: "fptshop_spider",
-    trangThai: "Hoàn tất",
-    lanChay: "1 giờ trước",
-    sanPham: 180,
-    loi: 0,
-  },
-  {
-    nguon: "CellphoneS",
-    spider: "cellphones_spider",
-    trangThai: "Có lỗi",
-    lanChay: "2 giờ trước",
-    sanPham: 145,
-    loi: 1,
-  },
-  {
-    nguon: "HoangHaMobile",
-    spider: "hoanghamobile_spider",
-    trangThai: "Hoàn tất",
-    lanChay: "3 giờ trước",
-    sanPham: 165,
-    loi: 1,
-  },
-];
+function layClassTrangThaiTienTrinh(trangThai) {
+  if (trangThai === "Hoàn tất") return "hoan-tat";
+  if (trangThai === "Đang chạy") return "dang-chay";
+  if (trangThai === "Đang chờ") return "dang-cho";
+  if (trangThai === "Có lỗi") return "co-loi";
+  return "";
+}
+
+function layMoTaTrangThaiTienTrinh(trangThai) {
+  if (trangThai === "Hoàn tất") {
+    return "Tiến trình đã thu thập dữ liệu thành công và chưa phát hiện lỗi cần xử lý.";
+  }
+
+  if (trangThai === "Có lỗi") {
+    return "Tiến trình có lỗi dữ liệu, cần kiểm tra thêm tại màn hình Nhật ký lỗi Scraping.";
+  }
+
+  if (trangThai === "Đang chờ") {
+    return "Nguồn dữ liệu này chưa có sản phẩm thô hoặc chưa được thu thập.";
+  }
+
+  if (trangThai === "Đang chạy") {
+    return "Tiến trình đang thực hiện thu thập dữ liệu sản phẩm.";
+  }
+
+  return "Chưa có mô tả cho trạng thái này.";
+}
 
 function TongQuanQuanTri() {
+  const [duLieuDashboard, setDuLieuDashboard] = useState(
+    giaTriMacDinhDashboard
+  );
+  const [dangTaiDuLieu, setDangTaiDuLieu] = useState(false);
+  const [loiTaiDuLieu, setLoiTaiDuLieu] = useState("");
+  const [thongBao, setThongBao] = useState(null);
+  const [tienTrinhDangXem, setTienTrinhDangXem] = useState(null);
+
+  function hienThongBao(noiDung, loai = "thanh-cong") {
+    setThongBao({ noiDung, loai });
+
+    setTimeout(() => {
+      setThongBao(null);
+    }, 3000);
+  }
+
+  async function taiDashboard(hienToast = false) {
+    try {
+      setDangTaiDuLieu(true);
+      setLoiTaiDuLieu("");
+
+      const response = await api.get("/scraping/dashboard");
+      const duLieuTraVe = response.data || {};
+
+      setDuLieuDashboard({
+        stats: duLieuTraVe.stats || giaTriMacDinhDashboard.stats,
+        chart: duLieuTraVe.chart || [],
+        systemStatus: duLieuTraVe.systemStatus || [],
+        recentJobs: duLieuTraVe.recentJobs || [],
+      });
+
+      if (hienToast) {
+        hienThongBao("Đã cập nhật dữ liệu tổng quan.", "thanh-cong");
+      }
+    } catch (error) {
+      console.error(error);
+      setLoiTaiDuLieu("Không thể tải dữ liệu tổng quan từ backend.");
+      hienThongBao("Không thể tải dữ liệu tổng quan.", "loi");
+    } finally {
+      setDangTaiDuLieu(false);
+    }
+  }
+
+  useEffect(() => {
+    taiDashboard();
+  }, []);
+
+  const giaTriLonNhatBieuDo = useMemo(() => {
+    const danhSachSoLuong = duLieuDashboard.chart.map((item) =>
+      Number(item.soLuong || 0)
+    );
+
+    return Math.max(...danhSachSoLuong, 1);
+  }, [duLieuDashboard.chart]);
+
   return (
     <section className="trang-tong-quan-admin">
+      {thongBao && (
+        <div className={`thong-bao-admin ${thongBao.loai}`}>
+          {thongBao.loai === "loi" ? "❌" : "✅"} {thongBao.noiDung}
+        </div>
+      )}
+
       <h1>Tổng quan hệ thống</h1>
 
       <p className="mo-ta-trang-admin">
         Theo dõi tình trạng thu thập dữ liệu, sản phẩm và tiến trình scraping của hệ thống SoSanhGia.
       </p>
 
+      {loiTaiDuLieu && <p className="mo-ta-trang-admin">{loiTaiDuLieu}</p>}
+
       <div className="luoi-the-thong-ke-admin">
-        {thongKeTongQuan.map((item) => (
+        {duLieuDashboard.stats.map((item) => (
           <div className="the-thong-ke-admin" key={item.tieuDe}>
-            <h3>{item.tieuDe}</h3>
-            <strong>{item.giaTri}</strong>
-            <p>{item.moTa}</p>
+            <h3>
+              {item.tieuDe === "Sản phẩm chuẩn hóa"
+                ? "Nhóm sản phẩm chuẩn hóa"
+                : item.tieuDe}
+            </h3>
+            <strong>{dinhDangSo(item.giaTri)}</strong>
+            <p>
+              {item.tieuDe === "Sản phẩm chuẩn hóa"
+                ? "Sản phẩm đại diện sau khi gom nhóm"
+                : item.moTa}
+            </p>
           </div>
         ))}
       </div>
@@ -107,21 +158,37 @@ function TongQuanQuanTri() {
 
           <div className="noi-dung-bieu-do-admin">
             <div className="truc-y-admin">
-              <span>200</span>
-              <span>100</span>
+              <span>{giaTriLonNhatBieuDo}</span>
+              <span>{Math.round(giaTriLonNhatBieuDo / 2)}</span>
               <span>0</span>
             </div>
 
             <div className="vung-cot-bieu-do-admin">
-              {duLieuBieuDo.map((item) => (
-                <div className="cot-theo-ngay-admin" key={item.ngay}>
-                  <div
-                    className="cot-so-luong-admin"
-                    style={{ height: `${item.soLuong}px` }}
-                  ></div>
-                  <span>{item.ngay}</span>
-                </div>
-              ))}
+              {duLieuDashboard.chart.length > 0 ? (
+                duLieuDashboard.chart.map((item) => {
+                  const soLuong = Number(item.soLuong || 0);
+                  const chieuCao =
+                    soLuong > 0
+                      ? Math.max(
+                          10,
+                          Math.round((soLuong / giaTriLonNhatBieuDo) * 190)
+                        )
+                      : 4;
+
+                  return (
+                    <div className="cot-theo-ngay-admin" key={item.ngay}>
+                      <div
+                        className="cot-so-luong-admin"
+                        title={`${item.ngay}: ${soLuong} sản phẩm`}
+                        style={{ height: `${chieuCao}px` }}
+                      ></div>
+                      <span>{item.ngay}</span>
+                    </div>
+                  );
+                })
+              ) : (
+                <p>Chưa có dữ liệu biểu đồ.</p>
+              )}
             </div>
           </div>
         </div>
@@ -130,9 +197,11 @@ function TongQuanQuanTri() {
           <h2>Trạng thái hệ thống</h2>
 
           <div className="danh-sach-trang-thai-admin">
-            {trangThaiHeThong.map((item) => (
-              <p key={item}>{item}</p>
-            ))}
+            {duLieuDashboard.systemStatus.length > 0 ? (
+              duLieuDashboard.systemStatus.map((item) => <p key={item}>{item}</p>)
+            ) : (
+              <p>Chưa có dữ liệu trạng thái hệ thống.</p>
+            )}
           </div>
         </div>
       </div>
@@ -154,24 +223,109 @@ function TongQuanQuanTri() {
           </thead>
 
           <tbody>
-            {tienTrinhScraping.map((item) => (
-              <tr key={item.spider}>
-                <td>{item.nguon}</td>
-                <td>{item.spider}</td>
-                <td>{item.trangThai}</td>
-                <td>{item.lanChay}</td>
-                <td>{item.sanPham}</td>
-                <td>{item.loi}</td>
-                <td>
-                  <button className="nut-xem-admin" type="button">
-                    Xem
-                  </button>
-                </td>
+            {dangTaiDuLieu ? (
+              <tr>
+                <td colSpan="7">Đang tải dữ liệu tổng quan...</td>
               </tr>
-            ))}
+            ) : duLieuDashboard.recentJobs.length > 0 ? (
+              duLieuDashboard.recentJobs.map((item) => (
+                <tr key={item.spider}>
+                  <td>{item.nguon}</td>
+                  <td>{item.spider}</td>
+                  <td>
+                    <span
+                      className={`nhan-tien-trinh ${layClassTrangThaiTienTrinh(
+                        item.trangThai
+                      )}`}
+                    >
+                      {item.trangThai}
+                    </span>
+                  </td>
+                  <td>{item.lanChay}</td>
+                  <td>{item.sanPham}</td>
+                  <td>{item.loi}</td>
+                  <td>
+                    <button
+                      className="nut-xem-admin"
+                      type="button"
+                      onClick={() => setTienTrinhDangXem(item)}
+                    >
+                      Xem
+                    </button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="7">Chưa có tiến trình Scraping để hiển thị.</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
+
+      {tienTrinhDangXem && (
+        <div
+          className="nen-modal-tien-trinh-admin"
+          onClick={() => setTienTrinhDangXem(null)}
+        >
+          <div
+            className="hop-modal-tien-trinh-admin"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="dau-modal-tien-trinh-admin">
+              <div>
+                <p>Chi tiết tiến trình Scraping</p>
+                <h2>{tienTrinhDangXem.nguon}</h2>
+              </div>
+
+              <button
+                className="nut-dong-modal-tien-trinh-admin"
+                type="button"
+                onClick={() => setTienTrinhDangXem(null)}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="luoi-thong-tin-modal-tien-trinh">
+              <div>
+                <span>Nguồn dữ liệu</span>
+                <strong>{tienTrinhDangXem.nguon}</strong>
+              </div>
+
+              <div>
+                <span>Spider</span>
+                <strong>{tienTrinhDangXem.spider}</strong>
+              </div>
+
+              <div>
+                <span>Trạng thái</span>
+                <strong>{tienTrinhDangXem.trangThai}</strong>
+              </div>
+
+              <div>
+                <span>Lần chạy gần nhất</span>
+                <strong>{tienTrinhDangXem.lanChay}</strong>
+              </div>
+
+              <div>
+                <span>Sản phẩm thu thập</span>
+                <strong>{tienTrinhDangXem.sanPham}</strong>
+              </div>
+
+              <div>
+                <span>Số lỗi</span>
+                <strong>{tienTrinhDangXem.loi}</strong>
+              </div>
+            </div>
+
+            <p className="mo-ta-modal-tien-trinh">
+              {layMoTaTrangThaiTienTrinh(tienTrinhDangXem.trangThai)}
+            </p>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

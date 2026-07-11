@@ -1,15 +1,30 @@
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from backend.app.api.items import router as items_router
 from backend.app.api.products import router as products_router
+from backend.app.api.scraping import router as scraping_router
 from backend.app.api.search import router as search_router
 
 app = FastAPI(
     title="SoSanhGia API",
     description="Backend API for product price aggregation and comparison system",
     version="1.0.0"
+)
+
+allowed_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -39,6 +54,7 @@ async def validation_exception_handler(
 
 app.include_router(items_router)
 app.include_router(products_router)
+app.include_router(scraping_router)
 app.include_router(search_router)
 
 @app.get("/")
@@ -53,3 +69,10 @@ def health_check():
     return {
         "status": "ok"
     }
+
+from backend.app.services.scheduled_scraping_runner import bat_scheduler_cao_dinh_ky
+
+
+@app.on_event("startup")
+async def khoi_dong_scheduler_cao_du_lieu_dinh_ky():
+    bat_scheduler_cao_dinh_ky()
