@@ -23,6 +23,9 @@ class SanPhamTho(Base):
     danhGia = Column(Float, nullable=True)
     soLuongDanhGia = Column(Integer, nullable=False, default=0, server_default="0")
 
+    sellerName = Column(String(255), nullable=True)
+    sellerRating = Column(Float, nullable=True)
+
     attributes = Column(JSONB, nullable=True)
     ngayCapNhat = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 

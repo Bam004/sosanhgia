@@ -30,6 +30,8 @@ def item_to_response(
         "soLuongDanhGia": item.soLuongDanhGia,
         "ngayCapNhat": item.ngayCapNhat.isoformat() if item.ngayCapNhat else None,
         "tinhTrang": tinh_trang,
+        "sellerName": item.sellerName,
+        "sellerRating": float(item.sellerRating) if item.sellerRating is not None else None,
     }
 
 

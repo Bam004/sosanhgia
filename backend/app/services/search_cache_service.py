@@ -7,8 +7,8 @@ from backend.app.core.utils import normalize_search_text
 logger = logging.getLogger(__name__)
 
 CACHE_TTL = 300
-CACHE_PREFIX = "search:result:v2"
-CACHE_VERSION_PREFIX = "search:version:v2"
+CACHE_PREFIX = "search:result:v3"
+CACHE_VERSION_PREFIX = "search:version:v3"
 
 def get_redis_client():
     return redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)

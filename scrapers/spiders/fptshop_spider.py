@@ -140,6 +140,8 @@ class FptshopSpider(scrapy.Spider):
         item["hinhAnh"] = response.urljoin(hinh_anh) if hinh_anh else None
         item["danhGia"] = None
         item["soLuongDanhGia"] = 0
+        item["sellerName"] = "FPT Shop"
+        item["sellerRating"] = None
         item["attributes"] = {
             "nguon": "fptshop",
             "keyword": self.keyword,

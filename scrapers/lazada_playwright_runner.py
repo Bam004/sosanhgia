@@ -142,6 +142,8 @@ def parse_products(html, keyword, page_number):
                 "hinhAnh": image,
                 "danhGia": None,
                 "soLuongDanhGia": review_count,
+                "sellerName": None,
+                "sellerRating": None,
                 "thuocTinh": {
                     "keyword": keyword,
                     "page": page_number,

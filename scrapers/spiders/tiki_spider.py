@@ -130,6 +130,8 @@ class TikiSpider(scrapy.Spider):
         item["hinhAnh"] = self.fix_image_url(product.get("thumbnail_url"))
         item["danhGia"] = self.parse_rating(product.get("rating_average"))
         item["soLuongDanhGia"] = self.parse_int(product.get("review_count")) or 0
+        item["sellerName"] = product.get("seller_name")
+        item["sellerRating"] = None
         item["attributes"] = {
             "nguon": "tiki",
             "keyword": self.keyword,

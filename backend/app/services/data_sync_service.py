@@ -22,6 +22,26 @@ class DataSyncService:
         except InvalidOperation:
             raise ValueError("Invalid price format")
 
+    def _normalize_seller_name(self, name) -> str | None:
+        if not isinstance(name, str):
+            return None
+        clean_name = name.strip()
+        return clean_name if clean_name else None
+
+    def _normalize_seller_rating(self, rating) -> float | None:
+        if isinstance(rating, bool):
+            return None
+        if rating is None:
+            return None
+        try:
+            val = float(rating)
+            import math
+            if math.isfinite(val):
+                return val
+            return None
+        except (ValueError, TypeError):
+            return None
+
     def sync_groups(self, groups: list[dict]) -> dict:
         inserted_count = 0
         updated_count = 0
@@ -80,6 +100,11 @@ class DataSyncService:
                         danh_gia = item.get("danhGia") or item.get("rating")
                         so_luong_danh_gia = item.get("soLuongDanhGia") or item.get("review_count") or 0
 
+                        raw_seller_name = item.get("sellerName")
+                        raw_seller_rating = item.get("sellerRating")
+                        norm_seller_name = self._normalize_seller_name(raw_seller_name)
+                        norm_seller_rating = self._normalize_seller_rating(raw_seller_rating)
+
                         sp_tho = self.db.query(SanPhamTho).filter(SanPhamTho.linkGoc == link_goc).first()
 
                         if sp_tho:
@@ -94,6 +119,11 @@ class DataSyncService:
                             sp_tho.hinhAnh = hinh_anh
                             sp_tho.danhGia = danh_gia
                             sp_tho.soLuongDanhGia = so_luong_danh_gia
+                            
+                            if norm_seller_name is not None:
+                                sp_tho.sellerName = norm_seller_name
+                            if norm_seller_rating is not None:
+                                sp_tho.sellerRating = norm_seller_rating
                             
                             updated_count += 1
 
@@ -113,7 +143,9 @@ class DataSyncService:
                                 linkGoc=link_goc,
                                 hinhAnh=hinh_anh,
                                 danhGia=danh_gia,
-                                soLuongDanhGia=so_luong_danh_gia
+                                soLuongDanhGia=so_luong_danh_gia,
+                                sellerName=norm_seller_name,
+                                sellerRating=norm_seller_rating
                             )
                             self.db.add(sp_tho)
                             self.db.commit()

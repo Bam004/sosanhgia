@@ -43,6 +43,29 @@ def normalize_price(raw_price) -> Decimal:
     except InvalidOperation:
         raise ValueError("Invalid price format")
 
+import math
+
+def normalize_seller_name(name) -> str | None:
+    if name is None:
+        return None
+    cleaned = str(name).strip()
+    if not cleaned:
+        return None
+    return cleaned
+
+def normalize_seller_rating(rating) -> float | None:
+    if rating is None:
+        return None
+    if isinstance(rating, bool):
+        return None
+    try:
+        val = float(rating)
+        if not math.isfinite(val):
+            return None
+        return val
+    except (ValueError, TypeError):
+        return None
+
 def not_found_response() -> JSONResponse:
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
@@ -219,6 +242,8 @@ def create_items_bulk(
         for raw_item in payload:
             clean_title = re.sub(r"\s+", " ", raw_item.raw_title).strip()
             clean_price = normalize_price(raw_item.current_price)
+            clean_seller_name = normalize_seller_name(raw_item.sellerName)
+            clean_seller_rating = normalize_seller_rating(raw_item.sellerRating)
 
             item = SanPhamTho(
                 maSPCH=raw_item.standardized_product_id,
@@ -229,7 +254,9 @@ def create_items_bulk(
                 hinhAnh=raw_item.image_url,
                 danhGia=raw_item.rating,
                 soLuongDanhGia=raw_item.review_count,
-                attributes=raw_item.attributes
+                attributes=raw_item.attributes,
+                sellerName=clean_seller_name,
+                sellerRating=clean_seller_rating
             )
 
             db.add(item)

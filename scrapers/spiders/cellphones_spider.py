@@ -144,6 +144,8 @@ class CellphonesSpider(scrapy.Spider):
         item["hinhAnh"] = self.fix_image_url(product.get("thumbnail"))
         item["danhGia"] = None
         item["soLuongDanhGia"] = 0
+        item["sellerName"] = "CellphoneS"
+        item["sellerRating"] = None
         item["attributes"] = {
             "nguon": "cellphones",
             "keyword": self.keyword,

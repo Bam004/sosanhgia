@@ -14,6 +14,8 @@ class SanPhamThoBase(BaseModel):
     hinhAnh: str | None = None
     danhGia: float | None = None
     soLuongDanhGia: int = Field(default=0, ge=0)
+    sellerName: str | None = Field(default=None, max_length=255)
+    sellerRating: float | None = None
     attributes: dict[str, Any] | None = None
 
 
@@ -68,6 +70,12 @@ class SanPhamThoBulkCreate(BaseModel):
     review_count: int | None = Field(default=None, ge=0)
     soLuongDanhGia: int | None = Field(default=None, ge=0)
     
+    seller_name: str | None = Field(default=None, max_length=255)
+    sellerName: str | None = Field(default=None, max_length=255)
+    
+    seller_rating: float | None = None
+    sellerRating: float | None = None
+    
     attributes: dict[str, Any] | None = None
 
     @model_validator(mode='after')
@@ -105,5 +113,9 @@ class SanPhamThoBulkCreate(BaseModel):
             self.review_count = self.soLuongDanhGia or 0
         if self.standardized_product_id is None:
             self.standardized_product_id = self.maSPCH
+        if self.sellerName is None:
+            self.sellerName = self.seller_name
+        if self.sellerRating is None:
+            self.sellerRating = self.seller_rating
             
         return self

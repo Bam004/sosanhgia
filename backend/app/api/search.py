@@ -362,6 +362,8 @@ def build_search_data(keyword: str, db: Session):
                 "danhGia": item.danhGia,
                 "soLuongDanhGia": item.soLuongDanhGia,
                 "tinhTrang": spch.tinhTrang,
+                "sellerName": item.sellerName,
+                "sellerRating": float(item.sellerRating) if item.sellerRating is not None else None,
             }
 
             raw_items.append(raw_item)

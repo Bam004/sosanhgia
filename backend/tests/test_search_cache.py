@@ -1,12 +1,5 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from fastapi.testclient import TestClient
-from backend.app.main import app
-from backend.app.core.database import get_db
-from sqlalchemy.orm import Session
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-import json
 from backend.app.services.search_cache_service import (
     build_search_cache_key,
     build_search_cache_version_key,
@@ -16,16 +9,6 @@ from backend.app.services.search_cache_service import (
     get_cached_search_result,
 )
 from backend.app.core.utils import normalize_search_text
-
-client = TestClient(app)
-
-@pytest.fixture(scope="module")
-def test_db():
-    engine = create_engine("sqlite:///:memory:")
-    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    db = TestingSessionLocal()
-    yield db
-    db.close()
 
 def test_normalize_search_text_consistency():
     assert normalize_search_text("iPhone 15") == normalize_search_text(" iphone 15 ")

@@ -217,6 +217,8 @@ class HoangHaMobileSpider(scrapy.Spider):
         item["hinhAnh"] = response.urljoin(hinh_anh) if hinh_anh else None
         item["danhGia"] = danh_gia
         item["soLuongDanhGia"] = so_luong_danh_gia
+        item["sellerName"] = "Hoàng Hà Mobile"
+        item["sellerRating"] = None
         item["attributes"] = {
             "nguon": "hoanghamobile",
             "keyword": self.keyword,

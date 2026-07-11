@@ -9,5 +9,7 @@ class SanPhamThoItem(scrapy.Item):
     hinhAnh = scrapy.Field()
     danhGia = scrapy.Field()
     soLuongDanhGia = scrapy.Field()
+    sellerName = scrapy.Field()
+    sellerRating = scrapy.Field()
     attributes = scrapy.Field()
     ngayCapNhat = scrapy.Field()
