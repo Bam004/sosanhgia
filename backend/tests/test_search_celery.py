@@ -1,26 +1,15 @@
 import pytest
 import uuid
-from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
 from sqlalchemy.orm import Session
 
-from backend.app.main import app
 from backend.app.models.search_job import SearchJob
-from backend.app.core.database import SessionLocal
 
-client = TestClient(app)
 
-@pytest.fixture
-def db_session():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 @patch("backend.app.api.search_jobs.run_search_job_task.delay")
-def test_post_search_job_enqueues_task(mock_delay, db_session: Session):
+def test_post_search_job_enqueues_task(mock_delay, db_session: Session, client):
     """
     Test 1: POST /api/search/jobs validates keyword, creates a job, and enqueues it 
     without running the scraper directly.
@@ -48,7 +37,7 @@ def test_post_search_job_enqueues_task(mock_delay, db_session: Session):
     assert job.trangThai == "pending"
 
 @patch("backend.app.api.search_jobs.run_search_job_task.delay")
-def test_post_search_job_enqueue_failure_updates_status(mock_delay, db_session: Session):
+def test_post_search_job_enqueue_failure_updates_status(mock_delay, db_session: Session, client):
     """
     Test 2: If Celery task enqueuing fails (Redis down), job is marked as failed,
     and returns 503 instead of hanging or returning success.
@@ -69,9 +58,19 @@ def test_post_search_job_enqueue_failure_updates_status(mock_delay, db_session: 
     assert job.trangThai == "failed"
     assert "Redis connection error" in job.errorMessage
 
+class SessionProxy:
+    def __init__(self, session):
+        self._session = session
+    def __getattr__(self, name):
+        if name == 'close':
+            return lambda: None
+        return getattr(self._session, name)
+
+@patch("backend.app.tasks.search_tasks.SessionLocal")
 @patch("backend.app.tasks.search_tasks.scrape_and_sync_keyword")
 @patch("backend.app.tasks.search_tasks.bump_search_cache_version")
-def test_run_search_job_task_success(mock_bump_cache, mock_scrape, db_session: Session):
+def test_run_search_job_task_success(mock_bump_cache, mock_scrape, mock_session_local, db_session: Session):
+    mock_session_local.return_value = SessionProxy(db_session)
     """
     Test 3: The Celery worker task correctly transitions states, updates DB, 
     and invalidates cache on success.
@@ -101,8 +100,10 @@ def test_run_search_job_task_success(mock_bump_cache, mock_scrape, db_session: S
     # 6. Cache bump được gọi
     mock_bump_cache.assert_called_once_with("macbook")
 
+@patch("backend.app.tasks.search_tasks.SessionLocal")
 @patch("backend.app.tasks.search_tasks.scrape_and_sync_keyword")
-def test_run_search_job_task_exception(mock_scrape, db_session: Session):
+def test_run_search_job_task_exception(mock_scrape, mock_session_local, db_session: Session):
+    mock_session_local.return_value = SessionProxy(db_session)
     """
     Test 4: The Celery worker gracefully handles exceptions, rolls back, 
     and marks job as failed.

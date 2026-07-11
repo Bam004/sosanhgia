@@ -3,49 +3,40 @@ import pytest
 from datetime import datetime
 from unittest.mock import patch, MagicMock
 
-from backend.app.core.database import SessionLocal
 from backend.app.models import TaiKhoan, TheoDoiGia, SanPhamChuanHoa, SanPhamTho
 from backend.app.services.price_alert_service import check_price_alerts
 
 @pytest.fixture
-def setup_data():
-    db = SessionLocal()
-    email1 = f"user1_{uuid4().hex}@example.com"
-    email2 = f"user2_{uuid4().hex}@example.com"
+def setup_data(db_session):
+    db = db_session
+    email1 = f"user1_{uuid4().hex}@example.test"
+    email2 = f"user2_{uuid4().hex}@example.test"
 
     u1 = TaiKhoan(hoTen="User 1", email=email1, matKhauHash="hashed", vaiTro="user", trangThai="active")
     u2 = TaiKhoan(hoTen="User 2", email=email2, matKhauHash="hashed", vaiTro="user", trangThai="active")
     
-    p1 = SanPhamChuanHoa(tenChuanHoa="Test Phone", productType="phone", tinhTrang="new")
+    p1 = SanPhamChuanHoa(tenChuanHoa="TEST PRICE ALERT Phone", productType="phone", tinhTrang="new")
     
-    try:
-        db.add(u1)
-        db.add(u2)
-        db.add(p1)
-        db.commit()
-        db.refresh(u1)
-        db.refresh(u2)
-        db.refresh(p1)
+    db.add(u1)
+    db.add(u2)
+    db.add(p1)
+    db.commit()
+    db.refresh(u1)
+    db.refresh(u2)
+    db.refresh(p1)
 
-        # Valid offer at 10M
-        sp_tho = SanPhamTho(maSPCH=p1.maSPCH, tenSanPham="Test Phone New", giaHienTai=10000000, sanTMDT="Shopee", linkGoc="http://test")
-        db.add(sp_tho)
-        db.commit()
+    # Valid offer at 10M
+    sp_tho = SanPhamTho(maSPCH=p1.maSPCH, tenSanPham="TEST PRICE ALERT Phone New", giaHienTai=10000000, sanTMDT="Shopee", linkGoc="https://price-alert.test/1")
+    db.add(sp_tho)
+    db.commit()
 
-        yield {
-            "u1": u1,
-            "u2": u2,
-            "p1": p1,
-            "sp_tho": sp_tho,
-            "db": db
-        }
-    finally:
-        db.query(SanPhamTho).filter(SanPhamTho.maSPCH == p1.maSPCH).delete(synchronize_session=False)
-        db.query(TheoDoiGia).filter(TheoDoiGia.maTaiKhoan.in_([u1.maTaiKhoan, u2.maTaiKhoan])).delete(synchronize_session=False)
-        db.query(SanPhamChuanHoa).filter(SanPhamChuanHoa.maSPCH == p1.maSPCH).delete(synchronize_session=False)
-        db.query(TaiKhoan).filter(TaiKhoan.maTaiKhoan.in_([u1.maTaiKhoan, u2.maTaiKhoan])).delete(synchronize_session=False)
-        db.commit()
-        db.close()
+    return {
+        "u1": u1,
+        "u2": u2,
+        "p1": p1,
+        "sp_tho": sp_tho,
+        "db": db
+    }
 
 @patch('backend.app.services.price_alert_service.send_price_alert_email')
 def test_price_higher_than_target(mock_send_email, setup_data):

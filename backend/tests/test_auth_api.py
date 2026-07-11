@@ -1,9 +1,7 @@
 from uuid import uuid4
 
 import pytest
-from fastapi.testclient import TestClient
 
-from backend.app.core.database import SessionLocal
 from backend.app.core.security import create_access_token
 from backend.app.main import app
 from backend.app.models import TaiKhoan
@@ -14,9 +12,6 @@ from fastapi import Depends
 def dummy_admin_only_endpoint(current_user: TaiKhoan = Depends(require_admin)):
     return {"success": True, "role": current_user.vaiTro}
 
-@pytest.fixture
-def client():
-    return TestClient(app)
 
 
 @pytest.fixture
@@ -30,19 +25,9 @@ def account_data():
         "xacNhanMatKhau": "Test123!",
     }
 
-    yield data
+    return data
 
-    db = SessionLocal()
 
-    try:
-        (
-            db.query(TaiKhoan)
-            .filter(TaiKhoan.email == email)
-            .delete(synchronize_session=False)
-        )
-        db.commit()
-    finally:
-        db.close()
 
 
 def register_account(client, account_data, **overrides):
@@ -70,6 +55,7 @@ def login_account(client, email, password):
 def test_register_normalizes_data_and_forces_user_role(
     client,
     account_data,
+    db_session,
 ):
     response = register_account(
         client,
@@ -91,21 +77,18 @@ def test_register_normalizes_data_and_forces_user_role(
     assert user_data["vaiTro"] == "user"
     assert "matKhauHash" not in user_data
 
-    db = SessionLocal()
+    db = db_session
 
-    try:
-        user = (
-            db.query(TaiKhoan)
-            .filter(TaiKhoan.email == account_data["email"])
-            .first()
-        )
+    user = (
+        db.query(TaiKhoan)
+        .filter(TaiKhoan.email == account_data["email"])
+        .first()
+    )
 
-        assert user is not None
-        assert user.hoTen == "Tài Khoản Kiểm Thử"
-        assert user.vaiTro == "user"
-        assert user.trangThai == "active"
-    finally:
-        db.close()
+    assert user is not None
+    assert user.hoTen == "Tài Khoản Kiểm Thử"
+    assert user.vaiTro == "user"
+    assert user.trangThai == "active"
 
 
 def test_register_duplicate_email_returns_conflict(
@@ -233,6 +216,7 @@ def test_me_rejects_invalid_token_payloads(
 def test_inactive_account_cannot_login_or_use_existing_token(
     client,
     account_data,
+    db_session,
 ):
     register_response = register_account(
         client,
@@ -251,21 +235,18 @@ def test_inactive_account_cannot_login_or_use_existing_token(
 
     access_token = login_response.json()["data"]["accessToken"]
 
-    db = SessionLocal()
+    db = db_session
 
-    try:
-        user = (
-            db.query(TaiKhoan)
-            .filter(TaiKhoan.email == account_data["email"])
-            .first()
-        )
+    user = (
+        db.query(TaiKhoan)
+        .filter(TaiKhoan.email == account_data["email"])
+        .first()
+    )
 
-        assert user is not None
+    assert user is not None
 
-        user.trangThai = "inactive"
-        db.commit()
-    finally:
-        db.close()
+    user.trangThai = "inactive"
+    db.commit()
 
     inactive_login_response = login_account(
         client,
@@ -299,19 +280,16 @@ def test_require_admin_rejects_normal_user(client, account_data):
     assert admin_response.status_code == 403
     assert admin_response.json()["detail"] == "Yêu cầu quyền quản trị viên"
 
-def test_require_admin_accepts_admin_role(client, account_data):
+def test_require_admin_accepts_admin_role(client, account_data, db_session):
     # Test 2: Active admin -> 200
     register_response = register_account(client, account_data)
     assert register_response.status_code == 201
 
     # Promote to admin
-    db = SessionLocal()
-    try:
-        user = db.query(TaiKhoan).filter(TaiKhoan.email == account_data["email"]).first()
-        user.vaiTro = "admin"
-        db.commit()
-    finally:
-        db.close()
+    db = db_session
+    user = db.query(TaiKhoan).filter(TaiKhoan.email == account_data["email"]).first()
+    user.vaiTro = "admin"
+    db.commit()
 
     login_response = login_account(client, account_data["email"], account_data["matKhau"])
     access_token = login_response.json()["data"]["accessToken"]
@@ -323,53 +301,44 @@ def test_require_admin_accepts_admin_role(client, account_data):
     assert admin_response.status_code == 200
     assert admin_response.json()["role"] == "admin"
 
-def test_require_admin_rejects_inactive_admin(client, account_data):
+def test_require_admin_rejects_inactive_admin(client, account_data, db_session):
     # Test 3: Inactive admin -> blocked by get_current_user -> 403
     register_response = register_account(client, account_data)
     assert register_response.status_code == 201
 
     # Promote to admin but inactive
-    db = SessionLocal()
-    try:
-        user = db.query(TaiKhoan).filter(TaiKhoan.email == account_data["email"]).first()
-        user.vaiTro = "admin"
-        user.trangThai = "inactive"
-        db.commit()
-    finally:
-        db.close()
+    db = db_session
+    user = db.query(TaiKhoan).filter(TaiKhoan.email == account_data["email"]).first()
+    user.vaiTro = "admin"
+    user.trangThai = "inactive"
+    db.commit()
 
     login_response = login_account(client, account_data["email"], account_data["matKhau"])
     # Login will fail because of inactive status (403). We need a valid token to test require_admin.
     # We can generate token manually to bypass login check.
     # Actually, inactive user gets 403 on login, but if they had an old token, it gets 403 on require_admin.
     
-    db = SessionLocal()
-    try:
-        user = db.query(TaiKhoan).filter(TaiKhoan.email == account_data["email"]).first()
-        access_token = create_access_token({"sub": str(user.maTaiKhoan)})
-    finally:
-        db.close()
+    db = db_session
+    user = db.query(TaiKhoan).filter(TaiKhoan.email == account_data["email"]).first()
+    access_token = create_access_token({"sub": str(user.maTaiKhoan)})
 
     admin_response = client.get(
-        "/api/auth/test-admin-only",
-        headers={"Authorization": f"Bearer {access_token}"},
+    "/api/auth/test-admin-only",
+    headers={"Authorization": f"Bearer {access_token}"},
     )
     assert admin_response.status_code == 403
     assert admin_response.json()["detail"] == "Tài khoản đã bị vô hiệu hóa"
 
-def test_require_admin_normalizes_role_string(client, account_data):
+def test_require_admin_normalizes_role_string(client, account_data, db_session):
     # Test 4: Role with uppercase and whitespace -> " ADMIN "
     register_response = register_account(client, account_data)
     assert register_response.status_code == 201
 
     # Promote to " ADMIN "
-    db = SessionLocal()
-    try:
-        user = db.query(TaiKhoan).filter(TaiKhoan.email == account_data["email"]).first()
-        user.vaiTro = " ADMIN "
-        db.commit()
-    finally:
-        db.close()
+    db = db_session
+    user = db.query(TaiKhoan).filter(TaiKhoan.email == account_data["email"]).first()
+    user.vaiTro = " ADMIN "
+    db.commit()
 
     login_response = login_account(client, account_data["email"], account_data["matKhau"])
     access_token = login_response.json()["data"]["accessToken"]
@@ -380,3 +349,7 @@ def test_require_admin_normalizes_role_string(client, account_data):
     )
     assert admin_response.status_code == 200
     assert admin_response.json()["role"] == " ADMIN "
+
+def test_require_admin_rejects_anonymous_user(client):
+    admin_response = client.get("/api/auth/test-admin-only")
+    assert admin_response.status_code == 401

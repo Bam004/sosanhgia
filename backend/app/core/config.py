@@ -20,6 +20,10 @@ class Settings:
         f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     )
     
+    TEST_DB_NAME: str | None = (
+        (os.getenv("TEST_DB_NAME") or "").strip() or None
+    )
+    
     JWT_SECRET: str = os.getenv("JWT_SECRET", "")
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
     ACCESS_TOKEN_EXPIRE_DAYS: int = int(

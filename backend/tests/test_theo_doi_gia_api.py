@@ -1,54 +1,40 @@
 from uuid import uuid4
 import pytest
-from fastapi.testclient import TestClient
 
-from backend.app.core.database import SessionLocal
 from backend.app.core.security import create_access_token
-from backend.app.main import app
 from backend.app.models import TaiKhoan, TheoDoiGia, SanPhamChuanHoa
 
 @pytest.fixture
-def client():
-    return TestClient(app)
-
-@pytest.fixture
-def setup_data():
-    db = SessionLocal()
+def setup_data(db_session):
+    db = db_session
     # Create two users
-    email1 = f"user1_{uuid4().hex}@example.com"
-    email2 = f"user2_{uuid4().hex}@example.com"
+    email1 = f"user1_{uuid4().hex}@example.test"
+    email2 = f"user2_{uuid4().hex}@example.test"
 
     u1 = TaiKhoan(hoTen="User 1", email=email1, matKhauHash="hashed", vaiTro="user", trangThai="active")
     u2 = TaiKhoan(hoTen="User 2", email=email2, matKhauHash="hashed", vaiTro="user", trangThai="active")
     
     # Create a product
-    p1 = SanPhamChuanHoa(tenChuanHoa="Test Product", thuongHieu="Test", productType="smartphone")
+    p1 = SanPhamChuanHoa(tenChuanHoa="TEST THEO DOI GIA PRODUCT", thuongHieu="Test", productType="smartphone")
 
-    try:
-        db.add(u1)
-        db.add(u2)
-        db.add(p1)
-        db.commit()
-        db.refresh(u1)
-        db.refresh(u2)
-        db.refresh(p1)
+    db.add(u1)
+    db.add(u2)
+    db.add(p1)
+    db.commit()
+    db.refresh(u1)
+    db.refresh(u2)
+    db.refresh(p1)
 
-        token1 = create_access_token({"sub": str(u1.maTaiKhoan)})
-        token2 = create_access_token({"sub": str(u2.maTaiKhoan)})
+    token1 = create_access_token({"sub": str(u1.maTaiKhoan)})
+    token2 = create_access_token({"sub": str(u2.maTaiKhoan)})
 
-        yield {
-            "u1": u1,
-            "u2": u2,
-            "token1": token1,
-            "token2": token2,
-            "p1": p1
-        }
-    finally:
-        db.query(TheoDoiGia).filter(TheoDoiGia.maTaiKhoan.in_([u1.maTaiKhoan, u2.maTaiKhoan])).delete(synchronize_session=False)
-        db.query(SanPhamChuanHoa).filter(SanPhamChuanHoa.maSPCH == p1.maSPCH).delete(synchronize_session=False)
-        db.query(TaiKhoan).filter(TaiKhoan.maTaiKhoan.in_([u1.maTaiKhoan, u2.maTaiKhoan])).delete(synchronize_session=False)
-        db.commit()
-        db.close()
+    return {
+        "u1": u1,
+        "u2": u2,
+        "token1": token1,
+        "token2": token2,
+        "p1": p1
+    }
 
 def test_check_no_token_returns_401(client, setup_data):
     response = client.get(f"/api/theo-doi-gia/check/{setup_data['p1'].maSPCH}")
@@ -109,9 +95,9 @@ def test_user_separation(client, setup_data):
     data = check_res2.json()
     assert data["data"]["isFollowing"] is False
 
-def test_check_does_not_modify_records(client, setup_data):
+def test_check_does_not_modify_records(client, setup_data, db_session):
     p_id = setup_data['p1'].maSPCH
-    db = SessionLocal()
+    db = db_session
     initial_count = db.query(TheoDoiGia).count()
     
     # Check
@@ -121,10 +107,9 @@ def test_check_does_not_modify_records(client, setup_data):
     )
     
     final_count = db.query(TheoDoiGia).count()
-    db.close()
     assert initial_count == final_count
 
-def test_update_tracking(client, setup_data):
+def test_update_tracking(client, setup_data, db_session):
     p_id = setup_data['p1'].maSPCH
     
     # Create
@@ -145,7 +130,6 @@ def test_update_tracking(client, setup_data):
     assert update_res.json()["data"]["giaMongMuon"] == 9000000.0
 
     # Ensure no second record was created
-    db = SessionLocal()
+    db = db_session
     count = db.query(TheoDoiGia).filter(TheoDoiGia.maTaiKhoan == setup_data['u1'].maTaiKhoan).count()
-    db.close()
     assert count == 1

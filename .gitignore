@@ -238,3 +238,6 @@ backend/.venv/
 # Allow frontend npm manifest files
 !frontend/package.json
 !frontend/package-lock.json
+
+# Local PostgreSQL backups
+backups/
