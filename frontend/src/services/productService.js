@@ -399,7 +399,9 @@ export const productService = {
               soLuongDanhGia: item.soLuongDanhGia || 0,
               capNhat: item.ngayCapNhat ? new Date(item.ngayCapNhat).toLocaleString('vi-VN') : 'Vừa cập nhật',
               link: item.linkGoc,
-              tinhTrang: item.tinhTrang || tinhTrang
+              tinhTrang: item.tinhTrang || tinhTrang,
+              sellerName: item.sellerName ?? null,
+              sellerRating: item.sellerRating ?? null
             }))
           },
 
@@ -446,7 +448,9 @@ export const productService = {
             soLuongDanhGia: item.soLuongDanhGia || 0,
             capNhat: item.ngayCapNhat ? new Date(item.ngayCapNhat).toLocaleString('vi-VN') : 'Vừa cập nhật',
             link: item.linkGoc,
-            tinhTrang: item.tinhTrang || tinhTrang
+            tinhTrang: item.tinhTrang || tinhTrang,
+            sellerName: item.sellerName ?? null,
+            sellerRating: item.sellerRating ?? null
           }));
 
         return {

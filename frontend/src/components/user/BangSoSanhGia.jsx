@@ -72,24 +72,58 @@ export function SinhLogoSan({ brand, width = 36, height = 36 }) {
   );
 }
 
+const normalizeSellerRating = (value) => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  if (typeof value === "string" && value.trim() === "") {
+    return null;
+  }
+
+  if (typeof value === "boolean") {
+    return null;
+  }
+
+  const numberValue = Number(value);
+
+  return Number.isFinite(numberValue)
+    ? numberValue
+    : null;
+};
+
+const normalizeSellerName = (value) => {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed !== '') return trimmed;
+  }
+  return null;
+};
+
 export default function BangSoSanhGia({ noiBanChiTiet, sapXepKieu = 'asc' }) {
   if (!noiBanChiTiet || noiBanChiTiet.length === 0) {
     return <div className="no-offers">Không có dữ liệu nơi bán.</div>;
   }
 
-  if (!noiBanChiTiet || noiBanChiTiet.length === 0) {
-    return (
-      <div className="price-compare-table" style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
-        <p>Chưa có nơi bán phù hợp cho sản phẩm này.</p>
-      </div>
-    );
-  }
-
   // Calculate lowest price for highlighting
-  const lowestPrice = Math.min(...noiBanChiTiet.map(s => s.gia).filter(p => !isNaN(p) && p > 0));
+  const validPrices = noiBanChiTiet.map(s => Number(s.gia)).filter(p => Number.isFinite(p) && p > 0);
+  const lowestPrice = validPrices.length > 0 ? Math.min(...validPrices) : null;
 
-  // Sắp xếp các nơi bán theo giá
+  // Sắp xếp các nơi bán theo giá hoặc rating
   const noiBanDaSapXep = [...noiBanChiTiet].sort((a, b) => {
+    if (sapXepKieu === 'seller_rating_desc') {
+      const ratingA = normalizeSellerRating(a.sellerRating);
+      const ratingB = normalizeSellerRating(b.sellerRating);
+
+      if (ratingA === null && ratingB !== null) return 1;
+      if (ratingA !== null && ratingB === null) return -1;
+
+      if (ratingA !== null && ratingB !== null && ratingA !== ratingB) {
+        return ratingB - ratingA;
+      }
+      return a.gia - b.gia;
+    }
+
     if (sapXepKieu === 'asc') {
       return a.gia - b.gia;
     } else {
@@ -101,6 +135,7 @@ export default function BangSoSanhGia({ noiBanChiTiet, sapXepKieu = 'asc' }) {
     <div className="price-compare-table">
       <div className="price-compare-table__header">
         <div className="col-shop">Nơi bán</div>
+        <div className="col-seller">Người bán</div>
         <div className="col-title">Tên sản phẩm</div>
         <div className="col-price">Giá bán</div>
         <div className="col-action">Tới nơi bán</div>
@@ -108,7 +143,9 @@ export default function BangSoSanhGia({ noiBanChiTiet, sapXepKieu = 'asc' }) {
 
       <div className="price-compare-table__rows">
         {noiBanDaSapXep.map((seller, index) => {
-          const laGiaTotNhat = seller.gia === lowestPrice;
+          const laGiaTotNhat = lowestPrice !== null && seller.gia === lowestPrice;
+          const normalizedSellerName = normalizeSellerName(seller.sellerName);
+          const normalizedRating = normalizeSellerRating(seller.sellerRating);
 
           return (
             <div key={`${seller.maSPTho || seller.san}-${index}`} className={`price-compare-table__row ${laGiaTotNhat ? 'price-compare-table__row--best' : ''}`}>
@@ -121,12 +158,25 @@ export default function BangSoSanhGia({ noiBanChiTiet, sapXepKieu = 'asc' }) {
                 </div>
               </div>
 
+              {/* Người bán */}
+              <div className="col-seller" style={{ display: 'flex', flexDirection: 'column', gap: '4px', overflow: 'hidden' }}>
+                <span className="price-compare-table__mobile-label" style={{ display: 'none', fontSize: '11px', color: '#64748b', fontWeight: 'bold' }}>Người bán:</span>
+                <span className="seller-name" title={normalizedSellerName || ''} style={{ fontSize: '13px', fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {normalizedSellerName ? normalizedSellerName : <span style={{ color: '#94a3b8', fontWeight: 'normal' }}>Chưa có thông tin</span>}
+                </span>
+                <span className="seller-rating" style={{ fontSize: '12px', color: '#64748b' }}>
+                  {normalizedRating !== null 
+                    ? `★ ${normalizedRating.toFixed(1)}/5` 
+                    : 'Chưa có đánh giá'}
+                </span>
+              </div>
+
               {/* Tên sản phẩm trên sàn */}
               <div className="col-title">
                 <span className="offer-title">{seller.tenNoiBan}</span>
                 <div className="offer-meta">
                   {seller.tinhTrang && <span className="offer-condition">{layNhanTinhTrang(seller.tinhTrang)}</span>}
-                  {seller.danhGia && <span className="offer-rating">⭐ {seller.danhGia}</span>}
+                  {seller.danhGia && <span className="offer-rating">Đánh giá sản phẩm: ⭐ {seller.danhGia}</span>}
                   {seller.capNhat && <span className="offer-updated">Cập nhật: {seller.capNhat}</span>}
                 </div>
               </div>

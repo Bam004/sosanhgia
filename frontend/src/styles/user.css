@@ -1441,7 +1441,7 @@
 
 .price-compare-table__header {
   display: grid;
-  grid-template-columns: 180px 1fr 180px 140px;
+  grid-template-columns: 180px 160px minmax(0, 1fr) 160px 140px;
   background: #f1f5f9;
   padding: 10px 16px;
   font-size: 13px;
@@ -1452,7 +1452,7 @@
 
 .price-compare-table__row {
   display: grid;
-  grid-template-columns: 180px 1fr 180px 140px;
+  grid-template-columns: 180px 160px minmax(0, 1fr) 160px 140px;
   padding: 16px;
   align-items: center;
   border-bottom: 1px solid var(--color-border);
@@ -2653,6 +2653,10 @@
   .price-compare-table__row {
     grid-template-columns: 1fr;
     gap: 12px;
+  }
+
+  .price-compare-table__mobile-label {
+    display: block !important;
   }
 
   .col-price {

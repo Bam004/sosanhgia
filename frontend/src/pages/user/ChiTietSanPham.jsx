@@ -1,4 +1,4 @@
-﻿import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { dinhDangTien } from '../../utils/dinhDangTien';
@@ -308,6 +308,7 @@ export default function ChiTietSanPham() {
               >
                 <option value="asc">Giá tăng dần</option>
                 <option value="desc">Giá giảm dần</option>
+                <option value="seller_rating_desc">Điểm người bán cao nhất</option>
               </select>
             </div>
           </div>
