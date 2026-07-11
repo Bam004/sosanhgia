@@ -70,93 +70,38 @@ git --version
 
 ---
 
-## 4. Quy trình chạy dự án từ đầu
+## 4. Cài đặt và chạy dự án
 
-Khi clone dự án về máy mới, thực hiện theo thứ tự sau.
+Vui lòng xem tài liệu chi tiết tại: **[Hướng dẫn Cài đặt và Chạy dự án (dành cho Windows)](docs/HUONG_DAN_CAI_DAT_VA_CHAY_DU_AN.md)**.
 
-### Bước 1: Clone source code
+Dưới đây là tóm tắt các lệnh chạy hằng ngày (Quick Start) sau khi bạn đã cài đặt xong:
 
+### 1. PostgreSQL + Redis
+- Khởi động PostgreSQL service và Redis (ví dụ qua Docker: `docker start redis-server`).
+
+### 2. Backend
+Mở Terminal 1:
 ```powershell
-git clone https://github.com/Bam004/sosanhgia.git
-cd sosanhgia
-git checkout develop
-git pull origin develop
+.\backend\.venv\Scripts\Activate.ps1
+python -m uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8001
 ```
 
-### Bước 2: Tạo và kích hoạt môi trường ảo
-
+### 3. Worker
+Mở Terminal 2:
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\activate
+.\backend\.venv\Scripts\Activate.ps1
+python -m celery -A backend.app.core.celery_app:celery_app worker --loglevel=INFO --pool=solo
 ```
 
-### Bước 3: Cài đặt thư viện Backend
-
+### 4. Beat (Định kỳ cảnh báo giá)
+Mở Terminal 3:
 ```powershell
-python -m pip install --upgrade pip
-python -m pip install -r backend\requirements.txt
-python -m playwright install
+.\backend\.venv\Scripts\Activate.ps1
+python -m celery -A backend.app.core.celery_app:celery_app beat --loglevel=INFO
 ```
 
-### Bước 4: Tạo database PostgreSQL
-
-Tạo database:
-
-```text
-sosanhgia_db
-```
-
-### Bước 5: Tạo file cấu hình Backend
-
-Tạo file:
-
-```text
-backend/.env
-```
-
-Nội dung mẫu:
-
-```env
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=sosanhgia_db
-DB_USER=postgres
-DB_PASSWORD=your_postgres_password
-```
-
-### Bước 6: Chạy migration
-
+### 5. Frontend
+Mở Terminal 4:
 ```powershell
-python -m alembic upgrade head
+npm --prefix frontend run dev
 ```
-
-### Bước 7: Chạy Backend
-
-```powershell
-python -m uvicorn backend.app.main:app --reload
-```
-
-Mở Swagger:
-
-```text
-http://127.0.0.1:8000/docs
-```
-
-### Bước 8: Chạy Frontend
-
-Mở terminal mới, sau đó chạy:
-
-```powershell
-cd frontend
-npm install
-npm run dev
-```
-
-Mở website:
-
-```text
-http://localhost:5173/
-```
-
----
-

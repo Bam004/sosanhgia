@@ -1,237 +1,509 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { dinhDangTien } from '../../utils/dinhDangTien';
-import { SinhIconSanPham } from '../../components/user/TheSanPham';
 
-export function SidebarTaiKhoan({ pathHienTai }) {
-  return (
-    <aside className="account-sidebar">
-      <div className="account-sidebar__title">Quản lý cá nhân</div>
-      <nav className="account-sidebar__menu">
-        <Link
-          to="/tai-khoan"
-          className={`account-sidebar__link ${pathHienTai === '/tai-khoan' ? 'active' : ''}`}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 8 }}>
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-            <circle cx="12" cy="7" r="4"></circle>
-          </svg>
-          Thông tin tài khoản
-        </Link>
-        <Link
-          to="/tai-khoan/san-pham-theo-doi"
-          className={`account-sidebar__link ${pathHienTai === '/tai-khoan/san-pham-theo-doi' ? 'active' : ''}`}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 8 }}>
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-          </svg>
-          Sản phẩm đang theo dõi
-        </Link>
-      </nav>
-    </aside>
-  );
-}
+import SidebarTaiKhoan from '../../components/user/SidebarTaiKhoan';
+import { theoDoiGiaService } from '../../services/theoDoiGiaService';
+import { dinhDangTien } from '../../utils/dinhDangTien';
 
 export default function SanPhamTheoDoi() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-  const [dsTheoDoi, setDsTheoDoi] = useState([]);
-  const [editingId, setEditingId] = useState(null);
-  const [newGiaMucTieu, setNewGiaMucTieu] = useState('');
+  const token = localStorage.getItem('accessToken');
 
-  // Kiểm tra đăng nhập và nạp danh sách theo dõi
-  useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    if (!savedUser) {
-      toast.info('Bạn cần đăng nhập để quản lý danh sách sản phẩm theo dõi!');
-      navigate('/dang-nhap');
-      return;
-    }
-    setUser(JSON.parse(savedUser));
+  const [danhSach, setDanhSach] = useState([]);
+  const [loading, setLoading] = useState(Boolean(token));
+  const [error, setError] = useState(null);
+  const [dangXuLyId, setDangXuLyId] = useState(null);
+  const [chinhSuaId, setChinhSuaId] = useState(null);
+  const [giaMoi, setGiaMoi] = useState('');
 
-    // Nạp dsTheoDoi, nếu chưa có thì tạo dữ liệu mặc định để demo
-    const savedDs = localStorage.getItem('dsTheoDoi');
-    if (savedDs) {
-      setDsTheoDoi(JSON.parse(savedDs));
-    } else {
-      const macDinh = [
-        {
-          id: 1,
-          tenSanPham: 'Samsung Galaxy S26 Ultra 5G 12GB 512GB',
-          thuongHieu: 'Samsung',
-          giaThapNhat: 29890000,
-          giaMucTieu: 31000000,
-          nguon: 'Shopee',
-          ngayTheoDoi: '01/07/2026',
-          datMucTieu: true, // Vì giá thấp nhất (29.89M) thấp hơn giá mục tiêu (31M)
-        },
-        {
-          id: 4,
-          tenSanPham: 'Samsung Galaxy S26 5G 12GB 256GB',
-          thuongHieu: 'Samsung',
-          giaThapNhat: 20790000,
-          giaMucTieu: 19000000,
-          nguon: 'FPT Shop',
-          ngayTheoDoi: '02/07/2026',
-          datMucTieu: false, // Vì giá hiện tại (20.79M) cao hơn giá mục tiêu (19M)
-        },
-      ];
-      localStorage.setItem('dsTheoDoi', JSON.stringify(macDinh));
-      setDsTheoDoi(macDinh);
-    }
-  }, [navigate]);
+  const layDanhSachTheoDoi = async () => {
+    if (!token) return;
 
-  // Xóa sản phẩm theo dõi
-  const xuLyBoTheoDoi = (id) => {
-    const dsCapNhat = dsTheoDoi.filter((item) => item.id !== id);
-    localStorage.setItem('dsTheoDoi', JSON.stringify(dsCapNhat));
-    setDsTheoDoi(dsCapNhat);
-    toast.success('Đã bỏ theo dõi sản phẩm thành công!');
-  };
+    setLoading(true);
+    setError(null);
 
-  // Mở chế độ chỉnh sửa giá mong muốn
-  const batDauSuaGia = (item) => {
-    setEditingId(item.id);
-    setNewGiaMucTieu(item.giaMucTieu);
-  };
+    try {
+      const res = await theoDoiGiaService.layDanhSachTheoDoi();
 
-  // Lưu giá chỉnh sửa
-  const luuGiaMoi = (id) => {
-    if (!newGiaMucTieu || Number(newGiaMucTieu) <= 0) {
-      toast.warning('Giá không hợp lệ!');
-      return;
-    }
-
-    const dsCapNhat = dsTheoDoi.map((item) => {
-      if (item.id === id) {
-        const targetPrice = Number(newGiaMucTieu);
-        return {
-          ...item,
-          giaMucTieu: targetPrice,
-          datMucTieu: item.giaThapNhat <= targetPrice,
-        };
+      if (res.success) {
+        setDanhSach(res.data || []);
+      } else {
+        setError(res.message || 'Không thể tải danh sách sản phẩm theo dõi');
       }
-      return item;
-    });
-
-    localStorage.setItem('dsTheoDoi', JSON.stringify(dsCapNhat));
-    setDsTheoDoi(dsCapNhat);
-    setEditingId(null);
-    toast.success('Đã cập nhật giá mong muốn thành công!');
+    } catch (err) {
+      console.error('Load watched products failed:', err);
+      setError('Lỗi kết nối máy chủ API');
+      toast.error('Lỗi kết nối máy chủ API');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (!user) {
-    return null;
+  useEffect(() => {
+    layDanhSachTheoDoi();
+  }, []);
+
+  const xuLyHuyTheoDoi = async (maTheoDoi) => {
+    const dongY = window.confirm('Bạn có chắc muốn hủy theo dõi sản phẩm này không?');
+    if (!dongY) return;
+
+    setDangXuLyId(maTheoDoi);
+
+    try {
+      const res = await theoDoiGiaService.huyTheoDoi(maTheoDoi);
+
+      if (res.success) {
+        setDanhSach((prev) => prev.filter((item) => item.maTheoDoi !== maTheoDoi));
+        toast.success(res.message || 'Đã hủy theo dõi sản phẩm');
+      } else {
+        toast.error(res.message || 'Không thể hủy theo dõi sản phẩm');
+      }
+    } catch (err) {
+      console.error('Delete watched product failed:', err);
+      toast.error('Lỗi kết nối máy chủ API');
+    } finally {
+      setDangXuLyId(null);
+    }
+  };
+
+  const xuLyBatDauChinhGia = (item) => {
+  setChinhSuaId(item.maTheoDoi);
+  setGiaMoi(item.giaMongMuon ? String(Number(item.giaMongMuon)) : '');
+};
+
+const xuLyHuyChinhGia = () => {
+  setChinhSuaId(null);
+  setGiaMoi('');
+};
+
+  const xuLyLuuGiaMongMuon = async (item) => {
+    const giaMoiNumber = giaMoi ? Number(giaMoi) : null;
+
+    if (giaMoi && (Number.isNaN(giaMoiNumber) || giaMoiNumber <= 0)) {
+      toast.info('Giá mong muốn phải là số lớn hơn 0');
+      return;
+    }
+
+    setDangXuLyId(item.maTheoDoi);
+
+    try {
+      const res = await theoDoiGiaService.capNhatTheoDoi(item.maTheoDoi, {
+        giaMongMuon: giaMoiNumber,
+      });
+
+      if (res.success) {
+        setDanhSach((prev) =>
+          prev.map((sanPham) =>
+            sanPham.maTheoDoi === item.maTheoDoi
+              ? { ...sanPham, giaMongMuon: giaMoiNumber }
+              : sanPham
+          )
+        );
+
+        toast.success(res.message || 'Cập nhật giá mong muốn thành công');
+        setChinhSuaId(null);
+        setGiaMoi('');
+      } else {
+        toast.error(res.message || 'Không thể cập nhật giá mong muốn');
+      }
+    } catch (err) {
+      console.error('Update target price failed:', err);
+      toast.error(err.response?.data?.message || 'Lỗi kết nối máy chủ API');
+    } finally {
+      setDangXuLyId(null);
+    }
+  };
+
+  const renderNoLogin = () => (
+    <div style={{ textAlign: 'center' }}>
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5" style={{ marginBottom: '24px' }}>
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+        <path d="M12 8v4"></path>
+        <path d="M12 16h.01"></path>
+      </svg>
+      <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#334155', marginBottom: '16px' }}>
+        Vui lòng đăng nhập
+      </h2>
+      <p style={{ color: '#64748b', maxWidth: '600px', margin: '0 auto 32px auto', lineHeight: '1.6' }}>
+        Bạn cần đăng nhập để xem danh sách sản phẩm đang theo dõi.
+      </p>
+      <Link
+        to="/dang-nhap"
+        style={{
+          display: 'inline-block',
+          background: 'var(--color-primary)',
+          color: '#fff',
+          padding: '10px 24px',
+          borderRadius: '6px',
+          textDecoration: 'none',
+          fontWeight: '500'
+        }}
+      >
+        Đăng nhập
+      </Link>
+    </div>
+  );
+
+  const renderLoading = () => (
+    <div style={{ width: '100%' }}>
+      <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#334155', marginBottom: '24px' }}>
+        Sản phẩm theo dõi
+      </h2>
+      {[1, 2, 3].map((item) => (
+        <div
+          key={item}
+          style={{
+            display: 'flex',
+            gap: '16px',
+            padding: '16px',
+            border: '1px solid #e2e8f0',
+            borderRadius: '12px',
+            marginBottom: '16px'
+          }}
+        >
+          <div className="skeleton" style={{ width: '96px', height: '96px', borderRadius: '10px' }}></div>
+          <div style={{ flex: 1 }}>
+            <div className="skeleton" style={{ height: '20px', width: '60%', marginBottom: '12px' }}></div>
+            <div className="skeleton" style={{ height: '16px', width: '40%', marginBottom: '12px' }}></div>
+            <div className="skeleton" style={{ height: '16px', width: '30%' }}></div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderEmpty = () => (
+    <div style={{ textAlign: 'center' }}>
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5" style={{ marginBottom: '24px' }}>
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"></path>
+      </svg>
+      <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#334155', marginBottom: '16px' }}>
+        Chưa có sản phẩm theo dõi
+      </h2>
+      <p style={{ color: '#64748b', maxWidth: '600px', margin: '0 auto 32px auto', lineHeight: '1.6' }}>
+        Khi bạn bấm “Theo dõi giảm giá” ở trang chi tiết sản phẩm, sản phẩm sẽ xuất hiện tại đây.
+      </p>
+      <Link
+        to="/"
+        style={{
+          display: 'inline-block',
+          background: 'var(--color-primary)',
+          color: '#fff',
+          padding: '10px 24px',
+          borderRadius: '6px',
+          textDecoration: 'none',
+          fontWeight: '500'
+        }}
+      >
+        Tìm sản phẩm
+      </Link>
+    </div>
+  );
+
+  const renderError = () => (
+    <div style={{ textAlign: 'center' }}>
+      <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#334155', marginBottom: '16px' }}>
+        Không thể tải dữ liệu
+      </h2>
+      <p style={{ color: '#64748b', maxWidth: '600px', margin: '0 auto 24px auto', lineHeight: '1.6' }}>
+        {error}
+      </p>
+      <button
+        type="button"
+        onClick={layDanhSachTheoDoi}
+        style={{
+          background: 'var(--color-primary)',
+          color: '#fff',
+          padding: '10px 24px',
+          border: 'none',
+          borderRadius: '6px',
+          cursor: 'pointer',
+          fontWeight: '500'
+        }}
+      >
+        Thử lại
+      </button>
+    </div>
+  );
+
+  const renderList = () => (
+    <div style={{ width: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '24px' }}>
+        <div>
+          <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#334155', marginBottom: '8px' }}>
+            Sản phẩm theo dõi
+          </h2>
+          <p style={{ color: '#64748b', margin: 0 }}>
+            Bạn đang theo dõi {danhSach.length} sản phẩm.
+          </p>
+        </div>
+        <Link
+          to="/"
+          style={{
+            background: '#f1f5f9',
+            color: '#334155',
+            padding: '10px 16px',
+            borderRadius: '8px',
+            textDecoration: 'none',
+            fontWeight: '500'
+          }}
+        >
+          Tìm thêm sản phẩm
+        </Link>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {danhSach.map((item) => (
+          <article
+            key={item.maTheoDoi}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '96px 1fr auto',
+              gap: '16px',
+              alignItems: 'center',
+              padding: '16px',
+              border: '1px solid #e2e8f0',
+              borderRadius: '12px',
+              background: '#fff'
+            }}
+          >
+            <div
+              style={{
+                width: '96px',
+                height: '96px',
+                borderRadius: '10px',
+                background: '#f8fafc',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden'
+              }}
+            >
+              {item.anhDaiDien ? (
+                <img
+                  src={item.anhDaiDien}
+                  alt={item.tenChuanHoa}
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                />
+              ) : (
+                <span style={{ color: '#94a3b8', fontSize: '13px' }}>No image</span>
+              )}
+            </div>
+
+            <div>
+              <Link
+                to={`/san-pham/${item.maSPCH}`}
+                style={{
+                  display: 'inline-block',
+                  color: '#0f172a',
+                  fontSize: '18px',
+                  fontWeight: '700',
+                  textDecoration: 'none',
+                  marginBottom: '8px'
+                }}
+              >
+                {item.tenChuanHoa}
+              </Link>
+              
+              <div style={{ marginBottom: '10px' }}>
+                {item.trangThaiHienThi === 'chua_dat_gia_mong_muon' && (
+                  <span style={{ background: '#fef2f2', color: '#991b1b', padding: '4px 8px', borderRadius: '4px', fontSize: '13px', fontWeight: '600' }}>Chưa đặt giá mong muốn</span>
+                )}
+                {item.trangThaiHienThi === 'dang_theo_doi' && (
+                  <span style={{ background: '#eff6ff', color: '#1e40af', padding: '4px 8px', borderRadius: '4px', fontSize: '13px', fontWeight: '600' }}>Đang theo dõi</span>
+                )}
+                {item.trangThaiHienThi === 'da_dat_gia' && (
+                  <span style={{ background: '#fef3c7', color: '#92400e', padding: '4px 8px', borderRadius: '4px', fontSize: '13px', fontWeight: '600' }}>Đã đạt giá mong muốn</span>
+                )}
+                {item.trangThaiHienThi === 'da_thong_bao' && (
+                  <span style={{ background: '#dcfce7', color: '#166534', padding: '4px 8px', borderRadius: '4px', fontSize: '13px', fontWeight: '600' }}>Đã gửi thông báo{item.ngayThongBao ? ` (${new Date(item.ngayThongBao).toLocaleDateString('vi-VN')})` : ''}</span>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', color: '#64748b', fontSize: '14px', marginBottom: '8px' }}>
+                {item.thuongHieu && <span>Thương hiệu: {item.thuongHieu}</span>}
+                {item.dungLuong && <span>Dung lượng: {item.dungLuong}</span>}
+              </div>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center' }}>
+                <span style={{ color: '#16a34a', fontWeight: '700' }}>
+                  Giá thấp nhất: {item.giaThapNhat ? dinhDangTien(item.giaThapNhat) : 'Chưa có giá'}
+                </span>
+                {item.giaCaoNhat && (
+                  <span style={{ color: '#64748b' }}>
+                    Giá cao nhất: {dinhDangTien(item.giaCaoNhat)}
+                  </span>
+                )}
+                {item.giaMongMuon && (
+                  <span style={{ color: '#2563eb', fontWeight: '700' }}>
+                     Giá mong muốn: {item.giaMongMuon ? dinhDangTien(item.giaMongMuon) : 'Chưa đặt'}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: '190px' }}>
+  {chinhSuaId === item.maTheoDoi ? (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px',
+        padding: '10px',
+        border: '1px solid #bfdbfe',
+        borderRadius: '10px',
+        background: '#eff6ff'
+      }}
+    >
+      <label style={{ color: '#1e3a8a', fontSize: '13px', fontWeight: '700' }}>
+        Giá mong muốn mới
+      </label>
+
+      <input
+        type="number"
+        value={giaMoi}
+        onChange={(event) => setGiaMoi(event.target.value)}
+        placeholder="VD: 22000000"
+        min="0"
+        style={{
+          padding: '9px 10px',
+          border: '1px solid #93c5fd',
+          borderRadius: '8px',
+          outline: 'none'
+        }}
+      />
+
+      <button
+        type="button"
+        disabled={dangXuLyId === item.maTheoDoi}
+        onClick={() => xuLyLuuGiaMongMuon(item)}
+        style={{
+          background: 'var(--color-primary)',
+          color: '#fff',
+          border: 'none',
+          padding: '9px 14px',
+          borderRadius: '8px',
+          cursor: dangXuLyId === item.maTheoDoi ? 'not-allowed' : 'pointer',
+          fontWeight: '700',
+          whiteSpace: 'nowrap',
+          opacity: dangXuLyId === item.maTheoDoi ? 0.7 : 1
+        }}
+      >
+        {dangXuLyId === item.maTheoDoi ? 'Đang lưu...' : 'Lưu giá'}
+      </button>
+
+      <button
+        type="button"
+        onClick={xuLyHuyChinhGia}
+        style={{
+          background: '#fff',
+          color: '#334155',
+          border: '1px solid #cbd5e1',
+          padding: '8px 14px',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          fontWeight: '600',
+          whiteSpace: 'nowrap'
+        }}
+      >
+        Hủy sửa
+      </button>
+    </div>
+  ) : (
+    <button
+      type="button"
+      onClick={() => xuLyBatDauChinhGia(item)}
+      style={{
+        background: 'var(--color-primary)',
+        color: '#fff',
+        border: 'none',
+        padding: '9px 14px',
+        borderRadius: '8px',
+        cursor: 'pointer',
+        fontWeight: '700',
+        whiteSpace: 'nowrap'
+      }}
+    >
+      Chỉnh giá mong muốn
+    </button>
+  )}
+
+  <button
+    type="button"
+    onClick={() => navigate('/theo-doi-gia')}
+    style={{
+      background: '#f8fafc',
+      color: '#2563eb',
+      border: '1px solid #bfdbfe',
+      padding: '9px 14px',
+      borderRadius: '8px',
+      cursor: 'pointer',
+      fontWeight: '600',
+      whiteSpace: 'nowrap'
+    }}
+  >
+    Đổi sản phẩm
+  </button>
+
+  <button
+    type="button"
+    disabled={dangXuLyId === item.maTheoDoi}
+    onClick={() => xuLyHuyTheoDoi(item.maTheoDoi)}
+    style={{
+      background: '#fff',
+      color: '#dc2626',
+      border: '1px solid #fecaca',
+      padding: '9px 14px',
+      borderRadius: '8px',
+      cursor: dangXuLyId === item.maTheoDoi ? 'not-allowed' : 'pointer',
+      fontWeight: '600',
+      whiteSpace: 'nowrap',
+      opacity: dangXuLyId === item.maTheoDoi ? 0.7 : 1
+    }}
+  >
+    {dangXuLyId === item.maTheoDoi ? 'Đang hủy...' : 'Hủy theo dõi'}
+  </button>
+</div>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+
+  let content = null;
+
+  if (!token) {
+    content = renderNoLogin();
+  } else if (loading) {
+    content = renderLoading();
+  } else if (error) {
+    content = renderError();
+  } else if (danhSach.length === 0) {
+    content = renderEmpty();
+  } else {
+    content = renderList();
   }
 
   return (
-    <main className="user-page">
+    <main className="user-page" style={{ padding: '60px 20px', background: '#f8fafc', minHeight: '60vh' }}>
       <div className="user-container account-layout">
-        {/* Cột trái: Sidebar tài khoản */}
         <SidebarTaiKhoan pathHienTai="/tai-khoan/san-pham-theo-doi" />
-
-        {/* Cột phải: Danh sách sản phẩm đang theo dõi */}
-        <section className="account-content">
-          <div className="account-content__header">
-            <h2>Sản phẩm đang theo dõi giá</h2>
-            <p>Danh sách các sản phẩm đang được giám sát giá tự động. Hệ thống sẽ báo về tài khoản khi giá giảm đạt đích.</p>
-          </div>
-
-          {dsTheoDoi.length > 0 ? (
-            <div className="tracked-products-list">
-              {dsTheoDoi.map((item) => {
-                // Xác định động trạng thái đạt mục tiêu
-                const datMucTieu = item.giaThapNhat <= item.giaMucTieu;
-
-                return (
-                  <div key={item.id} className="tracked-item-card">
-                    {/* Cột 1: Ảnh đại diện */}
-                    <div className="tracked-item-card__img">
-                      <SinhIconSanPham danhMuc="Điện thoại" width={48} height={48} />
-                    </div>
-
-                    {/* Cột 2: Thông tin sản phẩm */}
-                    <div className="tracked-item-card__info">
-                      <Link to={`/san-pham/${item.id}`} className="tracked-title">
-                        {item.tenSanPham}
-                      </Link>
-                      <div className="tracked-meta">
-                        <span>Hãng: <strong>{item.thuongHieu}</strong></span>
-                        <span>Ngày theo dõi: {item.ngayTheoDoi}</span>
-                      </div>
-                    </div>
-
-                    {/* Cột 3: Giá hiện tại vs Giá mong muốn */}
-                    <div className="tracked-item-card__pricing">
-                      <div className="price-item">
-                        <span className="price-lbl">Giá thấp nhất:</span>
-                        <strong className="price-val text-red">{dinhDangTien(item.giaThapNhat)}</strong>
-                        <span className="price-source">(tại {item.nguon})</span>
-                      </div>
-
-                      <div className="price-item">
-                        <span className="price-lbl">Giá mong muốn:</span>
-                        {editingId === item.id ? (
-                          <div className="edit-price-inline">
-                            <input
-                              type="number"
-                              min="0"
-                              max="200000000"
-                              value={newGiaMucTieu}
-                              onChange={(e) => {
-                                const val = Number(e.target.value);
-                                if (val <= 200000000) setNewGiaMucTieu(e.target.value);
-                              }}
-                              className="edit-price-input"
-                            />
-                            <button onClick={() => luuGiaMoi(item.id)} className="btn-save-inline">Lưu</button>
-                            <button onClick={() => setEditingId(null)} className="btn-cancel-inline">Hủy</button>
-                          </div>
-                        ) : (
-                          <div className="display-price-inline">
-                            <strong className="price-val text-blue">{dinhDangTien(item.giaMucTieu)}</strong>
-                            <button onClick={() => batDauSuaGia(item)} className="btn-edit-inline">
-                              ✏️ Sửa
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Cột 4: Trạng thái & Action */}
-                    <div className="tracked-item-card__status-actions">
-                      <div className="status-badge-wrapper">
-                        {datMucTieu ? (
-                          <span className="status-badge status-badge--success">🍀 Đã đạt mục tiêu</span>
-                        ) : (
-                          <span className="status-badge status-badge--pending">⏳ Chưa đạt mục tiêu</span>
-                        )}
-                      </div>
-
-                      <button
-                        onClick={() => xuLyBoTheoDoi(item.id)}
-                        className="btn-unfollow"
-                      >
-                        Bỏ theo dõi
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="tracked-empty">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-              </svg>
-              <h3>Chưa theo dõi sản phẩm nào</h3>
-              <p>Hãy truy cập trang chi tiết sản phẩm hoặc trang Theo dõi giá để bắt đầu nhận tin tức biến động giá.</p>
-              <Link to="/theo-doi-gia" className="btn-redirect-track">Đến trang Theo dõi giá</Link>
-            </div>
-          )}
+        <section
+          className="account-content"
+          style={{
+            background: '#fff',
+            padding: '32px',
+            borderRadius: '12px',
+            boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)',
+            minHeight: '400px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: danhSach.length > 0 ? 'stretch' : 'center',
+            justifyContent: danhSach.length > 0 ? 'flex-start' : 'center'
+          }}
+        >
+          {content}
         </section>
       </div>
     </main>

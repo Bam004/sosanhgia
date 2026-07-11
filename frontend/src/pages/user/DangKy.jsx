@@ -1,161 +1,130 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { authService } from '../../services/authService';
+import { sanitizeReturnUrl } from '../../utils/returnUrl';
 
 export default function DangKy() {
   const navigate = useNavigate();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [matKhau, setMatKhau] = useState('');
-  const [nhapLaiMatKhau, setNhapLaiMatKhau] = useState('');
-  const [fileSelected, setFileSelected] = useState(null);
+  const [searchParams] = useSearchParams();
+  const returnUrl = sanitizeReturnUrl(searchParams.get('returnUrl'));
+  const [formData, setFormData] = useState({
+    hoTen: '',
+    email: '',
+    matKhau: '',
+    xacNhanMatKhau: ''
+  });
+  const [loading, setLoading] = useState(false);
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const xuLyDangKySubmit = (e) => {
-    e.preventDefault();
-
-    if (!name.trim() || !email.trim() || !matKhau || !nhapLaiMatKhau) {
-      toast.warning('Vui lòng điền đầy đủ các thông tin đăng ký bắt buộc!');
-      return;
-    }
-
-    if (matKhau !== nhapLaiMatKhau) {
-      toast.warning('Mật khẩu nhập lại không trùng khớp!');
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    // Giả lập độ trễ API 800ms để chặn double submit & hiện spinner
-    setTimeout(() => {
-      toast.success('Đăng ký tài khoản thành công! Vui lòng đăng nhập.');
-      
-      // Lưu thông tin đăng ký tạm vào localStorage để khi đăng nhập điền đúng tên
-      const tempRegInfo = {
-        name: name,
-        email: email,
-        avatar: 'initial',
-      };
-      localStorage.setItem('tempReg', JSON.stringify(tempRegInfo));
-
-      setIsSubmitting(false);
-      navigate('/dang-nhap');
-    }, 800);
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
   };
 
-  const handleFileChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setFileSelected(e.target.files[0].name);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.email.trim()) {
+      return toast.error("Email không được rỗng");
+    }
+    if (formData.matKhau.length < 6) {
+      return toast.error("Mật khẩu phải từ 6 ký tự trở lên");
+    }
+    if (formData.matKhau !== formData.xacNhanMatKhau) {
+      return toast.error("Xác nhận mật khẩu không khớp");
+    }
+
+    try {
+      setLoading(true);
+      const res = await authService.dangKy(formData);
+      if (res.success) {
+        toast.success("Đăng ký thành công. Vui lòng đăng nhập.");
+        navigate(returnUrl !== '/' ? `/dang-nhap?returnUrl=${encodeURIComponent(returnUrl)}` : '/dang-nhap');
+      } else {
+        toast.error(res.message || "Đăng ký thất bại");
+      }
+    } catch (error) {
+      const msg = error.response?.data?.message || "Đăng ký thất bại";
+      toast.error(msg);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <main className="user-page auth-page-wrapper">
-      <div className="auth-card">
-        <h2 className="auth-card__title">ĐĂNG KÝ TÀI KHOẢN</h2>
-
-        <form onSubmit={xuLyDangKySubmit} className="auth-card__form">
-          {/* Họ và tên */}
-          <div className="form-group">
-            <label htmlFor="reg-name">Họ và tên:</label>
-            <input
-              id="reg-name"
-              type="text"
-              placeholder="Nhập họ và tên của bạn..."
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="form-control"
+    <main className="user-page" style={{ padding: '60px 20px', background: '#f8fafc', minHeight: '60vh', display: 'flex', justifyContent: 'center' }}>
+      <div className="user-container" style={{ maxWidth: '400px', width: '100%', background: '#fff', padding: '32px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}>
+        <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#334155', marginBottom: '24px', textAlign: 'center' }}>
+          Đăng ký tài khoản
+        </h2>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontWeight: '500' }}>Họ tên</label>
+            <input 
+              type="text" 
+              name="hoTen"
+              value={formData.hoTen}
+              onChange={handleChange}
+              style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }}
+              placeholder="Nhập họ tên"
             />
           </div>
-
-          {/* Email */}
-          <div className="form-group">
-            <label htmlFor="reg-email">Email:</label>
-            <input
-              id="reg-email"
-              type="email"
-              placeholder="Nhập địa chỉ email..."
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="form-control"
+          <div>
+            <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontWeight: '500' }}>Email</label>
+            <input 
+              type="email" 
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }}
+              placeholder="Nhập email"
             />
           </div>
-
-          {/* Mật khẩu */}
-          <div className="form-group">
-            <label htmlFor="reg-password">Mật khẩu:</label>
-            <input
-              id="reg-password"
-              type="password"
-              placeholder="Mật khẩu tối thiểu 6 ký tự..."
-              value={matKhau}
-              onChange={(e) => setMatKhau(e.target.value)}
-              className="form-control"
+          <div>
+            <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontWeight: '500' }}>Mật khẩu</label>
+            <input 
+              type="password" 
+              name="matKhau"
+              value={formData.matKhau}
+              onChange={handleChange}
+              style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }}
+              placeholder="Nhập mật khẩu (ít nhất 6 ký tự)"
             />
           </div>
-
-          {/* Nhập lại mật khẩu */}
-          <div className="form-group">
-            <label htmlFor="reg-re-password">Nhập lại mật khẩu:</label>
-            <input
-              id="reg-re-password"
-              type="password"
-              placeholder="Nhập lại mật khẩu để xác nhận..."
-              value={nhapLaiMatKhau}
-              onChange={(e) => setNhapLaiMatKhau(e.target.value)}
-              className="form-control"
+          <div>
+            <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontWeight: '500' }}>Xác nhận mật khẩu</label>
+            <input 
+              type="password" 
+              name="xacNhanMatKhau"
+              value={formData.xacNhanMatKhau}
+              onChange={handleChange}
+              style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }}
+              placeholder="Nhập lại mật khẩu"
             />
           </div>
-
-          {/* Chọn ảnh đại diện (không bắt buộc) */}
-          <div className="form-group">
-            <label>Chọn ảnh đại diện (Không bắt buộc):</label>
-            <div className="custom-file-input">
-              <label htmlFor="reg-avatar" className="file-input-label">
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{ marginRight: 6 }}
-                >
-                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
-                </svg>
-                <span>{fileSelected || 'Chọn tệp...'}</span>
-              </label>
-              <input
-                id="reg-avatar"
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                style={{ display: 'none' }}
-              />
-            </div>
-          </div>
-
-          <button type="submit" className="btn-auth-submit btn-auth-submit--register" disabled={isSubmitting}>
-            {isSubmitting ? (
-              <>
-                <span className="spinner"></span>
-                Đang tạo tài khoản...
-              </>
-            ) : (
-              'Tạo tài khoản'
-            )}
+          <button 
+            type="submit" 
+            disabled={loading}
+            style={{ 
+              width: '100%', 
+              background: 'var(--color-primary)', 
+              color: '#fff', 
+              padding: '12px', 
+              borderRadius: '6px', 
+              border: 'none',
+              fontWeight: '600',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              marginTop: '8px',
+              opacity: loading ? 0.7 : 1
+            }}
+          >
+            {loading ? 'Đang xử lý...' : 'Đăng ký'}
           </button>
         </form>
-
-        <div className="auth-card__footer">
-          <span>Đã có tài khoản? </span>
-          <Link to="/dang-nhap" className="auth-link">
-            Đăng nhập
-          </Link>
-        </div>
+        <p style={{ textAlign: 'center', marginTop: '24px', color: '#64748b' }}>
+          Đã có tài khoản? <Link to={returnUrl !== '/' ? `/dang-nhap?returnUrl=${encodeURIComponent(returnUrl)}` : '/dang-nhap'} style={{ color: 'var(--color-primary)', fontWeight: '500', textDecoration: 'none' }}>Đăng nhập</Link>
+        </p>
       </div>
     </main>
   );

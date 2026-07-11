@@ -1,20 +1,22 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
+import { buildLoginUrl } from '../../utils/returnUrl';
 
 export default function DauTrangNguoiDung() {
-  const [tuKhoa, setTuKhoa] = useState('');
-  const [user, setUser] = useState(null);
-  const navigate = useNavigate();
   const location = useLocation();
+  const [tuKhoa, setTuKhoa] = useState('');
+  const navigate = useNavigate();
+  
+  const token = localStorage.getItem("accessToken");
+  const userStr = localStorage.getItem("user");
+  const user = userStr ? JSON.parse(userStr) : null;
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    } else {
-      setUser(null);
-    }
-  }, [location]);
+    const params = new URLSearchParams(location.search);
+    const q = params.get('q') || '';
+    setTuKhoa(q);
+  }, [location.search]);
 
   const xuLyTimKiem = (event) => {
     event.preventDefault();
@@ -24,12 +26,6 @@ export default function DauTrangNguoiDung() {
     } else {
       navigate('/tim-kiem');
     }
-  };
-
-  const xuLyDangXuat = () => {
-    localStorage.removeItem('user');
-    setUser(null);
-    navigate('/');
   };
 
   return (
@@ -63,44 +59,50 @@ export default function DauTrangNguoiDung() {
           </button>
         </form>
 
-        <div className="user-header__actions">
-          {user ? (
-            <div className="user-header__profile">
-              <span className="user-header__avatar">
-                {user.avatar === 'clover' ? '🍀' : (user.name ? user.name[0].toUpperCase() : 'U')}
-              </span>
-              <div className="user-header__profile-text">
-                <Link to="/tai-khoan" className="user-header__profile-name">
-                  Xin chào {user.name || 'Thành viên'}
+          <div className="user-header__actions">
+            {!token || !user ? (
+              <Link to="/dang-nhap" className="user-header__login-link">
+                <span>Đăng nhập</span>
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="user-header__login-icon"
+                >
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+              </Link>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <Link to="/tai-khoan" style={{ color: '#334155', textDecoration: 'none', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                  {user.hoTen}
                 </Link>
-                <button onClick={xuLyDangXuat} className="user-header__logout">
-                  Đăng xuất
-                </button>
               </div>
-            </div>
-          ) : (
-            <Link to="/dang-nhap" className="user-header__login-link">
-              <span>Đăng nhập</span>
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="user-header__login-icon"
-              >
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                <circle cx="12" cy="7" r="4"></circle>
-              </svg>
-            </Link>
-          )}
+            )}
 
-          <Link to="/theo-doi-gia" className="user-header__track-button">
+          <button 
+            type="button" 
+            onClick={() => {
+              const token = localStorage.getItem("accessToken");
+              if (!token) {
+                toast.info("Vui l?ng ??ng nh?p ?? s? d?ng ch?c n?ng theo d?i gi?");
+                navigate(buildLoginUrl('/tai-khoan/san-pham-theo-doi'));
+              } else {
+                navigate('/tai-khoan/san-pham-theo-doi');
+              }
+            }} 
+            className="user-header__track-button"
+            style={{ border: 'none', cursor: 'pointer', outline: 'none' }}
+          >
             Theo dõi giá
-          </Link>
+          </button>
         </div>
       </div>
     </header>
