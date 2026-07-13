@@ -7,10 +7,16 @@ export default function DauTrangNguoiDung() {
   const location = useLocation();
   const [tuKhoa, setTuKhoa] = useState('');
   const navigate = useNavigate();
-  
+
+  const xuLyChonDanhMuc = (tuKhoaDanhMuc) => {
+    setTuKhoa(tuKhoaDanhMuc);
+    navigate(`/tim-kiem?q=${encodeURIComponent(tuKhoaDanhMuc)}`);
+  };
+
   const token = localStorage.getItem("accessToken");
   const userStr = localStorage.getItem("user");
   const user = userStr ? JSON.parse(userStr) : null;
+
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -87,17 +93,17 @@ export default function DauTrangNguoiDung() {
               </div>
             )}
 
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={() => {
               const token = localStorage.getItem("accessToken");
               if (!token) {
-                toast.info("Vui l?ng ??ng nh?p ?? s? d?ng ch?c n?ng theo d?i gi?");
+                toast.info("Vui lòng đăng nhập để sử dụng chức năng theo dõi giá");
                 navigate(buildLoginUrl('/tai-khoan/san-pham-theo-doi'));
               } else {
                 navigate('/tai-khoan/san-pham-theo-doi');
               }
-            }} 
+            }}
             className="user-header__track-button"
             style={{ border: 'none', cursor: 'pointer', outline: 'none' }}
           >

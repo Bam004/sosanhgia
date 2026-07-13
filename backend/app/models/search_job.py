@@ -1,9 +1,8 @@
-﻿from datetime import datetime
-
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from backend.app.core.database import Base
+from backend.app.core.datetime_utils import utc_now_naive
 
 
 class SearchJob(Base):
@@ -22,7 +21,7 @@ class SearchJob(Base):
 
     errorMessage = Column(String(1000), nullable=True)
 
-    ngayTao = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    ngayTao = Column(DateTime, nullable=False, default=utc_now_naive, index=True)
     batDauLuc = Column(DateTime, nullable=True)
     ketThucLuc = Column(DateTime, nullable=True)
 
@@ -55,10 +54,18 @@ class SearchJobSourceStatus(Base):
 
     batDauLuc = Column(DateTime, nullable=True)
     ketThucLuc = Column(DateTime, nullable=True)
-    ngayCapNhat = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    ngayCapNhat = Column(DateTime, nullable=False, default=utc_now_naive, onupdate=utc_now_naive)
 
     search_job = relationship("SearchJob", back_populates="source_statuses")
 
     __table_args__ = (
-        UniqueConstraint("maSearchJob", "nguon", name="uix_search_job_source"),
+        UniqueConstraint(
+            "maSearchJob",
+            "nguon",
+            name="uix_search_job_source",
+        ),
+        Index(
+            "ix_sjss_ngay_cap_nhat",
+            "ngayCapNhat",
+        ),
     )

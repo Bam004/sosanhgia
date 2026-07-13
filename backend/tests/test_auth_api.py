@@ -1,18 +1,26 @@
 from uuid import uuid4
 
 import pytest
+from fastapi import Depends
 from fastapi.testclient import TestClient
 
+import backend.app.api.auth as auth_module
+from backend.app.api.auth import require_admin
 from backend.app.core.database import SessionLocal
 from backend.app.core.security import create_access_token
 from backend.app.main import app
 from backend.app.models import TaiKhoan
-from backend.app.api.auth import require_admin
-from fastapi import Depends
+
 
 @app.get("/api/auth/test-admin-only")
-def dummy_admin_only_endpoint(current_user: TaiKhoan = Depends(require_admin)):
-    return {"success": True, "role": current_user.vaiTro}
+def dummy_admin_only_endpoint(
+    current_user: TaiKhoan = Depends(require_admin),
+):
+    return {
+        "success": True,
+        "role": current_user.vaiTro,
+    }
+
 
 @pytest.fixture
 def client():
@@ -284,99 +292,254 @@ def test_inactive_account_cannot_login_or_use_existing_token(
 
     assert inactive_me_response.status_code == 403
 
-def test_require_admin_rejects_normal_user(client, account_data):
-    # Test 1: Active user, role user -> 403
-    register_response = register_account(client, account_data)
+
+def test_require_admin_rejects_normal_user(
+    client,
+    account_data,
+):
+    register_response = register_account(
+        client,
+        account_data,
+    )
+
     assert register_response.status_code == 201
 
-    login_response = login_account(client, account_data["email"], account_data["matKhau"])
+    login_response = login_account(
+        client,
+        account_data["email"],
+        account_data["matKhau"],
+    )
+
+    assert login_response.status_code == 200
+
     access_token = login_response.json()["data"]["accessToken"]
 
     admin_response = client.get(
         "/api/auth/test-admin-only",
-        headers={"Authorization": f"Bearer {access_token}"},
+        headers={
+            "Authorization": f"Bearer {access_token}",
+        },
     )
-    assert admin_response.status_code == 403
-    assert admin_response.json()["detail"] == "Yêu cầu quyền quản trị viên"
 
-def test_require_admin_accepts_admin_role(client, account_data):
-    # Test 2: Active admin -> 200
-    register_response = register_account(client, account_data)
+    assert admin_response.status_code == 403
+    assert (
+        admin_response.json()["detail"]
+        == "Yêu cầu quyền quản trị viên"
+    )
+
+
+def test_require_admin_accepts_admin_role(
+    client,
+    account_data,
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        auth_module,
+        "ADMIN_EMAIL",
+        account_data["email"],
+    )
+
+    register_response = register_account(
+        client,
+        account_data,
+    )
+
     assert register_response.status_code == 201
 
-    # Promote to admin
     db = SessionLocal()
+
     try:
-        user = db.query(TaiKhoan).filter(TaiKhoan.email == account_data["email"]).first()
+        user = (
+            db.query(TaiKhoan)
+            .filter(TaiKhoan.email == account_data["email"])
+            .first()
+        )
+
+        assert user is not None
+
         user.vaiTro = "admin"
         db.commit()
     finally:
         db.close()
 
-    login_response = login_account(client, account_data["email"], account_data["matKhau"])
+    login_response = login_account(
+        client,
+        account_data["email"],
+        account_data["matKhau"],
+    )
+
+    assert login_response.status_code == 200
+
     access_token = login_response.json()["data"]["accessToken"]
 
     admin_response = client.get(
         "/api/auth/test-admin-only",
-        headers={"Authorization": f"Bearer {access_token}"},
+        headers={
+            "Authorization": f"Bearer {access_token}",
+        },
     )
+
     assert admin_response.status_code == 200
     assert admin_response.json()["role"] == "admin"
 
-def test_require_admin_rejects_inactive_admin(client, account_data):
-    # Test 3: Inactive admin -> blocked by get_current_user -> 403
-    register_response = register_account(client, account_data)
+
+def test_require_admin_rejects_admin_with_wrong_email(
+    client,
+    account_data,
+):
+    register_response = register_account(
+        client,
+        account_data,
+    )
+
     assert register_response.status_code == 201
 
-    # Promote to admin but inactive
     db = SessionLocal()
+
     try:
-        user = db.query(TaiKhoan).filter(TaiKhoan.email == account_data["email"]).first()
+        user = (
+            db.query(TaiKhoan)
+            .filter(TaiKhoan.email == account_data["email"])
+            .first()
+        )
+
+        assert user is not None
+
         user.vaiTro = "admin"
-        user.trangThai = "inactive"
         db.commit()
     finally:
         db.close()
 
-    login_response = login_account(client, account_data["email"], account_data["matKhau"])
-    # Login will fail because of inactive status (403). We need a valid token to test require_admin.
-    # We can generate token manually to bypass login check.
-    # Actually, inactive user gets 403 on login, but if they had an old token, it gets 403 on require_admin.
-    
+    login_response = login_account(
+        client,
+        account_data["email"],
+        account_data["matKhau"],
+    )
+
+    assert login_response.status_code == 200
+
+    access_token = login_response.json()["data"]["accessToken"]
+
+    admin_response = client.get(
+        "/api/auth/test-admin-only",
+        headers={
+            "Authorization": f"Bearer {access_token}",
+        },
+    )
+
+    assert admin_response.status_code == 403
+    assert (
+        admin_response.json()["detail"]
+        == "Yêu cầu quyền quản trị viên"
+    )
+
+
+def test_require_admin_rejects_inactive_admin(
+    client,
+    account_data,
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        auth_module,
+        "ADMIN_EMAIL",
+        account_data["email"],
+    )
+
+    register_response = register_account(
+        client,
+        account_data,
+    )
+
+    assert register_response.status_code == 201
+
     db = SessionLocal()
+
     try:
-        user = db.query(TaiKhoan).filter(TaiKhoan.email == account_data["email"]).first()
-        access_token = create_access_token({"sub": str(user.maTaiKhoan)})
+        user = (
+            db.query(TaiKhoan)
+            .filter(TaiKhoan.email == account_data["email"])
+            .first()
+        )
+
+        assert user is not None
+
+        user.vaiTro = "admin"
+        user.trangThai = "inactive"
+        db.commit()
+
+        access_token = create_access_token(
+            {
+                "sub": str(user.maTaiKhoan),
+            }
+        )
     finally:
         db.close()
 
     admin_response = client.get(
         "/api/auth/test-admin-only",
-        headers={"Authorization": f"Bearer {access_token}"},
+        headers={
+            "Authorization": f"Bearer {access_token}",
+        },
     )
-    assert admin_response.status_code == 403
-    assert admin_response.json()["detail"] == "Tài khoản đã bị vô hiệu hóa"
 
-def test_require_admin_normalizes_role_string(client, account_data):
-    # Test 4: Role with uppercase and whitespace -> " ADMIN "
-    register_response = register_account(client, account_data)
+    assert admin_response.status_code == 403
+    assert (
+        admin_response.json()["detail"]
+        == "Tài khoản đã bị vô hiệu hóa"
+    )
+
+
+def test_require_admin_normalizes_role_string(
+    client,
+    account_data,
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        auth_module,
+        "ADMIN_EMAIL",
+        account_data["email"],
+    )
+
+    register_response = register_account(
+        client,
+        account_data,
+    )
+
     assert register_response.status_code == 201
 
-    # Promote to " ADMIN "
     db = SessionLocal()
+
     try:
-        user = db.query(TaiKhoan).filter(TaiKhoan.email == account_data["email"]).first()
+        user = (
+            db.query(TaiKhoan)
+            .filter(TaiKhoan.email == account_data["email"])
+            .first()
+        )
+
+        assert user is not None
+
         user.vaiTro = " ADMIN "
         db.commit()
     finally:
         db.close()
 
-    login_response = login_account(client, account_data["email"], account_data["matKhau"])
+    login_response = login_account(
+        client,
+        account_data["email"],
+        account_data["matKhau"],
+    )
+
+    assert login_response.status_code == 200
+
     access_token = login_response.json()["data"]["accessToken"]
 
     admin_response = client.get(
         "/api/auth/test-admin-only",
-        headers={"Authorization": f"Bearer {access_token}"},
+        headers={
+            "Authorization": f"Bearer {access_token}",
+        },
     )
+
     assert admin_response.status_code == 200
     assert admin_response.json()["role"] == " ADMIN "
+

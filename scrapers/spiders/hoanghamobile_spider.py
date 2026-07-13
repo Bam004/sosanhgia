@@ -5,7 +5,7 @@ import re
 import unicodedata
 import scrapy
 from datetime import datetime
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlparse
 
 from scrapers.items import SanPhamThoItem
 
@@ -239,27 +239,50 @@ class HoangHaMobileSpider(scrapy.Spider):
         if not url:
             return False
 
-        if "/tra-gop/" in url:
+        parsed_url = urlparse(url)
+
+        if parsed_url.netloc not in {
+            "hoanghamobile.com",
+            "www.hoanghamobile.com",
+        }:
             return False
 
-        valid_prefixes = [
-            "/dien-thoai/",
-            "/dien-thoai-di-dong/",
-            "/kho-san-pham-cu/dien-thoai/",
-            "/op-lung/",
-            "/tam-dan-man-hinh/",
-            "/thay/",
+        path = parsed_url.path.strip("/")
+
+        if not path:
+            return False
+
+        path_segments = [
+            segment
+            for segment in path.split("/")
+            if segment
         ]
 
-        if not url.startswith("https://hoanghamobile.com/"):
+        # URL chi tiết sản phẩm thường gồm:
+        # /danh-muc/ten-san-pham
+        if len(path_segments) < 2:
             return False
 
-        path = url.replace("https://hoanghamobile.com", "")
+        invalid_prefixes = {
+            "tim-kiem",
+            "tin-tuc",
+            "khuyen-mai",
+            "tra-gop",
+            "gioi-thieu",
+            "lien-he",
+            "he-thong-cua-hang",
+            "bao-hanh",
+            "chinh-sach",
+            "tai-khoan",
+            "gio-hang",
+            "thanh-toan",
+            "tuyen-dung",
+        }
 
-        return any(
-            path.startswith(prefix)
-            for prefix in valid_prefixes
-        )
+        if path_segments[0].lower() in invalid_prefixes:
+            return False
+
+        return True
 
     def get_candidate_priority(self, title, url):
         keyword_is_accessory = self.is_accessory_text(self.keyword)

@@ -12,6 +12,7 @@ from backend.app.core.database import get_db
 from backend.app.models.search_job import SearchJob, SearchJobSourceStatus
 from backend.app.tasks.search_tasks import run_search_job_task
 
+from backend.app.core.datetime_utils import utc_now_naive
 router = APIRouter(
     prefix="/api/search/jobs",
     tags=["Search Jobs"]
@@ -127,7 +128,7 @@ def create_search_job(
         ).order_by(SearchJob.ngayTao.desc()).first()
 
         if active_job:
-            now = datetime.utcnow()
+            now = utc_now_naive()
             # Nếu job tạo chưa quá 5 phút thì tái sử dụng
             if (now - active_job.ngayTao).total_seconds() < 300:
                 return JSONResponse(

@@ -7,6 +7,7 @@ from backend.app.services.scrape_pipeline_service import scrape_and_sync_keyword
 from backend.app.services.search_cache_service import bump_search_cache_version
 
 
+from backend.app.core.datetime_utils import utc_now_naive
 @celery_app.task(name="search.run_search_job")
 def run_search_job_task(job_id: int, keyword: str) -> dict:
     db = SessionLocal()
@@ -21,7 +22,7 @@ def run_search_job_task(job_id: int, keyword: str) -> dict:
                 "job_id": job_id,
             }
 
-        now = datetime.utcnow()
+        now = utc_now_naive()
         job.trangThai = "running"
         job.batDauLuc = now
         job.errorMessage = None
@@ -40,7 +41,7 @@ def run_search_job_task(job_id: int, keyword: str) -> dict:
             for item in scrape_result.get("source_status", [])
         }
 
-        finished_at = datetime.utcnow()
+        finished_at = utc_now_naive()
 
         job = db.get(SearchJob, job_id)
 
@@ -81,7 +82,7 @@ def run_search_job_task(job_id: int, keyword: str) -> dict:
         # Tăng cache version và xoá cache cũ SAU KHI commit DB
         # để đảm bảo request tiếp theo đọc được data mới nhất và tránh race condition
         bump_search_cache_version(keyword)
-        
+
         # Trigger price alert check asynchronously
         from backend.app.tasks.price_alerts import check_price_alerts_task
         check_price_alerts_task.delay()
@@ -98,7 +99,7 @@ def run_search_job_task(job_id: int, keyword: str) -> dict:
     except Exception as error:
         db.rollback()
 
-        failed_at = datetime.utcnow()
+        failed_at = utc_now_naive()
         job = db.get(SearchJob, job_id)
 
         if job:

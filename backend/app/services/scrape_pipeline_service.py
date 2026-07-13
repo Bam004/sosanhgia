@@ -1,4 +1,6 @@
-﻿from concurrent.futures import ThreadPoolExecutor, as_completed
+﻿import re
+import unicodedata
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Callable
 
 from sqlalchemy.orm import Session
@@ -36,14 +38,43 @@ SOURCE_CONFIGS = [
     },
 ]
 
+def normalize_source_name(source_name: str | None) -> str:
+    if not source_name:
+        return ""
+
+    normalized = unicodedata.normalize(
+        "NFD",
+        str(source_name).lower(),
+    )
+
+    normalized = "".join(
+        character
+        for character in normalized
+        if unicodedata.category(character) != "Mn"
+    )
+
+    normalized = normalized.replace("đ", "d")
+
+    return re.sub(r"[^a-z0-9]", "", normalized)
 
 def get_source_config_by_name(source_name: str) -> dict[str, Any]:
+    normalized_source_name = normalize_source_name(source_name)
+
     for source_config in SOURCE_CONFIGS:
-        if source_config["name"] == source_name:
+        aliases = [
+            source_config["code"],
+            source_config["name"],
+            *source_config["spider_source_names"],
+        ]
+
+        if any(
+            normalize_source_name(alias) == normalized_source_name
+            for alias in aliases
+        ):
             return source_config
 
     return {
-        "code": source_name.lower().replace(" ", "_"),
+        "code": normalized_source_name or "unknown",
         "name": source_name,
         "spider_source_names": [source_name],
     }
@@ -59,10 +90,24 @@ def get_item_source_name(item: dict[str, Any]) -> str:
     )
 
 
-def is_item_from_source(item: dict[str, Any], source_config: dict[str, Any]) -> bool:
-    item_source_name = get_item_source_name(item)
+def is_item_from_source(
+    item: dict[str, Any],
+    source_config: dict[str, Any],
+) -> bool:
+    item_source_name = normalize_source_name(
+        get_item_source_name(item)
+    )
 
-    return item_source_name in source_config["spider_source_names"]
+    source_aliases = [
+        source_config["code"],
+        source_config["name"],
+        *source_config["spider_source_names"],
+    ]
+
+    return any(
+        normalize_source_name(alias) == item_source_name
+        for alias in source_aliases
+    )
 
 
 def run_source_scraper(

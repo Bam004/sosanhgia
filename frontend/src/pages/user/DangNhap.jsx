@@ -30,12 +30,52 @@ export default function DangNhap() {
     try {
       setLoading(true);
       const res = await authService.dangNhap(formData);
-      if (res.success) {
-        localStorage.setItem("accessToken", res.data.accessToken);
-        localStorage.setItem("user", JSON.stringify(res.data.user));
-        toast.success("Đăng nhập thành công");
-        navigate(returnUrl, { replace: true });
-      } else {
+     if (res.success) {
+      const taiKhoan = res.data?.user;
+
+      const email = String(taiKhoan?.email || "")
+        .trim()
+        .toLowerCase();
+
+      const vaiTro = String(taiKhoan?.vaiTro || "")
+        .trim()
+        .toLowerCase();
+
+      const dangTruyCapAdmin =
+        returnUrl === "/admin" ||
+        returnUrl.startsWith("/admin/");
+
+      const laTaiKhoanAdmin =
+        email === "sosanhgia@gmail.com" &&
+        vaiTro === "admin";
+
+      if (dangTruyCapAdmin && !laTaiKhoanAdmin) {
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("user");
+
+        toast.error(
+          "Chỉ tài khoản quản trị viên mới được truy cập trang Admin."
+        );
+
+        return;
+      }
+
+      localStorage.setItem(
+        "accessToken",
+        res.data.accessToken
+      );
+
+      localStorage.setItem(
+        "user",
+        JSON.stringify(taiKhoan)
+      );
+
+      toast.success("Đăng nhập thành công");
+
+      navigate(returnUrl, {
+        replace: true,
+      });
+    } else {
         toast.error(res.message || "Sai email hoặc mật khẩu");
       }
     } catch (error) {
@@ -63,8 +103,8 @@ export default function DangNhap() {
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
             <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontWeight: '500' }}>Email</label>
-            <input 
-              type="email" 
+            <input
+              type="email"
               name="email"
               value={formData.email}
               onChange={handleChange}
@@ -74,8 +114,8 @@ export default function DangNhap() {
           </div>
           <div>
             <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontWeight: '500' }}>Mật khẩu</label>
-            <input 
-              type="password" 
+            <input
+              type="password"
               name="matKhau"
               value={formData.matKhau}
               onChange={handleChange}
@@ -83,15 +123,15 @@ export default function DangNhap() {
               placeholder="Nhập mật khẩu"
             />
           </div>
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={loading}
-            style={{ 
-              width: '100%', 
-              background: 'var(--color-primary)', 
-              color: '#fff', 
-              padding: '12px', 
-              borderRadius: '6px', 
+            style={{
+              width: '100%',
+              background: 'var(--color-primary)',
+              color: '#fff',
+              padding: '12px',
+              borderRadius: '6px',
               border: 'none',
               fontWeight: '600',
               cursor: loading ? 'not-allowed' : 'pointer',

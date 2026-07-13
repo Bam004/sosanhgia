@@ -51,13 +51,13 @@ class DataSyncService:
                 if not spch:
                     # Create new
                     spch = SanPhamChuanHoa(
-                        tenChuanHoa=ten_chuan_hoa,
+                        tenChuan=ten_chuan_hoa,
                         thuongHieu=group.get("thuongHieu"),
                         dungLuong=dung_luong,
                         modelKey=model_key,
                         productType=product_type,
                         tinhTrang=tinh_trang,
-                        anhDaiDien=group.get("sanPhamGiaThapNhat", {}).get("hinhAnh")
+                        hinhAnhChinh=group.get("sanPhamGiaThapNhat", {}).get("hinhAnh")
                     )
                     self.db.add(spch)
                     self.db.commit()
@@ -73,7 +73,7 @@ class DataSyncService:
 
                         raw_price = item.get("giaHienTai") or item.get("current_price")
                         clean_price = self._normalize_price(raw_price)
-                        
+
                         ten_sp = item.get("tenSanPham") or item.get("raw_title") or "Unknown"
                         san_tmdt = item.get("sanTMDT") or item.get("merchant_name") or "Unknown"
                         hinh_anh = item.get("hinhAnh") or item.get("image_url")
@@ -85,7 +85,7 @@ class DataSyncService:
                         if sp_tho:
                             # Check if price changed
                             price_changed = sp_tho.giaHienTai != clean_price
-                            
+
                             # Update fields
                             sp_tho.maSPCH = spch.maSPCH
                             sp_tho.tenSanPham = ten_sp
@@ -94,14 +94,14 @@ class DataSyncService:
                             sp_tho.hinhAnh = hinh_anh
                             sp_tho.danhGia = danh_gia
                             sp_tho.soLuongDanhGia = so_luong_danh_gia
-                            
+
                             updated_count += 1
 
                             if price_changed and clean_price > 0:
                                 lich_su = LichSuGia(maSPTho=sp_tho.maSPTho, gia=clean_price)
                                 self.db.add(lich_su)
                                 history_inserted_count += 1
-                            
+
                             self.db.commit()
                         else:
                             # Insert new

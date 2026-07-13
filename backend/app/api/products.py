@@ -1,4 +1,5 @@
-﻿from datetime import datetime
+from backend.app.core.datetime_utils import utc_now_naive
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query, status
 from fastapi.encoders import jsonable_encoder
@@ -247,7 +248,7 @@ def compare_product_prices(
                 "success": True,
                 "data": {
                     "standardized_product_id": product_id,
-                    "total_merchants": len(sorted_items),
+                    "total_merchants": len(unique_sources),
                     "lowest_price": lowest_price,
                     "highest_price": highest_price,
                     "items": [
@@ -321,7 +322,7 @@ def get_product_price_history(
         source_data = {}
         total_points = 0
 
-        now = datetime.utcnow()
+        now = utc_now_naive()
         cutoff_date = None
 
         if range == "1m":

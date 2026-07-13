@@ -1,21 +1,24 @@
 import { Link } from 'react-router-dom';
 
 const danhMuc = [
-  'Điện thoại',
-  'Máy tính bảng',
-  'Tivi',
-  'Laptop',
-  'Linh kiện',
-  'Màn hình',
-  'PC',
-  'Âm thanh',
+  { nhan: 'Điện thoại', tuKhoa: 'điện thoại' },
+  { nhan: 'Máy tính bảng', tuKhoa: 'máy tính bảng' },
+  { nhan: 'Tivi', tuKhoa: 'tivi' },
+  { nhan: 'Laptop', tuKhoa: 'laptop' },
+  { nhan: 'Linh kiện', tuKhoa: 'linh kiện máy tính' },
+  { nhan: 'Màn hình', tuKhoa: 'màn hình máy tính' },
+  { nhan: 'PC', tuKhoa: 'máy tính PC' },
+  { nhan: 'Âm thanh', tuKhoa: 'loa tai nghe' },
 ];
+
+function taoDuongDanTimKiem(tuKhoa) {
+  return `/tim-kiem?q=${encodeURIComponent(tuKhoa)}`;
+}
 
 export default function ThanhDanhMuc() {
   return (
-    <nav className="category-nav">
+    <nav className="category-nav" aria-label="Danh mục sản phẩm">
       <div className="category-nav__inner">
-        {/* Nút Danh mục sản phẩm có Dropdown */}
         <div className="category-nav__main-btn">
           <svg
             width="18"
@@ -26,38 +29,40 @@ export default function ThanhDanhMuc() {
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
+            aria-hidden="true"
           >
-            <line x1="3" y1="12" x2="21" y2="12"></line>
-            <line x1="3" y1="6" x2="21" y2="6"></line>
-            <line x1="3" y1="18" x2="21" y2="18"></line>
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="18" x2="21" y2="18" />
           </svg>
+
           <span>Danh mục sản phẩm</span>
 
-          {/* Menu Dropdown Thả Xuống (Dọc) */}
           <div className="category-nav__dropdown">
             {danhMuc.map((item) => (
               <Link
-                key={item}
-                to={`/tim-kiem?danh-muc=${encodeURIComponent(item)}`}
+                key={item.nhan}
+                to={taoDuongDanTimKiem(item.tuKhoa)}
                 className="category-nav__dropdown-item"
               >
-                {item}
+                {item.nhan}
               </Link>
             ))}
           </div>
         </div>
 
-        <div className="category-nav__separator">|</div>
+        <div className="category-nav__separator" aria-hidden="true">
+          |
+        </div>
 
-        {/* Danh sách các danh mục ngang (Sẽ được CSS giãn cách đều) */}
         <div className="category-nav__items">
-          {danhMuc.map((tenDanhMuc) => (
+          {danhMuc.map((item) => (
             <Link
-              key={tenDanhMuc}
-              to={`/tim-kiem?danh-muc=${encodeURIComponent(tenDanhMuc)}`}
+              key={item.nhan}
+              to={taoDuongDanTimKiem(item.tuKhoa)}
               className="category-nav__item"
             >
-              {tenDanhMuc}
+              {item.nhan}
             </Link>
           ))}
         </div>

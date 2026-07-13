@@ -63,16 +63,9 @@ REPAIR_SERVICE_KEYWORDS = [
 
 PHONE_KEYWORDS = [
     "iphone",
-    "samsung",
     "galaxy",
-    "xiaomi",
     "redmi",
     "poco",
-    "oppo",
-    "vivo",
-    "realme",
-    "honor",
-    "nokia",
     "dien thoai",
     "smartphone",
     "a55",
@@ -81,7 +74,6 @@ PHONE_KEYWORDS = [
     "15 plus",
     "pro max",
 ]
-
 
 
 def is_accessory(ten_san_pham: str) -> bool:
@@ -97,31 +89,59 @@ def is_repair_service(ten_san_pham: str) -> bool:
 
 
 def detect_expected_product_type(keyword: str) -> str | None:
-    normalized_keyword = normalize_search_text(keyword)
+    matching_service = TextMatchingService()
+    normalized_keyword = matching_service._normalize_text(keyword)
 
-    # Accessory intent
-    accessory_tokens = [
-        "vi da", "dan da", "op", "op lung", "op da", "kinh cuong luc",
-        "cuong luc", "mieng dan", "case", "khacten", "cap sac", "cu sac",
-        "tai nghe", "adapter", "kem vi", "vi dung the", "dung the",
-        "card holder", "mentor", "de giu dien thoai", "gia do dien thoai",
-        "gia do", "day deo dien thoai", "vong giu dien thoai", "de sac",
-        "sac khong day", "kiem sac", "den livestream", "remote",
-        "baseus primetrip", "haiyuan", "uag magnetic", "zagg"
-    ]
-    # We must check carefully. "sac" as standalone is dangerous, so we check " sac " or similar.
-    # But since it's just intent detection on search query, if user types "sac iphone", it's accessory.
-    if any(token in normalized_keyword for token in accessory_tokens) or "sac" in normalized_keyword.split():
-        return "accessory"
+    keyword_model_key = (
+        matching_service._extract_iphone_model_key(normalized_keyword)
+        or matching_service._extract_android_model_key(normalized_keyword)
+    )
 
-    if any(keyword in normalized_keyword for keyword in REPAIR_SERVICE_KEYWORDS):
+    accessory_search_keywords = set(ACCESSORY_KEYWORDS) | {
+        "op da",
+        "kem vi",
+        "vi dung the",
+        "dung the",
+        "card holder",
+        "mentor",
+        "de giu dien thoai",
+        "gia do dien thoai",
+        "gia do",
+        "day deo dien thoai",
+        "vong giu dien thoai",
+        "de sac",
+        "sac khong day",
+        "kiem sac",
+        "den livestream",
+        "remote",
+        "baseus primetrip",
+        "haiyuan",
+        "uag magnetic",
+        "zagg",
+    }
+
+    if matching_service._has_condition_keyword(
+        normalized_keyword,
+        set(REPAIR_SERVICE_KEYWORDS),
+    ):
         return "repair_service"
 
-    if any(keyword in normalized_keyword for keyword in PHONE_KEYWORDS):
+    if matching_service._has_condition_keyword(
+        normalized_keyword,
+        accessory_search_keywords,
+    ):
+        return "accessory"
+
+    if (
+        keyword_model_key is not None
+        or matching_service._has_condition_keyword(
+            normalized_keyword,
+            set(PHONE_KEYWORDS),
+        )
+    ):
         return "phone"
 
     return None
-
 
 def detect_expected_condition(
     keyword: str,
@@ -251,7 +271,7 @@ def build_search_data(keyword: str, db: Session):
         like = f"%{token}%"
         conditions.append(
             or_(
-                SanPhamChuanHoa.tenChuanHoa.ilike(like),
+                SanPhamChuanHoa.tenChuan.ilike(like),
                 SanPhamChuanHoa.thuongHieu.ilike(like),
                 SanPhamChuanHoa.modelKey.ilike(like),
                 SanPhamChuanHoa.productType.ilike(like),
@@ -264,7 +284,15 @@ def build_search_data(keyword: str, db: Session):
         query = query.filter(and_(*conditions))
 
     if expected_product_type:
-        query = query.filter(SanPhamChuanHoa.productType == expected_product_type)
+        query = query.filter(
+            or_(
+                SanPhamChuanHoa.productType == expected_product_type,
+                and_(
+                    SanPhamChuanHoa.productType.is_(None),
+                    SanPhamChuanHoa.loai == expected_product_type,
+                ),
+            )
+        )
 
     if expected_condition:
         query = query.filter(SanPhamChuanHoa.tinhTrang == expected_condition)
@@ -321,7 +349,7 @@ def build_search_data(keyword: str, db: Session):
 
         prices = []
         raw_items = []
-        
+
         # Để gom nhóm source
         source_dict = {}
 
@@ -342,9 +370,9 @@ def build_search_data(keyword: str, db: Session):
                         "giaThapNhat": None,
                         "offerCount": 0
                     }
-                
+
                 source_dict[source_code]["offerCount"] += 1
-                
+
                 # Cập nhật giá thấp nhất cho source này nếu có giá hợp lệ
                 if valid_price is not None:
                     current_min = source_dict[source_code]["giaThapNhat"]
@@ -372,18 +400,18 @@ def build_search_data(keyword: str, db: Session):
         # Loại bỏ các sources không có giá hợp lệ, sau đó sort theo giá min
         group_sources = [s for s in group_sources if s["giaThapNhat"] is not None]
         group_sources.sort(key=lambda x: x["giaThapNhat"])
-        
+
         for s in group_sources:
             sources.add(s["sourceCode"])
 
         group_data = {
             "maNhomTam": spch.maSPCH,
             "maSPCH": spch.maSPCH,
-            "tenChuanHoa": spch.tenChuanHoa,
+            "tenChuanHoa": spch.tenChuan,
             "thuongHieu": spch.thuongHieu,
             "dungLuong": spch.dungLuong,
             "modelKey": spch.modelKey,
-            "productType": spch.productType,
+            "productType": spch.productType or spch.loai,
             "tinhTrang": spch.tinhTrang,
             "soNguon": len(group_sources),
             "soOffer": len(raw_items),

@@ -20,9 +20,9 @@ def setup_data():
 
     u1 = TaiKhoan(hoTen="User 1", email=email1, matKhauHash="hashed", vaiTro="user", trangThai="active")
     u2 = TaiKhoan(hoTen="User 2", email=email2, matKhauHash="hashed", vaiTro="user", trangThai="active")
-    
+
     # Create a product
-    p1 = SanPhamChuanHoa(tenChuanHoa="Test Product", thuongHieu="Test", productType="smartphone")
+    p1 = SanPhamChuanHoa(tenChuan="Test Product", thuongHieu="Test", productType="smartphone")
 
     try:
         db.add(u1)
@@ -69,7 +69,7 @@ def test_check_not_following(client, setup_data):
 
 def test_create_and_check_following(client, setup_data):
     p_id = setup_data['p1'].maSPCH
-    
+
     # Create
     create_res = client.post(
         "/api/theo-doi-gia",
@@ -93,7 +93,7 @@ def test_create_and_check_following(client, setup_data):
 
 def test_user_separation(client, setup_data):
     p_id = setup_data['p1'].maSPCH
-    
+
     # User 1 creates tracking
     client.post(
         "/api/theo-doi-gia",
@@ -113,20 +113,20 @@ def test_check_does_not_modify_records(client, setup_data):
     p_id = setup_data['p1'].maSPCH
     db = SessionLocal()
     initial_count = db.query(TheoDoiGia).count()
-    
+
     # Check
     client.get(
         f"/api/theo-doi-gia/check/{p_id}",
         headers={"Authorization": f"Bearer {setup_data['token1']}"}
     )
-    
+
     final_count = db.query(TheoDoiGia).count()
     db.close()
     assert initial_count == final_count
 
 def test_update_tracking(client, setup_data):
     p_id = setup_data['p1'].maSPCH
-    
+
     # Create
     create_res = client.post(
         "/api/theo-doi-gia",

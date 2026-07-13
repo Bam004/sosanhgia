@@ -1,4 +1,6 @@
-﻿import { NavLink } from "react-router-dom";
+﻿import { NavLink, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import { authService } from "../../services/authService";
 
 const danhSachMenu = [
   {
@@ -40,6 +42,29 @@ const danhSachMenu = [
 ];
 
 function ThanhBenQuanTri() {
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      const token = localStorage.getItem("accessToken");
+
+      if (token) {
+        await authService.dangXuat();
+      }
+    } catch (error) {
+      console.error("Lỗi đăng xuất:", error);
+    } finally {
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("user");
+
+      toast.success("Đã đăng xuất");
+
+      navigate("/", {
+        replace: true,
+      });
+    }
+  };
+
   return (
     <aside className="thanh-ben-quan-tri">
       <nav className="menu-admin">
@@ -57,7 +82,11 @@ function ThanhBenQuanTri() {
           </NavLink>
         ))}
 
-        <button className="muc-menu-admin nut-dang-xuat" type="button">
+        <button
+          className="muc-menu-admin nut-dang-xuat"
+          type="button"
+          onClick={handleLogout}
+        >
           <span className="bieu-tuong-menu">🚪</span>
           <span className="nhan-menu-admin">Đăng xuất</span>
         </button>

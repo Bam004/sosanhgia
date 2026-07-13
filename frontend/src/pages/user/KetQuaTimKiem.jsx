@@ -115,7 +115,7 @@ export default function KetQuaTimKiem() {
 
     const layCacheTuDb = async (keyword, cacheKey) => {
       const cacheRes = await productService.timKiemSanPham(keyword, false, {});
-      
+
       if (cacheRes.errorMessage) {
         throw new Error(cacheRes.errorMessage);
       }
@@ -232,7 +232,7 @@ export default function KetQuaTimKiem() {
 
         const latestResult = await layCacheTuDb(keyword, cacheKey);
         if (isCancelled) return;
-        
+
         const latestData = latestResult.data;
 
         if (!isCancelled) {
@@ -307,7 +307,7 @@ export default function KetQuaTimKiem() {
         if (sp.sources && sp.sources.length > 0) {
           return sp.sources.some(s => activeSourceCodes.includes(s.sourceCode));
         }
-        
+
         // Fallback for old cache structure
         if (sp.sanDangBan) {
           if (Array.isArray(sp.sanDangBan)) platforms.push(...sp.sanDangBan);
@@ -420,7 +420,7 @@ export default function KetQuaTimKiem() {
 
           <div className="search-results__header">
             <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-              <h2>Kết quả tìm kiếm siêu thị</h2>
+              <h2>Kết quả tìm kiếm siêu tổng hợp</h2>
               {error && !loading && (
                 <div style={{ color: '#ef4444', marginBottom: '16px' }}>{error}</div>
               )}

@@ -14,6 +14,30 @@ const layNhanTinhTrang = (tinhTrang) => {
   return mapping[tinhTrang] || tinhTrang || 'Không rõ';
 };
 
+const chuanHoaTenNguon = (value) => {
+  const original = String(value || '').trim();
+  const normalized = original
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/[^a-z0-9]/g, '');
+
+  if (!normalized) return '';
+  if (normalized.includes('cellphone')) return 'CellphoneS';
+  if (normalized.includes('fpt')) return 'FPT Shop';
+  if (
+    normalized.includes('hoanghamobile') ||
+    normalized.includes('hoangha')
+  ) {
+    return 'Hoàng Hà Mobile';
+  }
+  if (normalized.includes('lazada')) return 'Lazada';
+  if (normalized.includes('tiki')) return 'Tiki';
+
+  return original;
+};
+
 const layDanhSachNguon = (sanPham) => {
   const sources = [];
 
@@ -37,7 +61,7 @@ const layDanhSachNguon = (sanPham) => {
     });
   }
 
-  return [...new Set(sources.filter(Boolean))];
+  return [...new Set(sources.map(chuanHoaTenNguon).filter(Boolean))];
 };
 
 export default function TheSanPhamOffer({ sanPham, kieuNut = 'toinoiban', onSelect }) {

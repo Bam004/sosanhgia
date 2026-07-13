@@ -84,7 +84,7 @@ class TextMatchingService:
         "lcd",
         "pisen",
     }
-    
+
     USED_CONDITION_KEYWORDS = {
         "cu",
         "may cu",
@@ -221,35 +221,28 @@ class TextMatchingService:
 
         phone_search_keywords = [
             "iphone",
-            "samsung",
             "galaxy",
-            "xiaomi",
             "redmi",
             "poco",
-            "oppo",
-            "vivo",
-            "realme",
-            "honor",
-            "nokia",
             "dien thoai",
             "smartphone",
         ]
 
-        is_repair_search = any(
-            search_keyword in normalized_keyword
-            for search_keyword in repair_search_keywords
+        is_repair_search = self._has_condition_keyword(
+            normalized_keyword,
+            set(repair_search_keywords),
         )
 
-        is_accessory_search = any(
-            search_keyword in normalized_keyword
-            for search_keyword in accessory_search_keywords
+        is_accessory_search = self._has_condition_keyword(
+            normalized_keyword,
+            set(accessory_search_keywords),
         )
 
         is_phone_search = (
             keyword_model_key is not None
-            or any(
-                search_keyword in normalized_keyword
-                for search_keyword in phone_search_keywords
+            or self._has_condition_keyword(
+                normalized_keyword,
+                set(phone_search_keywords),
             )
         )
 

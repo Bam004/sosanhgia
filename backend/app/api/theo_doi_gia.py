@@ -1,3 +1,4 @@
+from backend.app.core.datetime_utils import utc_now_naive
 # -*- coding: utf-8 -*-
 from datetime import datetime
 
@@ -144,21 +145,21 @@ def get_my_theo_doi_gia(
 
     for follow, product, gia_thap_nhat, gia_cao_nhat in rows:
         trang_thai_hien_thi = "dang_theo_doi"
-        
+
         if follow.giaMongMuon is None or follow.giaMongMuon <= 0:
             trang_thai_hien_thi = "chua_dat_gia_mong_muon"
         elif follow.daThongBao:
             trang_thai_hien_thi = "da_thong_bao"
         elif gia_thap_nhat is not None and float(gia_thap_nhat) <= float(follow.giaMongMuon):
             trang_thai_hien_thi = "da_dat_gia"
-            
+
         data.append({
             "maTheoDoi": follow.maTheoDoi,
             "maSPCH": product.maSPCH,
-            "tenChuanHoa": product.tenChuanHoa,
+            "tenChuanHoa": product.tenChuan,
             "thuongHieu": product.thuongHieu,
             "dungLuong": product.dungLuong,
-            "anhDaiDien": product.anhDaiDien,
+            "anhDaiDien": product.hinhAnhChinh,
             "giaThapNhat": gia_thap_nhat,
             "giaCaoNhat": gia_cao_nhat,
             "giaMongMuon": follow.giaMongMuon,
@@ -236,19 +237,19 @@ def update_theo_doi_gia(
                     "message": "Giá mong muốn phải lớn hơn 0"
                 }
             )
-        
+
         # Reset tracking notification if price changes
         if follow.giaMongMuon != request.giaMongMuon:
             follow.daThongBao = False
             follow.ngayThongBao = None
             follow.giaLucThongBao = None
-            
+
         follow.giaMongMuon = request.giaMongMuon
 
     if request.trangThai is not None:
         follow.trangThai = request.trangThai
 
-    follow.ngayCapNhat = datetime.utcnow()
+    follow.ngayCapNhat = utc_now_naive()
 
     db.commit()
     db.refresh(follow)

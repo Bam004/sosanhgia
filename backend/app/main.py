@@ -1,6 +1,7 @@
-﻿from fastapi import FastAPI
+from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 
 from backend.app.api.items import router as items_router
 from backend.app.api.products import router as products_router
@@ -10,13 +11,25 @@ from backend.app.api.search_jobs import router as search_jobs_router
 from backend.app.api.scrape import router as scrape_router
 from backend.app.api.auth import router as auth_router
 from backend.app.api.theo_doi_gia import router as theo_doi_gia_router
-from backend.app.services.scheduled_scraping_runner import bat_scheduler_cao_dinh_ky
+from backend.app.services.scheduled_scraping_runner import (
+    bat_scheduler_cao_dinh_ky,
+    tat_scheduler_cao_dinh_ky,
+)
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    bat_scheduler_cao_dinh_ky()
+
+    try:
+        yield
+    finally:
+        await tat_scheduler_cao_dinh_ky()
 
 app = FastAPI(
     title="SoSanhGia API",
     description="API cho website tổng hợp và so sánh giá sản phẩm",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 allowed_origins = [
@@ -70,8 +83,3 @@ def health_check():
     return {
         "status": "ok",
     }
-
-
-@app.on_event("startup")
-async def khoi_dong_scheduler_cao_du_lieu_dinh_ky():
-    bat_scheduler_cao_dinh_ky()

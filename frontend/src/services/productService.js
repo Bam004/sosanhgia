@@ -124,7 +124,54 @@ const hienThiDanhMuc = (productType) => {
 export const productService = {
   // Lấy sản phẩm nổi bật cho trang chủ
   laySanPhamNoiBat: async () => {
-    return await productService.timKiemSanPham('iphone 15', false);
+    try {
+      const response = await api.get('/products/standardized');
+      const rawProducts = extractData(response);
+
+      if (!Array.isArray(rawProducts)) {
+        throw new Error('Danh sách sản phẩm không hợp lệ.');
+      }
+
+      const candidates = rawProducts.filter(
+        (product) =>
+          product.maSPCH &&
+          Number(product.giaThapNhat) > 0,
+      );
+
+      // Fisher–Yates shuffle để mỗi lần vào trang chủ có danh sách khác nhau.
+      for (let index = candidates.length - 1; index > 0; index -= 1) {
+        const randomIndex = Math.floor(Math.random() * (index + 1));
+
+        [candidates[index], candidates[randomIndex]] = [
+          candidates[randomIndex],
+          candidates[index],
+        ];
+      }
+
+      const selectedProducts = candidates.slice(0, 6);
+
+      // Tải chi tiết song song để có ảnh, giá và các nguồn bán.
+      const detailResults = await Promise.all(
+        selectedProducts.map((product) =>
+          productService.layChiTietSanPham(product.maSPCH),
+        ),
+      );
+
+      return {
+        data: detailResults
+          .map((result) => result.data)
+          .filter(Boolean),
+        errorMessage: null,
+      };
+    } catch (error) {
+      console.warn('Load featured products failed:', error.message);
+
+      return {
+        data: [],
+        errorMessage:
+          error.message || 'Không thể tải sản phẩm nổi bật.',
+      };
+    }
   },
 
   // 1. Search products
@@ -135,7 +182,7 @@ export const productService = {
 
       if (rawData) {
         let mappedProducts = [];
-        
+
         // Ưu tiên render data.groups nếu có
         if (rawData.groups && rawData.groups.length > 0) {
           mappedProducts = rawData.groups.map(group => {
@@ -180,7 +227,7 @@ export const productService = {
               items: group.items || []
             };
           });
-        } 
+        }
         // Fallback sang items thô nếu không có groups
         else if (rawData.items && rawData.items.length > 0) {
           mappedProducts = rawData.items.map(item => {
@@ -269,8 +316,8 @@ export const productService = {
     } catch (error) {
       console.warn('API Search failed:', error.message);
       const isTimeout = error.code === 'ECONNABORTED' || error.message?.toLowerCase().includes('timeout');
-      const errorMessage = isTimeout 
-        ? 'Yêu cầu tìm kiếm bị quá hạn. Vui lòng thử lại.' 
+      const errorMessage = isTimeout
+        ? 'Yêu cầu tìm kiếm bị quá hạn. Vui lòng thử lại.'
         : (error.message || 'Lỗi kết nối máy chủ API.');
 
       if (isTimeout && autoScrape) {
@@ -472,7 +519,7 @@ export const productService = {
     try {
       const response = await api.get(`/products/${id}/history?range=${range}`);
       const payload = response?.data?.data || response?.data || response;
-      
+
       const series = payload.series || [];
       const sourceCount = payload.sourceCount || 0;
       const pointCount = payload.pointCount || 0;
@@ -498,5 +545,3 @@ export const productService = {
     }
   }
 };
-
-

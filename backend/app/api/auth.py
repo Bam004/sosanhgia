@@ -21,6 +21,7 @@ router = APIRouter(
 )
 
 security = HTTPBearer(auto_error=False)
+ADMIN_EMAIL = "sosanhgia@gmail.com"
 
 class RegisterRequest(BaseModel):
     hoTen: str
@@ -92,10 +93,21 @@ def get_current_user(
     return user
 
 
-def require_admin(current_user: TaiKhoan = Depends(get_current_user)) -> TaiKhoan:
-    user_role = str(current_user.vaiTro or "").strip().lower()
+def require_admin(
+    current_user: TaiKhoan = Depends(get_current_user),
+) -> TaiKhoan:
+    user_role = str(
+        current_user.vaiTro or ""
+    ).strip().lower()
 
-    if user_role != "admin":
+    user_email = normalize_email(
+        current_user.email
+    )
+
+    if (
+        user_role != "admin"
+        or user_email != ADMIN_EMAIL
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Yêu cầu quyền quản trị viên",

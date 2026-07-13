@@ -1,9 +1,8 @@
-﻿from datetime import datetime
-
-from sqlalchemy import Boolean, Column, DateTime, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Column, DateTime, Index, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from backend.app.core.database import Base
+from backend.app.core.datetime_utils import utc_now_naive
 
 
 class SanPhamChuanHoa(Base):
@@ -16,6 +15,17 @@ class SanPhamChuanHoa(Base):
             "tinhTrang",
             name="uix_product_type_model_storage_condition",
         ),
+        Index(
+            "ix_spch_ten_chuan_trgm",
+            "tenChuan",
+            postgresql_using="gin",
+            postgresql_ops={"tenChuan": "gin_trgm_ops"},
+        ),
+        Index("ix_spch_thuong_hieu", "thuongHieu"),
+        Index("ix_spch_model_key", "modelKey"),
+        Index("ix_spch_product_type", "productType"),
+        Index("ix_spch_tinh_trang", "tinhTrang"),
+        Index("ix_spch_ngay_cap_nhat", "ngayCapNhat"),
     )
 
     maSPCH = Column(Integer, primary_key=True, index=True, autoincrement=True)
@@ -45,7 +55,7 @@ class SanPhamChuanHoa(Base):
     canKiemTra = Column(Boolean, nullable=False, default=False, server_default="false")
 
     moTa = Column(Text, nullable=True)
-    ngayTao = Column(DateTime, nullable=False, default=datetime.utcnow)
-    ngayCapNhat = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    ngayTao = Column(DateTime, nullable=False, default=utc_now_naive)
+    ngayCapNhat = Column(DateTime, nullable=False, default=utc_now_naive, onupdate=utc_now_naive)
 
     san_pham_tho = relationship("SanPhamTho", back_populates="san_pham_chuan_hoa")

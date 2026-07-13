@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class TheoDoiGiaCreate(BaseModel):
@@ -27,9 +27,7 @@ class TheoDoiGiaResponse(BaseModel):
     ngayTheoDoi: datetime
     ngayCapNhat: Optional[datetime] = None
 
-    class Config:
-        orm_mode = True
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TheoDoiGiaListItem(BaseModel):
@@ -47,6 +45,4 @@ class TheoDoiGiaListItem(BaseModel):
     trangThaiHienThi: str
     ngayTheoDoi: datetime
 
-    class Config:
-        orm_mode = True
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

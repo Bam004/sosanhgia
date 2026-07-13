@@ -2,7 +2,7 @@ import re
 import unicodedata
 import scrapy
 from datetime import datetime
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlparse
 
 from scrapers.items import SanPhamThoItem
 
@@ -74,8 +74,7 @@ class FptshopSpider(scrapy.Spider):
             if not self.is_keyword_related_product(title):
                 continue
 
-            card_text = self.extract_card_text(anchor)
-            fallback_price = self.parse_price(card_text)
+            fallback_price = None
             fallback_image = self.extract_card_image(anchor, response)
 
             seen_links.add(full_url)
@@ -211,75 +210,53 @@ class FptshopSpider(scrapy.Spider):
 
         return response.urljoin(image_url)
 
-    def is_invalid_product_url(self, url):
-        invalid_paths = {
-            "https://fptshop.com.vn/dien-thoai",
-            "https://fptshop.com.vn/dien-thoai/ai",
-            "https://fptshop.com.vn/dien-thoai/iphone",
-            "https://fptshop.com.vn/dien-thoai/samsung",
-            "https://fptshop.com.vn/dien-thoai/oppo",
-            "https://fptshop.com.vn/dien-thoai/xiaomi",
-            "https://fptshop.com.vn/dien-thoai/vivo",
-            "https://fptshop.com.vn/dien-thoai/realme",
-            "https://fptshop.com.vn/dien-thoai/nokia",
-        }
-
-        if url in invalid_paths:
-            return True
-
-        return False
-
     def is_valid_product_url(self, url):
         if not url:
             return False
 
-        if not url.startswith("https://fptshop.com.vn/"):
+        parsed_url = urlparse(url)
+
+        if parsed_url.netloc not in {
+            "fptshop.com.vn",
+            "www.fptshop.com.vn",
+        }:
             return False
 
-        invalid_paths = {
-            "https://fptshop.com.vn/dien-thoai",
-            "https://fptshop.com.vn/dien-thoai/ai",
-            "https://fptshop.com.vn/dien-thoai/iphone",
-            "https://fptshop.com.vn/dien-thoai/samsung",
-            "https://fptshop.com.vn/dien-thoai/oppo",
-            "https://fptshop.com.vn/dien-thoai/xiaomi",
-            "https://fptshop.com.vn/dien-thoai/vivo",
-            "https://fptshop.com.vn/dien-thoai/realme",
-            "https://fptshop.com.vn/dien-thoai/nokia",
+        path = parsed_url.path.strip("/")
+
+        if not path:
+            return False
+
+        path_segments = [
+            segment
+            for segment in path.split("/")
+            if segment
+        ]
+
+        # Trang chi tiết sản phẩm thường có dạng:
+        # /danh-muc/ten-san-pham
+        if len(path_segments) < 2:
+            return False
+
+        invalid_prefixes = {
+            "tin-tuc",
+            "khuyen-mai",
+            "ho-tro",
+            "gioi-thieu",
+            "cua-hang",
+            "tra-gop",
+            "sim-so",
+            "tim-kiem",
+            "gio-hang",
+            "thanh-toan",
+            "tai-khoan",
+            "chinh-sach",
         }
 
-        if url in invalid_paths:
+        if path_segments[0].lower() in invalid_prefixes:
             return False
 
-        invalid_keywords = [
-            "/tin-tuc/",
-            "/khuyen-mai/",
-            "/ho-tro/",
-            "/gioi-thieu/",
-            "/cua-hang/",
-            "/tra-gop/",
-            "/sim-so/",
-        ]
-
-        if any(keyword in url for keyword in invalid_keywords):
-            return False
-
-        path = url.replace("https://fptshop.com.vn", "")
-
-        valid_prefixes = [
-            "/dien-thoai/",
-            "/phu-kien/",
-            "/op-lung/",
-            "/mieng-dan/",
-            "/sac-cap/",
-            "/tai-nghe/",
-            "/pin-sac-du-phong/",
-        ]
-
-        return any(
-            path.startswith(prefix)
-            for prefix in valid_prefixes
-        )
+        return True
 
     def get_candidate_priority(self, title, url):
         keyword_is_accessory = self.is_accessory_text(self.keyword)
@@ -410,12 +387,16 @@ class FptshopSpider(scrapy.Spider):
         normalized_keyword = self.normalize_keyword_match_text(self.keyword)
         normalized_product_name = self.normalize_keyword_match_text(product_name)
 
-        keyword_phrase = self.extract_main_keyword_phrase(normalized_keyword)
-
-        if not keyword_phrase:
+        if not normalized_keyword or not normalized_product_name:
             return False
 
-        return keyword_phrase in normalized_product_name
+        keyword_tokens = normalized_keyword.split()
+        product_tokens = set(normalized_product_name.split())
+
+        return all(
+            token in product_tokens
+            for token in keyword_tokens
+        )
 
     def extract_main_keyword_phrase(self, normalized_keyword):
         iphone_number_match = re.search(
@@ -480,75 +461,70 @@ class FptshopSpider(scrapy.Spider):
 
     def extract_price_from_next_data(self, response, product_name=None):
         html = response.text
+        path = urlparse(response.url).path.strip("/")
 
-        if product_name:
-            escaped_name = re.escape(product_name)
-
-            name_patterns = [
-                r'\\"displayName\\"\s*:\s*\\"' + escaped_name + r'\\"',
-                r'\\"name\\"\s*:\s*\\"' + escaped_name + r'\\"',
-                r'\\"shortDisplayName\\"\s*:\s*\\"' + escaped_name + r'\\"',
-            ]
-
-            for pattern in name_patterns:
-                name_match = re.search(pattern, html)
-
-                if not name_match:
-                    continue
-
-                product_segment = html[
-                    name_match.start():name_match.start() + 12000
-                ]
-
-                current_price_match = re.search(
-                    r'\\"currentPrice\\"\s*:\s*(\d+)',
-                    product_segment
-                )
-
-                if current_price_match:
-                    return int(current_price_match.group(1))
-
-                final_price_match = re.search(
-                    r'\\"finalPrice\\"\s*:\s*(\d+)',
-                    product_segment
-                )
-
-                if final_price_match:
-                    return int(final_price_match.group(1))
-
-        path = response.url.replace("https://fptshop.com.vn/", "")
-        path = path.split("?")[0].strip("/")
-
-        full_slug_pattern = (
-            r'\\"fullSlug\\"\s*:\s*\\"'
-            + re.escape(path)
-            + r'\\"'
-        )
-
-        full_slug_match = re.search(full_slug_pattern, html)
-
-        if not full_slug_match:
+        if not path:
             return None
 
-        product_data_segment = html[
-            max(0, full_slug_match.start() - 30000):full_slug_match.start()
+        slug_patterns = [
+            r'"slug"\s*:\s*"'
+            + re.escape(path)
+            + r'"',
+
+            r'\\"slug\\"\s*:\s*\\"'
+            + re.escape(path)
+            + r'\\"',
+
+            r'"fullSlug"\s*:\s*"'
+            + re.escape(path)
+            + r'"',
+
+            r'\\"fullSlug\\"\s*:\s*\\"'
+            + re.escape(path)
+            + r'\\"',
         ]
 
-        current_price_matches = re.findall(
-            r'\\"currentPrice\\"\s*:\s*(\d+)',
-            product_data_segment
+        slug_matches = []
+
+        for slug_pattern in slug_patterns:
+            slug_matches.extend(
+                re.finditer(slug_pattern, html)
+            )
+
+        slug_matches = sorted(
+            slug_matches,
+            key=lambda match: match.start()
         )
 
-        if current_price_matches:
-            return int(current_price_matches[-1])
+        for slug_match in slug_matches:
+            product_segment = html[
+                slug_match.start():
+                slug_match.start() + 15000
+            ]
 
-        final_price_matches = re.findall(
-            r'\\"finalPrice\\"\s*:\s*(\d+)',
-            product_data_segment
-        )
+            for field_name in (
+                "finalPrice",
+                "currentPrice",
+                "price",
+            ):
+                price_patterns = [
+                    rf'"{field_name}"\s*:\s*(\d+)',
+                    rf'\\"{field_name}\\"\s*:\s*(\d+)',
+                ]
 
-        if final_price_matches:
-            return int(final_price_matches[-1])
+                for price_pattern in price_patterns:
+                    price_match = re.search(
+                        price_pattern,
+                        product_segment,
+                    )
+
+                    if not price_match:
+                        continue
+
+                    price = int(price_match.group(1))
+
+                    if price > 0:
+                        return price
 
         return None
 

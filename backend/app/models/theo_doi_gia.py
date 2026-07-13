@@ -1,9 +1,8 @@
-from datetime import datetime
-
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, Numeric, UniqueConstraint
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, Numeric, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from backend.app.core.database import Base
+from backend.app.core.datetime_utils import utc_now_naive
 
 
 class TheoDoiGia(Base):
@@ -32,12 +31,22 @@ class TheoDoiGia(Base):
     ngayThongBao = Column(DateTime, nullable=True)
     giaLucThongBao = Column(Numeric(15, 2), nullable=True)
 
-    ngayTheoDoi = Column(DateTime, nullable=False, default=datetime.utcnow)
-    ngayCapNhat = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    ngayTheoDoi = Column(DateTime, nullable=False, default=utc_now_naive)
+    ngayCapNhat = Column(DateTime, nullable=False, default=utc_now_naive, onupdate=utc_now_naive)
 
     tai_khoan = relationship("TaiKhoan")
     san_pham_chuan_hoa = relationship("SanPhamChuanHoa")
 
     __table_args__ = (
-        UniqueConstraint("maTaiKhoan", "maSPCH", name="uix_theo_doi_gia_user_product"),
+        UniqueConstraint(
+            "maTaiKhoan",
+            "maSPCH",
+            name="uix_theo_doi_gia_user_product",
+        ),
+        Index("ix_tdg_trang_thai", "trangThai"),
+        Index(
+            "ix_tdg_user_trang_thai",
+            "maTaiKhoan",
+            "trangThai",
+        ),
     )
