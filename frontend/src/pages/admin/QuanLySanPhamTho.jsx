@@ -23,6 +23,32 @@ function dinhDangSoLuong(soLuong) {
 
 const SO_SAN_PHAM_MOI_TRANG = 5;
 
+function taoDanhSachTrang(trangHienTai, tongSoTrang) {
+  if (tongSoTrang <= 7) {
+    return Array.from({ length: tongSoTrang }, (_, index) => index + 1);
+  }
+
+  const danhSachTrang = [1];
+  const trangBatDau = Math.max(2, trangHienTai - 2);
+  const trangKetThuc = Math.min(tongSoTrang - 1, trangHienTai + 2);
+
+  if (trangBatDau > 2) {
+    danhSachTrang.push("...");
+  }
+
+  for (let trang = trangBatDau; trang <= trangKetThuc; trang += 1) {
+    danhSachTrang.push(trang);
+  }
+
+  if (trangKetThuc < tongSoTrang - 1) {
+    danhSachTrang.push("...");
+  }
+
+  danhSachTrang.push(tongSoTrang);
+
+  return danhSachTrang;
+}
+
 function xuLyGiaTriCsv(giaTri) {
   const noiDung = String(giaTri ?? "");
 
@@ -266,7 +292,10 @@ function QuanLySanPhamTho() {
       setLoiTaiDuLieu("");
 
       const response = await api.get("/items", {
-        params: { limit: 100 },
+        params: {
+          skip: 0,
+          limit: 10000,
+        },
       });
 
       setDanhSachTuApi(response.data?.data || []);
@@ -636,17 +665,26 @@ function QuanLySanPhamTho() {
             ‹
           </button>
 
-          {Array.from({ length: tongSoTrang }, (_, index) => {
-            const soTrang = index + 1;
+          {taoDanhSachTrang(trangHienTai, tongSoTrang).map((item, index) => {
+            if (item === "...") {
+              return (
+                <span
+                  className="dau-ba-cham-phan-trang"
+                  key={`ellipsis-${index}`}
+                >
+                  ...
+                </span>
+              );
+            }
 
             return (
               <button
                 type="button"
-                key={soTrang}
-                className={trangHienTai === soTrang ? "trang-dang-chon" : ""}
-                onClick={() => setTrangHienTai(soTrang)}
+                key={item}
+                className={trangHienTai === item ? "trang-dang-chon" : ""}
+                onClick={() => setTrangHienTai(item)}
               >
-                {soTrang}
+                {item}
               </button>
             );
           })}

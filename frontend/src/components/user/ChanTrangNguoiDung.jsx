@@ -5,8 +5,8 @@ export default function ChanTrangNguoiDung() {
         <div className="user-footer__brand">
           <h3 className="user-footer__logo">SoSanhGia</h3>
           <p>
-            Nền tảng tổng hợp và so sánh giá tự động từ các sàn TMĐT lớn (Shopee, Lazada,...).
-            Giúp bạn mua sắm thông minh.
+            Nền tảng tổng hợp và so sánh giá tự động từ các sàn TMĐT (Lazada, Tiki, FPT Shop, CellphoneS,...).
+            Giúp bạn mua sắm tiện lợi, thông minh hơn.
           </p>
           <div className="user-footer__disclaimer">
             <strong>Miễn trừ trách nhiệm:</strong>

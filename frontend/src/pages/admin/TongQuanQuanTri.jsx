@@ -34,6 +34,13 @@ function dinhDangSo(giaTri) {
   return so.toLocaleString("vi-VN");
 }
 
+function dinhDangNgayThang(ngay) {
+  return ngay.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+  });
+}
+
 function layClassTrangThaiTienTrinh(trangThai) {
   if (trangThai === "Hoàn tất") return "hoan-tat";
   if (trangThai === "Đang chạy") return "dang-chay";
@@ -110,13 +117,36 @@ function TongQuanQuanTri() {
     taiDashboard();
   }, []);
 
+  const duLieuBieuDoBayNgay = useMemo(() => {
+    const danhSachTuApi = Array.isArray(duLieuDashboard.chart)
+      ? duLieuDashboard.chart
+      : [];
+
+    const homNay = new Date();
+    homNay.setHours(0, 0, 0, 0);
+
+    return Array.from({ length: 7 }, (_, index) => {
+      const ngayCanHienThi = new Date(homNay);
+      ngayCanHienThi.setDate(homNay.getDate() - index);
+
+      const duLieuTuApi =
+        danhSachTuApi[danhSachTuApi.length - 1 - index];
+
+      return {
+        ngay: dinhDangNgayThang(ngayCanHienThi),
+        ngayDayDu: ngayCanHienThi.toLocaleDateString("vi-VN"),
+        soLuong: Number(duLieuTuApi?.soLuong || 0),
+      };
+    });
+  }, [duLieuDashboard.chart]);
+
   const giaTriLonNhatBieuDo = useMemo(() => {
-    const danhSachSoLuong = duLieuDashboard.chart.map((item) =>
+    const danhSachSoLuong = duLieuBieuDoBayNgay.map((item) =>
       Number(item.soLuong || 0)
     );
 
     return Math.max(...danhSachSoLuong, 1);
-  }, [duLieuDashboard.chart]);
+  }, [duLieuBieuDoBayNgay]);
 
   return (
     <section className="trang-tong-quan-admin">
@@ -154,7 +184,7 @@ function TongQuanQuanTri() {
 
       <div className="hang-bieu-do-trang-thai-admin">
         <div className="khung-bieu-do-admin">
-          <h2>Sản phẩm thu thập trong tuần gần nhất</h2>
+          <h2>Sản phẩm thu thập trong 7 ngày gần nhất</h2>
 
           <div className="noi-dung-bieu-do-admin">
             <div className="truc-y-admin">
@@ -164,31 +194,34 @@ function TongQuanQuanTri() {
             </div>
 
             <div className="vung-cot-bieu-do-admin">
-              {duLieuDashboard.chart.length > 0 ? (
-                duLieuDashboard.chart.map((item) => {
-                  const soLuong = Number(item.soLuong || 0);
-                  const chieuCao =
-                    soLuong > 0
-                      ? Math.max(
-                          10,
-                          Math.round((soLuong / giaTriLonNhatBieuDo) * 190)
-                        )
-                      : 4;
+              {duLieuBieuDoBayNgay.map((item) => {
+                const soLuong = Number(item.soLuong || 0);
 
-                  return (
-                    <div className="cot-theo-ngay-admin" key={item.ngay}>
-                      <div
-                        className="cot-so-luong-admin"
-                        title={`${item.ngay}: ${soLuong} sản phẩm`}
-                        style={{ height: `${chieuCao}px` }}
-                      ></div>
-                      <span>{item.ngay}</span>
-                    </div>
-                  );
-                })
-              ) : (
-                <p>Chưa có dữ liệu biểu đồ.</p>
-              )}
+                const chieuCao =
+                  soLuong > 0
+                    ? Math.max(
+                        10,
+                        Math.round((soLuong / giaTriLonNhatBieuDo) * 190)
+                      )
+                    : 4;
+
+                return (
+                  <div
+                    className="cot-theo-ngay-admin"
+                    key={item.ngayDayDu}
+                  >
+                    <div
+                      className="cot-so-luong-admin"
+                      title={`${item.ngayDayDu}: ${dinhDangSo(
+                        soLuong
+                      )} sản phẩm`}
+                      style={{ height: `${chieuCao}px` }}
+                    ></div>
+
+                    <span>{item.ngay}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

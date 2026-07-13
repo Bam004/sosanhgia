@@ -59,7 +59,7 @@ def get_items(
     limit: int = 20,
     db: Session = Depends(get_db)
 ):
-    limit = min(limit, 100)
+    limit = min(limit, 10000)
 
     items = (
         db.query(SanPhamTho)
@@ -198,7 +198,7 @@ def delete_item(
                 "error": f"Database error: {str(error)}"
             }
         )
-    
+
 @router.post("/bulk", status_code=status.HTTP_201_CREATED)
 def create_items_bulk(
     payload: list[SanPhamThoBulkCreate],

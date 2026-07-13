@@ -1,4 +1,5 @@
-﻿from datetime import datetime
+from backend.app.core.datetime_utils import utc_now_naive
+from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, Optional
 
@@ -70,7 +71,7 @@ def them_lich_su_gia(
     lich_su = LichSuGia(
         maSPTho=ma_sp_tho,
         gia=gia,
-        ngayGhiNhan=ngay_ghi_nhan or datetime.utcnow(),
+        ngayGhiNhan=ngay_ghi_nhan or utc_now_naive(),
     )
     db.add(lich_su)
     return lich_su
@@ -102,7 +103,7 @@ def cap_nhat_san_pham_tho_va_lich_su_gia(
     if not link_goc:
         raise ValueError("Thiếu link gốc sản phẩm")
 
-    thoi_diem_hien_tai = datetime.utcnow()
+    thoi_diem_hien_tai = utc_now_naive()
 
     try:
         san_pham = tim_san_pham_tho_da_co(db, san_tmdt, link_goc)

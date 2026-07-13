@@ -1,4 +1,5 @@
-﻿import json
+from backend.app.core.datetime_utils import utc_now_naive
+import json
 import os
 import re
 import subprocess
@@ -161,7 +162,7 @@ def chay_mot_spider_theo_keyword(
     output_dir = output_dir or thu_muc_goc / "logs" / "scheduled_scraping"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    ten_file = f"{spider_name}_{lam_sach_ten_file(keyword)}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.json"
+    ten_file = f"{spider_name}_{lam_sach_ten_file(keyword)}_{utc_now_naive().strftime('%Y%m%d%H%M%S')}.json"
     duong_dan_file = output_dir / ten_file
 
     cau_hinh = SPIDER_CAU_HINH[spider_name]
@@ -238,7 +239,7 @@ def chay_cao_dinh_ky_mot_lan(
             return {
                 "success": False,
                 "message": "Khong co san pham chuan hoa nao de sinh keyword cao du lieu.",
-                "thoiDiemChay": datetime.utcnow().isoformat(),
+                "thoiDiemChay": utc_now_naive().isoformat(),
                 "soKeyword": 0,
                 "soSpider": len(spiders),
                 "tongItemCaoDuoc": 0,
@@ -252,7 +253,7 @@ def chay_cao_dinh_ky_mot_lan(
             return {
                 "success": False,
                 "message": "Khong co spider hop le de cao du lieu.",
-                "thoiDiemChay": datetime.utcnow().isoformat(),
+                "thoiDiemChay": utc_now_naive().isoformat(),
                 "soKeyword": len(keywords),
                 "soSpider": 0,
                 "tongItemCaoDuoc": 0,
@@ -330,7 +331,7 @@ def chay_cao_dinh_ky_mot_lan(
 
         return {
             "success": True,
-            "thoiDiemChay": datetime.utcnow().isoformat(),
+            "thoiDiemChay": utc_now_naive().isoformat(),
             "soKeyword": len(keywords),
             "soSpider": len(spiders),
             "tongItemCaoDuoc": tong_item_cao_duoc,
@@ -342,4 +343,3 @@ def chay_cao_dinh_ky_mot_lan(
 
     finally:
         db.close()
-

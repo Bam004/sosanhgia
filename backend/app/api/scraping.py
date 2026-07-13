@@ -11,6 +11,7 @@ from backend.app.core.database import get_db
 from backend.app.models.san_pham_tho import SanPhamTho
 from backend.app.models.san_pham_chuan_hoa import SanPhamChuanHoa
 
+from backend.app.core.datetime_utils import utc_now_naive
 router = APIRouter(
     prefix="/api/scraping",
     tags=["Scraping"]
@@ -71,7 +72,7 @@ def lay_spider_theo_nguon(nguon):
 
 def dinh_dang_thoi_gian(thoi_gian):
     if not thoi_gian:
-        thoi_gian = datetime.utcnow()
+        thoi_gian = utc_now_naive()
 
     return thoi_gian.strftime("%d/%m/%Y %H:%M")
 

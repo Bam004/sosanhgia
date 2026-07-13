@@ -195,6 +195,32 @@ function tinhThongKeGomNhom(danhSachSanPham) {
   ];
 }
 
+function taoDanhSachTrang(trangHienTai, tongSoTrang) {
+  if (tongSoTrang <= 7) {
+    return Array.from({ length: tongSoTrang }, (_, index) => index + 1);
+  }
+
+  const danhSachTrang = [1];
+  const trangBatDau = Math.max(2, trangHienTai - 2);
+  const trangKetThuc = Math.min(tongSoTrang - 1, trangHienTai + 2);
+
+  if (trangBatDau > 2) {
+    danhSachTrang.push("...");
+  }
+
+  for (let trang = trangBatDau; trang <= trangKetThuc; trang += 1) {
+    danhSachTrang.push(trang);
+  }
+
+  if (trangKetThuc < tongSoTrang - 1) {
+    danhSachTrang.push("...");
+  }
+
+  danhSachTrang.push(tongSoTrang);
+
+  return danhSachTrang;
+}
+
 function QuanLyGomNhomSanPham() {
   const [danhSachSanPham, setDanhSachSanPham] = useState([]);
   const [tuKhoa, setTuKhoa] = useState("");
@@ -560,20 +586,33 @@ function QuanLyGomNhomSanPham() {
                 ‹
               </button>
 
-              {Array.from({ length: tongSoTrangNhom }, (_, index) => {
-                const soTrang = index + 1;
+              {taoDanhSachTrang(trangNhomHienTai, tongSoTrangNhom).map(
+                (item, index) => {
+                  if (item === "...") {
+                    return (
+                      <span
+                        className="dau-ba-cham-phan-trang"
+                        key={`nhom-ellipsis-${index}`}
+                      >
+                        ...
+                      </span>
+                    );
+                  }
 
-                return (
-                  <button
-                    type="button"
-                    key={soTrang}
-                    className={trangNhomHienTai === soTrang ? "trang-dang-chon" : ""}
-                    onClick={() => setTrangNhomHienTai(soTrang)}
-                  >
-                    {soTrang}
-                  </button>
-                );
-              })}
+                  return (
+                    <button
+                      type="button"
+                      key={item}
+                      className={
+                        trangNhomHienTai === item ? "trang-dang-chon" : ""
+                      }
+                      onClick={() => setTrangNhomHienTai(item)}
+                    >
+                      {item}
+                    </button>
+                  );
+                }
+              )}
 
               <button
                 type="button"
@@ -728,19 +767,31 @@ function QuanLyGomNhomSanPham() {
                     ‹
                   </button>
 
-                  {Array.from({ length: tongSoTrangSanPhamTho }, (_, index) => {
-                    const soTrang = index + 1;
+                  {taoDanhSachTrang(
+                    trangSanPhamThoHienTai,
+                    tongSoTrangSanPhamTho
+                  ).map((item, index) => {
+                    if (item === "...") {
+                      return (
+                        <span
+                          className="dau-ba-cham-phan-trang"
+                          key={`san-pham-tho-ellipsis-${index}`}
+                        >
+                          ...
+                        </span>
+                      );
+                    }
 
                     return (
                       <button
                         type="button"
-                        key={soTrang}
+                        key={item}
                         className={
-                          trangSanPhamThoHienTai === soTrang ? "trang-dang-chon" : ""
+                          trangSanPhamThoHienTai === item ? "trang-dang-chon" : ""
                         }
-                        onClick={() => setTrangSanPhamThoHienTai(soTrang)}
+                        onClick={() => setTrangSanPhamThoHienTai(item)}
                       >
-                        {soTrang}
+                        {item}
                       </button>
                     );
                   })}

@@ -1,22 +1,42 @@
-from fastapi import FastAPI, Request, status
-from fastapi.exceptions import RequestValidationError
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 
 from backend.app.api.items import router as items_router
 from backend.app.api.products import router as products_router
 from backend.app.api.scraping import router as scraping_router
 from backend.app.api.search import router as search_router
+from backend.app.api.search_jobs import router as search_jobs_router
+from backend.app.api.scrape import router as scrape_router
+from backend.app.api.auth import router as auth_router
+from backend.app.api.theo_doi_gia import router as theo_doi_gia_router
+from backend.app.services.scheduled_scraping_runner import (
+    bat_scheduler_cao_dinh_ky,
+    tat_scheduler_cao_dinh_ky,
+)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    bat_scheduler_cao_dinh_ky()
+
+    try:
+        yield
+    finally:
+        await tat_scheduler_cao_dinh_ky()
 
 app = FastAPI(
     title="SoSanhGia API",
-    description="Backend API for product price aggregation and comparison system",
-    version="1.0.0"
+    description="API cho website tổng hợp và so sánh giá sản phẩm",
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 allowed_origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
 ]
 
 app.add_middleware(
@@ -28,27 +48,15 @@ app.add_middleware(
 )
 
 
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(
-    _request: Request,
-    exc: RequestValidationError
-):
-    errors = exc.errors()
-    first_error = errors[0] if errors else {}
-
-    location = ".".join(
-        str(part) for part in first_error.get("loc", [])
-    )
-    message = first_error.get("msg", "Invalid input")
-
-    detail = f"{location}: {message}" if location else message
-
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
     return JSONResponse(
-        status_code=status.HTTP_400_BAD_REQUEST,
+        status_code=500,
         content={
             "success": False,
-            "error": f"Validation failed: {detail}"
-        }
+            "message": "Internal server error",
+            "error": str(exc),
+        },
     )
 
 
@@ -56,23 +64,22 @@ app.include_router(items_router)
 app.include_router(products_router)
 app.include_router(scraping_router)
 app.include_router(search_router)
+app.include_router(search_jobs_router)
+app.include_router(scrape_router)
+app.include_router(auth_router)
+app.include_router(theo_doi_gia_router)
+
 
 @app.get("/")
 def root():
     return {
-        "message": "SoSanhGia API is running"
+        "message": "SoSanhGia API",
+        "version": "1.0.0",
     }
 
 
 @app.get("/health")
 def health_check():
     return {
-        "status": "ok"
+        "status": "ok",
     }
-
-from backend.app.services.scheduled_scraping_runner import bat_scheduler_cao_dinh_ky
-
-
-@app.on_event("startup")
-async def khoi_dong_scheduler_cao_du_lieu_dinh_ky():
-    bat_scheduler_cao_dinh_ky()

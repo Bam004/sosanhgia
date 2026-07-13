@@ -65,6 +65,7 @@ class TextMatchingService:
         "pin",
         "du",
         "phong",
+        "khacten",
     }
 
     REPAIR_SERVICE_KEYWORDS = {
@@ -84,10 +85,41 @@ class TextMatchingService:
         "pisen",
     }
 
+    USED_CONDITION_KEYWORDS = {
+        "cu",
+        "may cu",
+        "hang cu",
+        "da qua su dung",
+        "like new",
+        "99",
+        "95",
+        "tray",
+        "xuoc",
+        "can",
+        "mop",
+        "dep",
+        "ngoai hinh",
+    }
+
+    ACTIVATED_CONDITION_KEYWORDS = {
+        "da kich hoat",
+        "kich hoat",
+        "troi bao hanh",
+        "bh kich hoat",
+        "bao hanh dien tu",
+    }
+
+    REFURBISHED_CONDITION_KEYWORDS = {
+        "refurbished",
+        "renew",
+        "tan trang",
+        "doi tra",
+    }
+
     # Ngưỡng điểm để quyết định hai sản phẩm có thuộc cùng nhóm hay không.
     MATCH_THRESHOLD = 0.82
 
-    # Hàm chính: nhận danh sách sản phẩm và gom các sản phẩm tương đồng thành nhóm.
+        # Hàm chính: nhận danh sách sản phẩm và gom các sản phẩm tương đồng thành nhóm.
     def group_products(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         enriched_items = []
 
@@ -125,6 +157,108 @@ class TextMatchingService:
             or self._extract_android_model_key(normalized_keyword)
         )
 
+        repair_search_keywords = [
+            "thay",
+            "sua",
+            "sua chua",
+            "ep kinh",
+            "thay man hinh",
+            "thay pin",
+            "thay camera",
+            "thay kinh",
+            "oled",
+            "lcd",
+            "pisen",
+        ]
+
+        accessory_search_keywords = [
+            "op",
+            "op lung",
+            "op dien thoai",
+            "op iphone",
+            "op da",
+            "dan",
+            "dan da",
+            "dan kinh",
+            "dan man hinh",
+            "kinh cuong luc",
+            "cuong luc",
+            "mieng dan",
+            "bao da",
+            "vi da",
+            "kem vi",
+            "vi dung the",
+            "dung the",
+            "card holder",
+            "case",
+            "cover",
+            "magsafe",
+            "sac",
+            "cap",
+            "cap sac",
+            "cu sac",
+            "tai nghe",
+            "adapter",
+            "pin du phong",
+            "phu kien",
+            "khacten",
+            "mentor",
+            "de giu dien thoai",
+            "gia do dien thoai",
+            "gia do",
+            "day deo dien thoai",
+            "vong giu dien thoai",
+            "de sac",
+            "sac khong day",
+            "kiem sac",
+            "den livestream",
+            "remote",
+            "baseus primetrip",
+            "haiyuan",
+            "uag magnetic",
+            "zagg",
+        ]
+
+        phone_search_keywords = [
+            "iphone",
+            "galaxy",
+            "redmi",
+            "poco",
+            "dien thoai",
+            "smartphone",
+        ]
+
+        is_repair_search = self._has_condition_keyword(
+            normalized_keyword,
+            set(repair_search_keywords),
+        )
+
+        is_accessory_search = self._has_condition_keyword(
+            normalized_keyword,
+            set(accessory_search_keywords),
+        )
+
+        is_phone_search = (
+            keyword_model_key is not None
+            or self._has_condition_keyword(
+                normalized_keyword,
+                set(phone_search_keywords),
+            )
+        )
+
+        expected_product_type = None
+
+        if is_repair_search:
+            expected_product_type = "repair_service"
+        elif is_accessory_search:
+            expected_product_type = "accessory"
+        elif is_phone_search:
+            expected_product_type = "phone"
+
+        expected_condition = None
+        if expected_product_type == "phone":
+            expected_condition = self._detect_condition(normalized_keyword)
+
         filtered_items = []
 
         for item in items:
@@ -133,10 +267,17 @@ class TextMatchingService:
 
             enriched_item = self._enrich_item(item)
             matching_data = enriched_item["_matching"]
+            product_type = matching_data.get("product_type")
 
-            # Loại phụ kiện: ốp lưng, kính cường lực, dán camera, sạc, cáp...
-            if matching_data.get("is_accessory"):
+            # Nếu hệ thống đã nhận diện được ý định tìm kiếm,
+            # chỉ giữ đúng loại sản phẩm tương ứng.
+            if expected_product_type and product_type != expected_product_type:
                 continue
+
+            condition = matching_data.get("condition", "new")
+            if expected_condition and condition != expected_condition:
+                continue
+
 
             # Nếu keyword có model rõ ràng, chỉ giữ sản phẩm cùng dòng model.
             if keyword_model_key:
@@ -151,6 +292,48 @@ class TextMatchingService:
 
         return filtered_items
 
+    def _has_condition_keyword(
+        self,
+        normalized_text: str,
+        keywords: set[str]
+    ) -> bool:
+        for keyword in keywords:
+            normalized_keyword = self._normalize_text(keyword)
+            if not normalized_keyword:
+                continue
+
+            pattern = (
+                r"(?<!\w)"
+                + re.escape(normalized_keyword).replace(r"\ ", r"\s+")
+                + r"(?!\w)"
+            )
+
+            if re.search(pattern, normalized_text):
+                return True
+
+        return False
+
+    def _detect_condition(self, normalized_name: str) -> str:
+        if self._has_condition_keyword(
+            normalized_name,
+            self.REFURBISHED_CONDITION_KEYWORDS
+        ):
+            return "refurbished"
+
+        if self._has_condition_keyword(
+            normalized_name,
+            self.ACTIVATED_CONDITION_KEYWORDS
+        ):
+            return "activated"
+
+        if self._has_condition_keyword(
+            normalized_name,
+            self.USED_CONDITION_KEYWORDS
+        ):
+            return "used"
+
+        return "new"
+
     # Hàm này bổ sung dữ liệu phục vụ matching cho từng sản phẩm.
     def _enrich_item(self, item: dict[str, Any]) -> dict[str, Any]:
         product_name = item.get("tenSanPham", "")
@@ -160,6 +343,7 @@ class TextMatchingService:
         storage = self._extract_storage(normalized_name)
         is_accessory = self._is_accessory(normalized_name)
         product_type = self._classify_product_type(normalized_name, is_accessory)
+        condition = self._detect_condition(normalized_name)
 
         model_key = self._extract_model_key(
             normalized_name=normalized_name,
@@ -176,7 +360,9 @@ class TextMatchingService:
             "storage": storage,
             "model_key": model_key,
             "is_accessory": is_accessory,
-            "product_type": product_type
+            "product_type": product_type,
+            "condition": condition,
+            "tinhTrang": condition
         }
 
         return enriched_item
@@ -213,6 +399,9 @@ class TextMatchingService:
         data_b = item_b["_matching"]
 
         if data_a.get("product_type") != data_b.get("product_type"):
+            return 0.0
+
+        if data_a.get("condition", "new") != data_b.get("condition", "new"):
             return 0.0
 
         brand_a = data_a["brand"]
@@ -307,6 +496,7 @@ class TextMatchingService:
             "dungLuong": matching_data.get("storage"),
             "modelKey": matching_data.get("model_key"),
             "productType": matching_data.get("product_type"),
+            "tinhTrang": matching_data.get("condition", "new"),
             "soNguon": len(sources),
             "nguon": sources,
             "soSanPham": len(items),
@@ -639,17 +829,50 @@ class TextMatchingService:
 
         accessory_patterns = [
             r"\bop\s+lung\b",
+            r"\bop\s+dien\s+thoai\b",
+            r"\bop\s+iphone\b",
+            r"\bop\s+da\b",
             r"\bdan\s+kinh\b",
+            r"\bdan\s+da\b",
             r"\bkinh\s+dan\b",
             r"\bdan\s+man\s+hinh\b",
             r"\bkinh\s+dan\s+man\s+hinh\b",
             r"\btam\s+dan\b",
+            r"\bdan\s+chong\s+va\s+dap\b",
             r"\bcuong\s+luc\b",
+            r"\bkinh\s+cuong\s+luc\b",
             r"\bmieng\s+dan\b",
+            r"\bmocoll\b",
             r"\bbao\s+da\b",
+            r"\bvi\s+da\b",
+            r"\bkem\s+vi\b",
+            r"\bvi\s+dung\s+the\b",
+            r"\bdung\s+the\b",
+            r"\bcard\s+holder\b",
             r"\bcase\b",
             r"\bcover\b",
             r"\bmagsafe\b",
+            r"\bcap\s+sac\b",
+            r"\bcu\s+sac\b",
+            r"\bsac\b",
+            r"\btai\s+nghe\b",
+            r"\bphu\s+kien\b",
+            r"\bkhacten\b",
+            r"\bmentor\b",
+            r"\bde\s+giu\s+dien\s+thoai\b",
+            r"\bgia\s+do\s+dien\s+thoai\b",
+            r"\bgia\s+do\b",
+            r"\bday\s+deo\s+dien\s+thoai\b",
+            r"\bvong\s+giu\s+dien\s+thoai\b",
+            r"\bde\s+sac\b",
+            r"\bsac\s+khong\s+day\b",
+            r"\bkiem\s+sac\b",
+            r"\bden\s+livestream\b",
+            r"\bremote\b",
+            r"\bbaseus\s+primetrip\b",
+            r"\bhaiyuan\b",
+            r"\buag\s+magnetic\b",
+            r"\bzagg\b",
         ]
 
         for pattern in accessory_patterns:

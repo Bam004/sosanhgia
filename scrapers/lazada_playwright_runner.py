@@ -43,17 +43,38 @@ def extract_title(card, text_lines):
 
 
 def extract_price(text_lines):
-    full_text = " ".join(text_lines)
+    price_patterns = [
+        # Ký hiệu tiền nằm trước giá: ₫5.500.000
+        re.compile(
+            r"(?:₫|vnđ|vnd|đồng|đ)\s*"
+            r"(\d{1,3}(?:[.,]\d{3})+|\d{5,})",
+            flags=re.IGNORECASE,
+        ),
 
-    # Ch? nh?n gi? c? ??nh d?ng ti?n Vi?t Nam r? r?ng: 5.590.000 ?, 17.990.000 ?
-    match = re.search(r"(\d{1,3}(?:\.\d{3})+)\s*?", full_text)
+        # Ký hiệu tiền nằm sau giá: 5.500.000 ₫
+        re.compile(
+            r"(?<!\d)"
+            r"(\d{1,3}(?:[.,]\d{3})+|\d{5,})"
+            r"\s*(?:₫|vnđ|vnd|đồng|đ)(?!\w)",
+            flags=re.IGNORECASE,
+        ),
+    ]
 
-    if match:
-        digits = re.sub(r"\D", "", match.group(1))
-        return int(digits) if digits else None
+    for line in text_lines:
+        clean_line = str(line or "").replace("\xa0", " ").strip()
+
+        for pattern in price_patterns:
+            match = pattern.search(clean_line)
+
+            if not match:
+                continue
+
+            digits = re.sub(r"\D", "", match.group(1))
+
+            if digits:
+                return int(digits)
 
     return None
-
 
 def extract_link(card):
     hrefs = card.css('a[href*="/products/"]::attr(href)').getall()

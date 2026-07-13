@@ -33,6 +33,8 @@ def refresh_standardized_product_summary(
     db: Session,
     standardized_product: SanPhamChuanHoa,
 ) -> None:
+    db.flush()
+
     items = (
         db.query(SanPhamTho)
         .filter(SanPhamTho.maSPCH == standardized_product.maSPCH)
@@ -43,12 +45,13 @@ def refresh_standardized_product_summary(
         item.giaHienTai
         for item in items
         if item.giaHienTai is not None
+        and item.giaHienTai > 0
     ]
 
     sources = {
-        item.sanTMDT
+        str(item.sanTMDT).strip().lower()
         for item in items
-        if item.sanTMDT
+        if item.sanTMDT and str(item.sanTMDT).strip()
     }
 
     representative_item = next(
@@ -62,7 +65,7 @@ def refresh_standardized_product_summary(
     standardized_product.giaCaoNhat = max(prices) if prices else None
     standardized_product.trangThai = determine_standardized_status(
         total_sources=len(sources),
-        need_review=standardized_product.canKiemTra,
+        need_review=bool(standardized_product.canKiemTra),
     )
 
     if representative_item and not standardized_product.hinhAnhChinh:
@@ -142,16 +145,19 @@ def auto_group_ungrouped_products(
             ]
 
             if item_ids:
-                updated_count = (
+                items_to_link = (
                     db.query(SanPhamTho)
                     .filter(SanPhamTho.maSPTho.in_(item_ids))
-                    .update(
-                        {SanPhamTho.maSPCH: standardized_product.maSPCH},
-                        synchronize_session=False,
-                    )
+                    .all()
                 )
 
-                linked_items += updated_count
+                for raw_item in items_to_link:
+                    raw_item.maSPCH = standardized_product.maSPCH
+
+                linked_items += len(items_to_link)
+
+                # Đẩy liên kết mới xuống database trước khi tính giá và số nguồn.
+                db.flush()
 
             if need_review:
                 review_items += len(group_items)

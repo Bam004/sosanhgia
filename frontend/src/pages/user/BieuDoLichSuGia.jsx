@@ -8,32 +8,94 @@ import { dinhDangTien } from '../../utils/dinhDangTien';
 export default function BieuDoLichSuGia() {
   const { id } = useParams();
   const [sanPham, setSanPham] = useState(null);
-  const [lichSuGia, setLichSuGia] = useState(null);
+  const [lichSuGia, setLichSuGia] = useState([]);
+  const [chartData, setChartData] = useState({});
+  const [chartSources, setChartSources] = useState([]);
+  const [chartDomain, setChartDomain] = useState({ min: 0, max: 0 });
+  const [selectedRange, setSelectedRange] = useState('3m');
   const [thongKe, setThongKe] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isUpdatingRange, setIsUpdatingRange] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
+    let isCancelled = false;
+
     const fetchData = async () => {
-      setLoading(true);
+      if (!sanPham) {
+        setLoading(true);
+      } else {
+        setIsUpdatingRange(true);
+      }
+      setError("");
       try {
-        const detailRes = await productService.layChiTietSanPham(id);
-        if (detailRes.data) {
-          setSanPham(detailRes.data);
+        if (!sanPham) {
+          const detailRes = await productService.layChiTietSanPham(id);
+          if (detailRes.data && !isCancelled) {
+            setSanPham(detailRes.data);
+          }
         }
         
-        const historyRes = await productService.layLichSuGia(id);
-        if (historyRes.data) {
-          setLichSuGia(historyRes.data.lichSu);
-          setThongKe(historyRes.data.thongKe);
+        const historyRes = await productService.layLichSuGia(id, selectedRange);
+        if (isCancelled) return;
+
+        const data = historyRes.data || {};
+        const series = Array.isArray(data.series) ? data.series : [];
+        setThongKe({
+          rangeSummary: data.rangeSummary,
+          allTimeLow: data.allTimeLow
+        });
+
+        if (series.length > 0) {
+          // Format data cho Recharts
+          const groupedByDate = {};
+          let minP = Infinity;
+          let maxP = -Infinity;
+          const sourceSet = new Set();
+          
+          series.forEach(s => {
+             sourceSet.add(s.sourceName);
+             s.points.forEach(p => {
+                if (p.price < minP) minP = p.price;
+                if (p.price > maxP) maxP = p.price;
+
+                const dateObj = new Date(p.date);
+                const dateStr = dateObj.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+                
+                if (!groupedByDate[dateStr]) {
+                  groupedByDate[dateStr] = { name: dateStr, _timestamp: dateObj.getTime() };
+                }
+                
+                groupedByDate[dateStr][s.sourceName] = p.price;
+             });
+          });
+          
+          setChartSources([...sourceSet]);
+          setChartDomain({ min: minP, max: maxP });
+
+          const chartArray = Object.values(groupedByDate).sort((a, b) => a._timestamp - b._timestamp);
+          setChartData(chartArray);
+        } else {
+          setChartData([]);
+          setError("Chưa có dữ liệu trong khoảng này.");
         }
       } catch (e) {
+        if (isCancelled) return;
         console.error(e);
+        setError("Lỗi kết nối lịch sử giá");
       } finally {
-        setLoading(false);
+        if (!isCancelled) {
+          setLoading(false);
+          setIsUpdatingRange(false);
+        }
       }
     };
     fetchData();
-  }, [id]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [id, selectedRange]);
 
   if (loading || !sanPham) {
     return (
@@ -45,6 +107,26 @@ export default function BieuDoLichSuGia() {
       </div>
     );
   }
+
+  if (error) {
+    return (
+      <div className="user-page">
+        <div className="user-container" style={{ textAlign: 'center', padding: '100px 0' }}>
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5" style={{ marginBottom: '16px' }}>
+             <circle cx="12" cy="12" r="10"></circle>
+             <line x1="12" y1="8" x2="12" y2="12"></line>
+             <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <p>{error}</p>
+          <Link to={`/san-pham/${id}`} style={{ color: 'var(--color-primary)', textDecoration: 'underline', marginTop: '10px', display: 'inline-block' }}>Quay lại</Link>
+        </div>
+      </div>
+    );
+  }
+
+  const soNgayGhiNhan = new Set(
+    lichSuGia.map((item) => new Date(item.ngayGhiNhan).toLocaleDateString('vi-VN'))
+  ).size;
 
   return (
     <main className="user-page">
@@ -88,18 +170,28 @@ export default function BieuDoLichSuGia() {
         {/* Khối biểu đồ Recharts */}
         <section className="chart-main-card">
           <div className="chart-main-card__header">
-            <h3>Lịch sử biến động giá đa sàn (Lazada, FPT Shop, Tiki, CellphoneS, HoangHa Mobile)</h3>
+            <h3>Lịch sử biến động giá đa sàn </h3>
             <p>Biểu đồ thể hiện biến động giá bán thực tế ghi nhận qua các mốc thời gian.</p>
           </div>
           
           <div className="chart-main-card__body">
             {/* Render component biểu đồ Recharts */}
             <div style={{ position: 'relative' }}>
-              <BieuDoGia dataInput={lichSuGia} thongKe={thongKe} />
-              <div style={{ position: 'absolute', bottom: '-20px', left: '10px', fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>
-                * Hệ thống đang hiển thị Dữ liệu lịch sử giá mẫu
-              </div>
+              {isUpdatingRange && (
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255, 255, 255, 0.6)', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  <span className="spinner" style={{ width: '30px', height: '30px' }}></span>
+                </div>
+              )}
+              <BieuDoGia 
+                dataInput={chartData} 
+                thongKe={thongKe} 
+                sources={chartSources} 
+                priceRange={chartDomain}
+                timeline={selectedRange}
+                onChangeTimeline={setSelectedRange} 
+              />
             </div>
+            {/* Render data table for raw history - Removed as requested by task to keep minimal or it crashes on missing data, wait, I can just hide it since series replaces raw lichSuGia */}
           </div>
         </section>
       </div>

@@ -1,95 +1,150 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { authService } from '../../services/authService';
+import { sanitizeReturnUrl } from '../../utils/returnUrl';
 
 export default function DangNhap() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [matKhau, setMatKhau] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [searchParams] = useSearchParams();
+  const returnUrl = sanitizeReturnUrl(searchParams.get('returnUrl'));
+  const [formData, setFormData] = useState({
+    email: '',
+    matKhau: ''
+  });
+  const [loading, setLoading] = useState(false);
 
-  const xuLyDangNhapSubmit = (e) => {
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!email.trim() || !matKhau) {
-      toast.warning('Vui lòng điền đầy đủ Email và Mật khẩu!');
-      return;
+    if (!formData.email.trim() || !formData.matKhau.trim()) {
+      return toast.error("Vui lòng nhập đủ email và mật khẩu");
     }
 
-    setIsSubmitting(true);
+    try {
+      setLoading(true);
+      const res = await authService.dangNhap(formData);
+     if (res.success) {
+      const taiKhoan = res.data?.user;
 
-    // Giả lập độ trễ API 800ms để chặn double submit & hiện spinner
-    setTimeout(() => {
-      const mockUser = {
-        name: 'Nhất',
-        email: email,
-        avatar: 'clover',
-        joinDate: new Date().toLocaleDateString('vi-VN'),
-      };
-      
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      toast.success('Đăng nhập thành công! Chào mừng quay trở lại.');
-      setIsSubmitting(false);
-      navigate('/');
-    }, 800);
+      const email = String(taiKhoan?.email || "")
+        .trim()
+        .toLowerCase();
+
+      const vaiTro = String(taiKhoan?.vaiTro || "")
+        .trim()
+        .toLowerCase();
+
+      const dangTruyCapAdmin =
+        returnUrl === "/admin" ||
+        returnUrl.startsWith("/admin/");
+
+      const laTaiKhoanAdmin =
+        email === "sosanhgia@gmail.com" &&
+        vaiTro === "admin";
+
+      if (dangTruyCapAdmin && !laTaiKhoanAdmin) {
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("user");
+
+        toast.error(
+          "Chỉ tài khoản quản trị viên mới được truy cập trang Admin."
+        );
+
+        return;
+      }
+
+      localStorage.setItem(
+        "accessToken",
+        res.data.accessToken
+      );
+
+      localStorage.setItem(
+        "user",
+        JSON.stringify(taiKhoan)
+      );
+
+      toast.success("Đăng nhập thành công");
+
+      navigate(returnUrl, {
+        replace: true,
+      });
+    } else {
+        toast.error(res.message || "Sai email hoặc mật khẩu");
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || error.response?.data?.detail || "Sai email hoặc mật khẩu";
+      if (error.response?.status === 403) {
+        toast.error("Tài khoản đã bị vô hiệu hóa");
+      } else if (error.response?.status === 401) {
+        toast.error("Sai email hoặc mật khẩu");
+      } else if (!error.response) {
+        toast.error("Lỗi kết nối máy chủ. Vui lòng kiểm tra mạng và thử lại.");
+      } else {
+        toast.error(errorMessage);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <main className="user-page auth-page-wrapper">
-      <div className="auth-card">
-        <h2 className="auth-card__title">ĐĂNG NHẬP TÀI KHOẢN</h2>
-        
-        <form onSubmit={xuLyDangNhapSubmit} className="auth-card__form">
-          <div className="form-group">
-            <label htmlFor="login-email">Email:</label>
+    <main className="user-page" style={{ padding: '60px 20px', background: '#f8fafc', minHeight: '60vh', display: 'flex', justifyContent: 'center' }}>
+      <div className="user-container" style={{ maxWidth: '400px', width: '100%', background: '#fff', padding: '32px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}>
+        <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#334155', marginBottom: '24px', textAlign: 'center' }}>
+          Đăng nhập
+        </h2>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontWeight: '500' }}>Email</label>
             <input
-              id="login-email"
               type="email"
-              placeholder="Nhập địa chỉ email của bạn..."
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="form-control"
-              disabled={isSubmitting}
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }}
+              placeholder="Nhập email"
             />
           </div>
-
-          <div className="form-group">
-            <label htmlFor="login-password">Mật khẩu:</label>
+          <div>
+            <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontWeight: '500' }}>Mật khẩu</label>
             <input
-              id="login-password"
               type="password"
-              placeholder="Nhập mật khẩu..."
-              value={matKhau}
-              onChange={(e) => setMatKhau(e.target.value)}
-              className="form-control"
-              disabled={isSubmitting}
+              name="matKhau"
+              value={formData.matKhau}
+              onChange={handleChange}
+              style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }}
+              placeholder="Nhập mật khẩu"
             />
           </div>
-
-          <div className="auth-card__forgot">
-            <a href="#quen-mat-khau" onClick={(e) => { e.preventDefault(); toast.info('Chức năng Quên mật khẩu đang được phát triển!'); }}>
-              Quên mật khẩu?
-            </a>
-          </div>
-
-          <button type="submit" className="btn-auth-submit" disabled={isSubmitting}>
-            {isSubmitting ? (
-              <>
-                <span className="spinner"></span>
-                Đang đăng nhập...
-              </>
-            ) : (
-              'Đăng nhập'
-            )}
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: '100%',
+              background: 'var(--color-primary)',
+              color: '#fff',
+              padding: '12px',
+              borderRadius: '6px',
+              border: 'none',
+              fontWeight: '600',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              marginTop: '8px',
+              opacity: loading ? 0.7 : 1
+            }}
+          >
+            {loading ? 'Đang xử lý...' : 'Đăng nhập'}
           </button>
         </form>
-
-        <div className="auth-card__footer">
-          <span>Bạn chưa có tài khoản? </span>
-          <Link to="/dang-ky" className="auth-link">
-            Đăng ký
-          </Link>
-        </div>
+        <p style={{ textAlign: 'center', marginTop: '24px', color: '#64748b' }}>
+          Chưa có tài khoản? <Link to={returnUrl !== '/' ? `/dang-ky?returnUrl=${encodeURIComponent(returnUrl)}` : '/dang-ky'} style={{ color: 'var(--color-primary)', fontWeight: '500', textDecoration: 'none' }}>Đăng ký</Link>
+        </p>
       </div>
     </main>
   );

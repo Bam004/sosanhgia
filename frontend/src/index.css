@@ -2102,13 +2102,6 @@ a {
   color: #b91c1c;
 }
 
-.cot-thao-tac-san-pham-chuan-hoa {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
 .nut-lich-su-gia-admin {
   background: #eef2ff;
   color: #4338ca;
@@ -2194,5 +2187,111 @@ a {
 
 .bang-lich-su-gia-admin td {
   color: #334155;
+}
+
+.dau-ba-cham-phan-trang {
+  min-width: 28px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+/* Hai nút thao tác sản phẩm chuẩn hóa nằm ngang */
+.bang-san-pham-chuan-hoa-admin th:last-child,
+.bang-san-pham-chuan-hoa-admin td:last-child {
+  width: 180px;
+  min-width: 180px;
+}
+
+.cot-thao-tac-san-pham-chuan-hoa {
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.cot-thao-tac-san-pham-chuan-hoa .nut-xem-admin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  height: 34px;
+  margin: 0;
+  padding: 5px 12px;
+  vertical-align: middle;
+}
+
+.cot-thao-tac-san-pham-chuan-hoa
+  .nut-xem-admin
+  + .nut-xem-admin {
+  margin-left: 8px;
+}
+
+.cot-thao-tac-san-pham-chuan-hoa .nut-lich-su-gia-admin {
+  margin-top: 0;
+}
+
+/* Giữ độ rộng các cột ổn định */
+.bang-san-pham-chuan-hoa-admin {
+  width: 100%;
+  table-layout: fixed;
+}
+
+/* Cột tên sản phẩm */
+.bang-san-pham-chuan-hoa-admin th:nth-child(3),
+.bang-san-pham-chuan-hoa-admin td:nth-child(3) {
+  width: 320px;
+}
+
+.cot-ten-san-pham-chuan-hoa {
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.ten-san-pham-chuan-hoa-rut-gon {
+  display: -webkit-box;
+  overflow: hidden;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  word-break: break-word;
+
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* Cột thao tác */
+.bang-san-pham-chuan-hoa-admin th:last-child,
+.bang-san-pham-chuan-hoa-admin td:last-child {
+  width: 260px;
+  min-width: 260px;
+}
+
+.cot-thao-tac-san-pham-chuan-hoa {
+  display: table-cell;
+  vertical-align: middle;
+  padding: 10px 12px;
+  white-space: nowrap;
+}
+
+.nhom-nut-thao-tac-san-pham-chuan-hoa {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.nhom-nut-thao-tac-san-pham-chuan-hoa .nut-xem-admin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.nhom-nut-thao-tac-san-pham-chuan-hoa
+  .nut-lich-su-gia-admin {
+  margin: 0;
 }
 

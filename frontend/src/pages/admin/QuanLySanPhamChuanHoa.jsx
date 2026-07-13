@@ -40,6 +40,32 @@ function hienThiLoaiSanPham(loai) {
   return loai || "Chưa phân loại";
 }
 
+function taoDanhSachTrang(trangHienTai, tongSoTrang) {
+  if (tongSoTrang <= 7) {
+    return Array.from({ length: tongSoTrang }, (_, index) => index + 1);
+  }
+
+  const danhSachTrang = [1];
+  const trangBatDau = Math.max(2, trangHienTai - 2);
+  const trangKetThuc = Math.min(tongSoTrang - 1, trangHienTai + 2);
+
+  if (trangBatDau > 2) {
+    danhSachTrang.push("...");
+  }
+
+  for (let trang = trangBatDau; trang <= trangKetThuc; trang += 1) {
+    danhSachTrang.push(trang);
+  }
+
+  if (trangKetThuc < tongSoTrang - 1) {
+    danhSachTrang.push("...");
+  }
+
+  danhSachTrang.push(tongSoTrang);
+
+  return danhSachTrang;
+}
+
 function QuanLySanPhamChuanHoa() {
   const [tuKhoa, setTuKhoa] = useState("");
   const [loaiLoc, setLoaiLoc] = useState("Tất cả");
@@ -342,7 +368,14 @@ function QuanLySanPhamChuanHoa() {
                     )}
                   </td>
 
-                  <td className="ten-sp-chuan-hoa">{sanPham.tenChuan}</td>
+                  <td className="cot-ten-san-pham-chuan-hoa">
+                    <div
+                      className="ten-san-pham-chuan-hoa-rut-gon"
+                      title={sanPham.tenChuan}
+                    >
+                      {sanPham.tenChuan}
+                    </div>
+                  </td>
                   <td>{hienThiLoaiSanPham(sanPham.loai)}</td>
                   <td>{sanPham.thuongHieu || "Chưa xác định"}</td>
                   <td>{dinhDangTien(sanPham.giaThapNhat)}</td>
@@ -360,22 +393,24 @@ function QuanLySanPhamChuanHoa() {
                   </td>
 
                   <td className="cot-thao-tac-san-pham-chuan-hoa">
-                    <button
-                      className="nut-xem-admin"
-                      type="button"
-                      onClick={() => setSanPhamDangXem(sanPham)}
-                    >
-                      Xem
-                    </button>
+                    <div className="nhom-nut-thao-tac-san-pham-chuan-hoa">
+                      <button
+                        className="nut-xem-admin"
+                        type="button"
+                        onClick={() => setSanPhamDangXem(sanPham)}
+                      >
+                        Xem
+                      </button>
 
-                    <button
-                      className="nut-xem-admin nut-lich-su-gia-admin"
-                      type="button"
-                      onClick={() => taiLichSuGiaSanPham(sanPham)}
-                      disabled={dangTaiLichSuGia}
-                    >
-                      Lịch sử giá
-                    </button>
+                      <button
+                        className="nut-xem-admin nut-lich-su-gia-admin"
+                        type="button"
+                        onClick={() => taiLichSuGiaSanPham(sanPham)}
+                        disabled={dangTaiLichSuGia}
+                      >
+                        Lịch sử giá
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -392,17 +427,23 @@ function QuanLySanPhamChuanHoa() {
             ‹
           </button>
 
-          {Array.from({ length: tongSoTrang }, (_, index) => {
-            const soTrang = index + 1;
+          {taoDanhSachTrang(trangHienTai, tongSoTrang).map((item, index) => {
+            if (item === "...") {
+              return (
+                <span className="dau-ba-cham-phan-trang" key={`ellipsis-${index}`}>
+                  ...
+                </span>
+              );
+            }
 
             return (
               <button
                 type="button"
-                key={soTrang}
-                className={trangHienTai === soTrang ? "trang-dang-chon" : ""}
-                onClick={() => setTrangHienTai(soTrang)}
+                key={item}
+                className={trangHienTai === item ? "trang-dang-chon" : ""}
+                onClick={() => setTrangHienTai(item)}
               >
-                {soTrang}
+                {item}
               </button>
             );
           })}

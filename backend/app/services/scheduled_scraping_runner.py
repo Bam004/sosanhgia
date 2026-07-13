@@ -1,5 +1,6 @@
-﻿import asyncio
-from datetime import datetime
+import asyncio
+from contextlib import suppress
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from backend.app.services.scheduled_scraping_service import chay_cao_dinh_ky_mot_lan
@@ -46,9 +47,22 @@ def bat_scheduler_cao_dinh_ky():
     if _scheduler_task and not _scheduler_task.done():
         return
 
-    _thoi_diem_khoi_dong = datetime.utcnow().isoformat()
+    _thoi_diem_khoi_dong = datetime.now(timezone.utc).isoformat()
     _scheduler_task = asyncio.create_task(_vong_lap_scheduler())
 
+async def tat_scheduler_cao_dinh_ky():
+    global _scheduler_task
+
+    if _scheduler_task is None:
+        return
+
+    if not _scheduler_task.done():
+        _scheduler_task.cancel()
+
+        with suppress(asyncio.CancelledError):
+            await _scheduler_task
+
+    _scheduler_task = None
 
 def lay_trang_thai_scheduler() -> Dict[str, Any]:
     return {
