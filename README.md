@@ -105,3 +105,32 @@ Mở Terminal 4:
 ```powershell
 npm --prefix frontend run dev
 ```
+### CHẠY DỰ ÁN
+# 1. Terminal 1:
+cd "C:\Workspace\SCHOOL\Đồ án tốt nghiệp 2026\Source\sosanhgia"
+.\.venv\Scripts\Activate.ps1
+
+python --version
+git branch --show-current
+
+# 2. Terminal 2:
+wsl -d Ubuntu
+
+sudo service redis-server start
+-> Nhập password: 123456
+
+redis-cli ping
+
+# 3. Terminal 3:
+cd "C:\Workspace\SCHOOL\Đồ án tốt nghiệp 2026\Source\sosanhgia"
+.\.venv\Scripts\Activate.ps1
+python -m uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8000
+
+# 4. Terminal 4:
+cd "C:\Workspace\SCHOOL\Đồ án tốt nghiệp 2026\Source\sosanhgia"
+.\.venv\Scripts\Activate.ps1
+celery -A backend.app.core.celery_app.celery_app worker --loglevel=info --pool=solo
+
+# 5. Terminal 5:
+cd "C:\Workspace\SCHOOL\Đồ án tốt nghiệp 2026\Source\sosanhgia\frontend"
+npm run dev

@@ -242,7 +242,7 @@ function QuanLyGomNhomSanPham() {
       setLoiTaiDuLieu("");
 
       const response = await api.get("/items", {
-        params: { limit: 1000 },
+        params: { limit: 10000 },
       });
 
       if (!response.data?.success) {

@@ -8,6 +8,36 @@ import { productService } from '../../services/productService';
 //import { theoDoiGiaService } from '../../services/theoDoiGiaService';
 //import { buildLoginUrl } from '../../utils/returnUrl';
 
+function hienThiGiaTriThongSo(value) {
+  if (value === null || value === undefined || value === '') {
+    return 'Chưa cập nhật';
+  }
+
+  if (typeof value === 'string' || typeof value === 'number') {
+    return String(value);
+  }
+
+  if (typeof value === 'boolean') {
+    return value ? 'Có' : 'Không';
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => hienThiGiaTriThongSo(item))
+      .filter(Boolean)
+      .join(', ');
+  }
+
+  if (typeof value === 'object') {
+    return Object.entries(value)
+      .filter(([, item]) => item !== null && item !== undefined && item !== '')
+      .map(([key, item]) => `${key}: ${hienThiGiaTriThongSo(item)}`)
+      .join(' | ');
+  }
+
+  return String(value);
+}
+
 export default function ChiTietSanPham() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -24,7 +54,7 @@ export default function ChiTietSanPham() {
   const [error, setError] = useState(null);
 
   // Accordion states
-  const [hienSpec, setHienSpec] = useState(true);
+  const [hienSpec, setHienSpec] = useState(false);
   const [hienSoSanh, setHienSoSanh] = useState(true);
 
   // Sắp xếp nơi bán
@@ -44,7 +74,7 @@ export default function ChiTietSanPham() {
         const res = await productService.layChiTietSanPham(id);
         if (res.data) {
           setSanPham(res.data);
-          
+
         } else {
           setError(res.errorMessage || 'Không tìm thấy sản phẩm.');
         }
@@ -184,7 +214,7 @@ export default function ChiTietSanPham() {
             <h1 className="product-main-card__title">
               {sanPham.tenSanPham}
             </h1>
-            
+
             <div className="product-main-card__meta">
               {(() => {
                 const brand = sanPham.thuongHieu || sanPham.brand || sanPham.attributes?.brand || (sanPham.items && sanPham.items[0]?.attributes?.brand);
@@ -280,7 +310,7 @@ export default function ChiTietSanPham() {
                 Object.entries(sanPham.thongSoKyThuat).map(([key, val]) => (
                   <div key={key} className="spec-row">
                     <div className="spec-label">{key}</div>
-                    <div className="spec-value">{val}</div>
+                    <div className="spec-value">{hienThiGiaTriThongSo(val)}</div>
                   </div>
                 ))
               ) : (
@@ -334,3 +364,4 @@ export default function ChiTietSanPham() {
     </main>
   );
 }
+

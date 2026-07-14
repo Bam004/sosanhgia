@@ -2295,3 +2295,125 @@ a {
   margin: 0;
 }
 
+/* Các thẻ sàn trong banner */
+.hero-floating-card {
+  position: absolute;
+  min-width: 150px;
+  padding: 12px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #ffffff;
+  z-index: 2;
+}
+
+.hero-floating-card .platform {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.hero-floating-card .price:empty {
+  display: none;
+}
+
+/* Lazada */
+.hero-floating-card--1 {
+  top: 16%;
+  left: 12%;
+  animation: heroFloatOne 4.4s ease-in-out infinite;
+}
+
+/* Tiki */
+.hero-floating-card--2 {
+  top: 38%;
+  right: 5%;
+  animation: heroFloatTwo 4.8s ease-in-out infinite;
+}
+
+/* CellphoneS */
+.hero-floating-card--3 {
+  bottom: 18%;
+  left: 17%;
+  animation: heroFloatThree 5.2s ease-in-out infinite;
+}
+
+/* FPT Shop */
+.hero-floating-card--4 {
+  top: 18%;
+  right: 5%;
+  animation: heroFloatFour 4.6s ease-in-out infinite;
+}
+
+/* Hoàng Hà Mobile */
+.hero-floating-card--5 {
+  top: 45%;
+  left: 40%;
+  animation: heroFloatFive 5s ease-in-out infinite;
+}
+
+@keyframes heroFloatOne {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes heroFloatTwo {
+  0%,
+  100% {
+    transform: translateY(0) translateX(0);
+  }
+
+  50% {
+    transform: translateY(10px) translateX(-6px);
+  }
+}
+
+@keyframes heroFloatThree {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-9px);
+  }
+}
+
+@keyframes heroFloatFour {
+  0%,
+  100% {
+    transform: translateY(0) translateX(0);
+  }
+
+  50% {
+    transform: translateY(-11px) translateX(7px);
+  }
+}
+
+@keyframes heroFloatFive {
+  0%,
+  100% {
+    transform: translateY(0) translateX(0);
+  }
+
+  50% {
+    transform: translateY(9px) translateX(-8px);
+  }
+}
+
+.home-hero__graphic {
+  position: relative;
+  min-height: 320px;
+  overflow: hidden;
+}
