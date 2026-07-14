@@ -35,7 +35,7 @@ export default function BieuDoLichSuGia() {
             setSanPham(detailRes.data);
           }
         }
-        
+
         const historyRes = await productService.layLichSuGia(id, selectedRange);
         if (isCancelled) return;
 
@@ -52,7 +52,7 @@ export default function BieuDoLichSuGia() {
           let minP = Infinity;
           let maxP = -Infinity;
           const sourceSet = new Set();
-          
+
           series.forEach(s => {
              sourceSet.add(s.sourceName);
              s.points.forEach(p => {
@@ -61,15 +61,15 @@ export default function BieuDoLichSuGia() {
 
                 const dateObj = new Date(p.date);
                 const dateStr = dateObj.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
-                
+
                 if (!groupedByDate[dateStr]) {
                   groupedByDate[dateStr] = { name: dateStr, _timestamp: dateObj.getTime() };
                 }
-                
+
                 groupedByDate[dateStr][s.sourceName] = p.price;
              });
           });
-          
+
           setChartSources([...sourceSet]);
           setChartDomain({ min: minP, max: maxP });
 
@@ -173,7 +173,7 @@ export default function BieuDoLichSuGia() {
             <h3>Lịch sử biến động giá đa sàn </h3>
             <p>Biểu đồ thể hiện biến động giá bán thực tế ghi nhận qua các mốc thời gian.</p>
           </div>
-          
+
           <div className="chart-main-card__body">
             {/* Render component biểu đồ Recharts */}
             <div style={{ position: 'relative' }}>
@@ -182,13 +182,13 @@ export default function BieuDoLichSuGia() {
                   <span className="spinner" style={{ width: '30px', height: '30px' }}></span>
                 </div>
               )}
-              <BieuDoGia 
-                dataInput={chartData} 
-                thongKe={thongKe} 
-                sources={chartSources} 
+              <BieuDoGia
+                dataInput={chartData}
+                thongKe={thongKe}
+                sources={chartSources}
                 priceRange={chartDomain}
                 timeline={selectedRange}
-                onChangeTimeline={setSelectedRange} 
+                onChangeTimeline={setSelectedRange}
               />
             </div>
             {/* Render data table for raw history - Removed as requested by task to keep minimal or it crashes on missing data, wait, I can just hide it since series replaces raw lichSuGia */}

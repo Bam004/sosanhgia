@@ -408,15 +408,28 @@ export default function KetQuaTimKiem() {
   return (
     <main className="user-page">
       <div className="user-container search-layout">
-        {/* Cột trái - Bộ lọc */}
-        <BoLocSanPham onFilterChange={xuLyApDungBoLoc} danhSachGoc={danhSachGoc} />
-
-        {/* Cột phải - Danh sách kết quả */}
-        <section className="search-results">
-          {/* Breadcrumb */}
+        {/* Cột trái - Breadcrumb và bộ lọc */}
+        <aside
+          className="search-sidebar"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            minWidth: 0
+          }}
+        >
           <div className="breadcrumb">
             Trang chủ &gt; Kết quả tìm kiếm {q && `> "${q}"`} {danhMucParam && `> ${danhMucParam}`}
           </div>
+
+          <BoLocSanPham
+            onFilterChange={xuLyApDungBoLoc}
+            danhSachGoc={danhSachGoc}
+          />
+        </aside>
+
+        {/* Cột phải - Danh sách kết quả */}
+        <section className="search-results">
 
           <div className="search-results__header">
             <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>

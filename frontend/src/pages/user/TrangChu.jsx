@@ -52,7 +52,7 @@ export default function TrangChu() {
             <form className="home-hero__search" onSubmit={xuLyTimKiem}>
               <input
                 type="text"
-                placeholder="Nhập tên sản phẩm cần so sánh..."
+                placeholder="Nhập tên sản phẩm cần tìm kiếm..."
                 value={tuKhoa}
                 onChange={(event) => setTuKhoa(event.target.value)}
               />
@@ -64,20 +64,30 @@ export default function TrangChu() {
           <div className="home-hero__graphic">
             <div className="hero-floating-card hero-floating-card--1">
               <span className="platform">Lazada</span>
-              <span className="price">31.775.000đ</span>
+              <span className="price"></span>
             </div>
             <div className="hero-floating-card hero-floating-card--2">
-              <span className="platform best">Tiki (Rẻ nhất)</span>
-              <span className="price text-green">29.890.000đ</span>
+              <span className="platform">Tiki </span>
+              <span className="price text-green"></span>
             </div>
             <div className="hero-floating-card hero-floating-card--3">
               <span className="platform">CellphoneS</span>
-              <span className="price">30.290.000đ</span>
+              <span className="price"></span>
+            </div>
+             <div className="hero-floating-card hero-floating-card--4">
+              <span className="platform">FPT Shop</span>
+              <span className="price"></span>
+            </div>
+             <div className="hero-floating-card hero-floating-card--5">
+              <span className="platform">HoangHaMobile</span>
+              <span className="price"></span>
             </div>
             <div className="hero-chart-preview">
               <div className="bar bar-1"></div>
               <div className="bar bar-2"></div>
               <div className="bar bar-3"></div>
+              <div className="bar bar-4"></div>
+              <div className="bar bar-5"></div>
             </div>
           </div>
         </section>
@@ -86,8 +96,8 @@ export default function TrangChu() {
         <section className="home-featured">
           <div className="section-heading">
             <div>
-              <h2>Sản phẩm nổi bật</h2>
-              <p>Khám phá giá tốt nhất ngay hôm nay.</p>
+              <h2>Sản phẩm gợi ý</h2>
+              <p>Khám phá giá tốt hôm nay.</p>
             </div>
           </div>
 
