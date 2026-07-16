@@ -125,6 +125,38 @@ function QuanLySanPhamChuanHoa() {
     [hienThongBao]
   );
 
+  const xuLyCapNhatDuLieu = async () => {
+    try {
+      setDangTaiDuLieu(true);
+      setLoiTaiDuLieu("");
+
+      const response = await api.post(
+        "/products/standardized/refresh-summary"
+      );
+
+      hienThongBao(
+        response.data?.message ||
+          "Đã cập nhật dữ liệu sản phẩm chuẩn hóa."
+      );
+
+      await taiDanhSachSanPhamChuanHoa(false);
+    } catch (error) {
+      console.error("Lỗi cập nhật dữ liệu sản phẩm chuẩn hóa:", error);
+
+      setLoiTaiDuLieu(
+        "Không thể cập nhật dữ liệu sản phẩm chuẩn hóa."
+      );
+
+      hienThongBao(
+        error.response?.data?.error ||
+          "Không thể cập nhật dữ liệu sản phẩm chuẩn hóa.",
+        "loi"
+      );
+    } finally {
+      setDangTaiDuLieu(false);
+    }
+  };
+
   const taiLichSuGiaSanPham = useCallback(
     async (sanPham) => {
       try {
@@ -318,7 +350,7 @@ function QuanLySanPhamChuanHoa() {
         <button
           className="nut-hanh-dong-san-pham-chuan-hoa"
           type="button"
-          onClick={() => taiDanhSachSanPhamChuanHoa(true)}
+          onClick={xuLyCapNhatDuLieu}
           disabled={dangTaiDuLieu}
         >
           {dangTaiDuLieu ? "Đang cập nhật..." : "Cập nhật dữ liệu"}

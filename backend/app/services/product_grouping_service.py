@@ -71,6 +71,38 @@ def refresh_standardized_product_summary(
     if representative_item and not standardized_product.hinhAnhChinh:
         standardized_product.hinhAnhChinh = representative_item.hinhAnh
 
+def refresh_all_standardized_product_summaries(
+    db: Session,
+    commit: bool = True,
+) -> dict:
+    standardized_products = (
+        db.query(SanPhamChuanHoa)
+        .order_by(SanPhamChuanHoa.maSPCH.asc())
+        .all()
+    )
+
+    try:
+        for standardized_product in standardized_products:
+            refresh_standardized_product_summary(
+                db,
+                standardized_product,
+            )
+
+        if commit:
+            db.commit()
+        else:
+            db.flush()
+
+        return {
+            "success": True,
+            "message": "Đã cập nhật dữ liệu tổng hợp sản phẩm chuẩn hóa",
+            "updated_groups": len(standardized_products),
+        }
+
+    except Exception:
+        if commit:
+            db.rollback()
+        raise
 
 def auto_group_ungrouped_products(
     db: Session,
@@ -84,13 +116,22 @@ def auto_group_ungrouped_products(
     )
 
     if not ungrouped_items:
+        refresh_result = refresh_all_standardized_product_summaries(
+            db,
+            commit=commit,
+        )
+
         return {
             "success": True,
-            "message": "Không có sản phẩm thô nào cần gom nhóm",
+            "message": (
+                "Không có sản phẩm thô mới cần gom nhóm. "
+                "Dữ liệu sản phẩm chuẩn hóa đã được cập nhật."
+            ),
             "created_groups": 0,
             "linked_items": 0,
             "review_items": 0,
             "total_ungrouped_items": 0,
+            "updated_groups": refresh_result["updated_groups"],
         }
 
     text_matching_service = TextMatchingService()
@@ -164,6 +205,11 @@ def auto_group_ungrouped_products(
 
             refresh_standardized_product_summary(db, standardized_product)
 
+        refresh_result = refresh_all_standardized_product_summaries(
+            db,
+            commit=False,
+        )
+
         if commit:
             db.commit()
 
@@ -174,6 +220,7 @@ def auto_group_ungrouped_products(
             "linked_items": linked_items,
             "review_items": review_items,
             "total_ungrouped_items": len(ungrouped_items),
+            "updated_groups": refresh_result["updated_groups"],
         }
 
     except Exception:

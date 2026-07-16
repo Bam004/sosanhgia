@@ -7,7 +7,9 @@ from sqlalchemy.orm import Session
 
 from backend.app.models.lich_su_gia import LichSuGia
 from backend.app.models.san_pham_tho import SanPhamTho
-
+from backend.app.services.product_grouping_service import (
+    refresh_standardized_product_summary,
+)
 
 def chuyen_gia_ve_decimal(gia: Any) -> Decimal:
     if gia is None:
@@ -154,6 +156,17 @@ def cap_nhat_san_pham_tho_va_lich_su_gia(
                 hanh_dong = "CAP_NHAT_GIA_VA_GHI_LICH_SU"
             else:
                 hanh_dong = "CAP_NHAT_THONG_TIN_KHONG_DOI_GIA"
+
+        if san_pham.maSPCH is not None:
+            db.flush()
+
+            san_pham_chuan_hoa = san_pham.san_pham_chuan_hoa
+
+            if san_pham_chuan_hoa is not None:
+                refresh_standardized_product_summary(
+                    db,
+                    san_pham_chuan_hoa,
+                )
 
         if commit:
             db.commit()
