@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 import unicodedata
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import JSONResponse
@@ -612,23 +613,33 @@ def get_scraping_sources(db: Session = Depends(get_db)):
         )
 
 TEN_THU_TRONG_TUAN = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
-
+MUI_GIO_VIET_NAM = ZoneInfo("Asia/Ho_Chi_Minh")
+MUI_GIO_UTC = ZoneInfo("UTC")
 
 def lay_ngay_tu_gia_tri(gia_tri):
     if not gia_tri:
         return None
 
-    if isinstance(gia_tri, datetime):
-        return gia_tri.date()
-
     try:
-        return datetime.fromisoformat(str(gia_tri).replace("Z", "+00:00")).date()
-    except ValueError:
+        if isinstance(gia_tri, datetime):
+            thoi_gian = gia_tri
+        else:
+            thoi_gian = datetime.fromisoformat(
+                str(gia_tri).replace("Z", "+00:00")
+            )
+
+        # Các cột DateTime hiện tại lưu UTC dạng naive.
+        if thoi_gian.tzinfo is None:
+            thoi_gian = thoi_gian.replace(tzinfo=MUI_GIO_UTC)
+
+        return thoi_gian.astimezone(MUI_GIO_VIET_NAM).date()
+
+    except (TypeError, ValueError):
         return None
 
 
 def tao_bieu_do_san_pham_tuan(danh_sach_san_pham):
-    hom_nay = datetime.now().date()
+    hom_nay = datetime.now(MUI_GIO_VIET_NAM).date()
     ngay_bat_dau = hom_nay - timedelta(days=6)
 
     thong_ke_theo_ngay = {}

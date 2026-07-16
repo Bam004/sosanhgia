@@ -210,13 +210,17 @@ function TongQuanQuanTri() {
                     className="cot-theo-ngay-admin"
                     key={item.ngayDayDu}
                   >
-                    <div
+                   <div
                       className="cot-so-luong-admin"
                       title={`${item.ngayDayDu}: ${dinhDangSo(
                         soLuong
                       )} sản phẩm`}
                       style={{ height: `${chieuCao}px` }}
-                    ></div>
+                    >
+                      <span className="cot-gia-tri-admin">
+                        {dinhDangSo(soLuong)}
+                      </span>
+                    </div>
 
                     <span>{item.ngay}</span>
                   </div>
