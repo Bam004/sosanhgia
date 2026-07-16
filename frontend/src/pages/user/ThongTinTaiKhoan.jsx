@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { authService } from '../../services/authService';
+import { toast } from 'react-toastify';
 
 import SidebarTaiKhoan from '../../components/user/SidebarTaiKhoan';
 
@@ -9,6 +10,15 @@ export default function ThongTinTaiKhoan() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const token = localStorage.getItem("accessToken");
+
+  const xuLyDangXuat = () => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('user');
+
+    toast.success('Đăng xuất thành công');
+
+    navigate('/dang-nhap');
+  };
 
   useEffect(() => {
     if (!token) {
@@ -37,52 +47,99 @@ export default function ThongTinTaiKhoan() {
   }, [token]);
 
   return (
-    <main className="user-page" style={{ padding: '60px 20px', background: '#f8fafc', minHeight: '60vh' }}>
-      <div className="user-container account-layout">
-        <SidebarTaiKhoan pathHienTai="/tai-khoan" />
-        <section className="account-content" style={{ background: '#fff', padding: '32px', borderRadius: '12px', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)', minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
-          {loading ? (
-            <div style={{ textAlign: 'center', marginTop: '40px' }}>Đang tải dữ liệu...</div>
-          ) : !token || !user ? (
-            <div style={{ textAlign: 'center', margin: 'auto' }}>
-              <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#334155', marginBottom: '16px' }}>
-                Vui lòng đăng nhập để xem thông tin tài khoản
-              </h2>
-              <Link 
-                to="/dang-nhap" 
-                style={{ display: 'inline-block', background: 'var(--color-primary)', color: '#fff', padding: '10px 24px', borderRadius: '6px', textDecoration: 'none', fontWeight: '500' }}
-              >
-                Đăng nhập
-              </Link>
+    <main className="user-page account-page">
+      <div className="user-container">
+        <div className="account-shell">
+          <aside className="account-sidebar">
+            <div className="account-sidebar__card">
+              <div className="account-sidebar__user">
+                <div className="account-sidebar__avatar">
+                  {(user?.hoTen || user?.email || "U").charAt(0).toUpperCase()}
+                </div>
+
+                <div className="account-sidebar__user-info">
+                  <h2>{user?.hoTen || "Người dùng"}</h2>
+                  <p>{user?.email || "Chưa có email"}</p>
+                  <span className="account-role-badge">
+                    {user?.vaiTro === "admin" ? "Quản trị viên" : "Người dùng"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="account-sidebar__menu">
+                <Link to="/tai-khoan" className="account-menu__item is-active">
+                  <span>👤</span>
+                  <span>Thông tin tài khoản</span>
+                </Link>
+
+                <Link
+                  to="/tai-khoan/san-pham-theo-doi"
+                  className="account-menu__item"
+                >
+                  <span>🔔</span>
+                  <span>Sản phẩm đang theo dõi</span>
+                </Link>
+
+                <button
+                  type="button"
+                  className="account-menu__item account-menu__item--danger"
+                  onClick={xuLyDangXuat}
+                >
+                  <span>↪</span>
+                  <span>Đăng xuất</span>
+                </button>
+              </div>
             </div>
-          ) : (
-            <div>
-              <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#334155', marginBottom: '24px' }}>
-                Thông tin tài khoản
-              </h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '400px' }}>
+          </aside>
+
+          <section className="account-content">
+            <div className="account-content__card">
+              <div className="account-content__header">
                 <div>
-                  <label style={{ display: 'block', color: '#64748b', marginBottom: '4px', fontSize: '14px' }}>Họ tên</label>
-                  <div style={{ padding: '10px 12px', background: '#f1f5f9', borderRadius: '6px', border: '1px solid #e2e8f0', color: '#334155', fontWeight: '500' }}>
-                    {user.hoTen}
+                  <p className="account-content__eyebrow">Quản lý hồ sơ</p>
+                  <h1>Thông tin tài khoản</h1>
+                  <p className="account-content__desc">
+                    Xem nhanh thông tin cá nhân và vai trò đăng nhập hiện tại.
+                  </p>
+                </div>
+
+                <div className="account-status-pill">
+                  {user?.vaiTro === "admin" ? "Admin" : "User"}
+                </div>
+              </div>
+
+              <div className="account-info-grid">
+                <div className="account-field">
+                  <label>Họ tên</label>
+                  <div className="account-field__value">
+                    {user?.hoTen || "Chưa cập nhật"}
                   </div>
                 </div>
-                <div>
-                  <label style={{ display: 'block', color: '#64748b', marginBottom: '4px', fontSize: '14px' }}>Email</label>
-                  <div style={{ padding: '10px 12px', background: '#f1f5f9', borderRadius: '6px', border: '1px solid #e2e8f0', color: '#334155', fontWeight: '500' }}>
-                    {user.email}
+
+                <div className="account-field">
+                  <label>Email</label>
+                  <div className="account-field__value">
+                    {user?.email || "Chưa cập nhật"}
                   </div>
                 </div>
-                <div>
-                  <label style={{ display: 'block', color: '#64748b', marginBottom: '4px', fontSize: '14px' }}>Vai trò</label>
-                  <div style={{ padding: '10px 12px', background: '#f1f5f9', borderRadius: '6px', border: '1px solid #e2e8f0', color: '#334155', fontWeight: '500' }}>
-                    {user.vaiTro === 'admin' ? 'Quản trị viên' : 'Người dùng'}
+
+                <div className="account-field">
+                  <label>Vai trò</label>
+                  <div className="account-field__value">
+                    {user?.vaiTro === "admin" ? "Quản trị viên" : "Người dùng"}
+                  </div>
+                </div>
+
+                <div className="account-field">
+                  <label>Trạng thái</label>
+                  <div className="account-field__value">
+                    {user?.trangThai || "Đang hoạt động"}
                   </div>
                 </div>
               </div>
             </div>
-          )}
-        </section>
+          </section>
+        </div>
       </div>
     </main>
   );
