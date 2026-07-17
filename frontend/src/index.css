@@ -2483,3 +2483,156 @@ a {
   min-height: 320px;
   overflow: hidden;
 }
+
+/* ===== Trạng thái sức khỏe hệ thống Admin ===== */
+.dau-khung-trang-thai-admin {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.dau-khung-trang-thai-admin h2 {
+  margin: 0;
+}
+
+.nut-lam-moi-trang-thai-admin {
+  padding: 7px 12px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.nut-lam-moi-trang-thai-admin:hover:not(:disabled) {
+  background: #dbeafe;
+}
+
+.nut-lam-moi-trang-thai-admin:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.danh-sach-trang-thai-admin {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dong-trang-thai-he-thong-admin {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.ten-dich-vu-he-thong-admin {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.cham-trang-thai-he-thong-admin {
+  width: 9px;
+  height: 9px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+.cham-trang-thai-he-thong-admin.hoat-dong {
+  background: #22c55e;
+  box-shadow: 0 0 0 4px #dcfce7;
+}
+
+.cham-trang-thai-he-thong-admin.canh-bao {
+  background: #f59e0b;
+  box-shadow: 0 0 0 4px #fef3c7;
+}
+
+.cham-trang-thai-he-thong-admin.co-loi {
+  background: #ef4444;
+  box-shadow: 0 0 0 4px #fee2e2;
+}
+
+.nhan-trang-thai-he-thong-admin {
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.nhan-trang-thai-he-thong-admin.hoat-dong {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.nhan-trang-thai-he-thong-admin.canh-bao {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.nhan-trang-thai-he-thong-admin.co-loi {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.canh-bao-he-thong-admin {
+  margin-top: 16px;
+  padding: 11px 12px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.canh-bao-he-thong-admin.an-toan {
+  background: #ecfdf5;
+  color: #15803d;
+}
+
+.canh-bao-he-thong-admin.canh-bao {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.canh-bao-he-thong-admin.co-loi {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.thoi-diem-cap-nhat-he-thong-admin {
+  margin: 12px 0 0;
+  color: #94a3b8;
+  font-size: 12px;
+  text-align: right;
+}
+
+.bang-san-pham-chuan-hoa-admin {
+  table-layout: fixed;
+}
+
+.bang-san-pham-chuan-hoa-admin
+  .tieu-de-cot-gia-san-pham-chuan-hoa {
+  width: 125px;
+  min-width: 125px;
+}
+
+.bang-san-pham-chuan-hoa-admin
+  .cot-gia-san-pham-chuan-hoa {
+  width: 125px;
+  min-width: 125px;
+  padding-left: 12px;
+  padding-right: 12px;
+  white-space: nowrap;
+  text-align: right;
+}
+

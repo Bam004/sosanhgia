@@ -69,6 +69,37 @@ function layMoTaTrangThaiTienTrinh(trangThai) {
   return "Chưa có mô tả cho trạng thái này.";
 }
 
+function tachTrangThaiHeThong(noiDung) {
+  const [tenDichVu, ...phanConLai] = String(noiDung || "").split(":");
+
+  return {
+    tenDichVu: tenDichVu.trim(),
+    trangThai: phanConLai.join(":").trim() || "Chưa kiểm tra",
+  };
+}
+
+function layLoaiTrangThaiHeThong(trangThai) {
+  const giaTri = String(trangThai || "").toLowerCase();
+
+  if (
+    giaTri.includes("hoạt động") ||
+    giaTri.includes("hoàn tất") ||
+    giaTri.includes("5/5")
+  ) {
+    return "hoat-dong";
+  }
+
+  if (
+    giaTri.includes("lỗi") ||
+    giaTri.includes("ngừng") ||
+    giaTri.includes("không hoạt động")
+  ) {
+    return "co-loi";
+  }
+
+  return "canh-bao";
+}
+
 function TongQuanQuanTri() {
   const [duLieuDashboard, setDuLieuDashboard] = useState(
     giaTriMacDinhDashboard
@@ -77,6 +108,7 @@ function TongQuanQuanTri() {
   const [loiTaiDuLieu, setLoiTaiDuLieu] = useState("");
   const [thongBao, setThongBao] = useState(null);
   const [tienTrinhDangXem, setTienTrinhDangXem] = useState(null);
+  const [thoiDiemCapNhat, setThoiDiemCapNhat] = useState(null);
 
   function hienThongBao(noiDung, loai = "thanh-cong") {
     setThongBao({ noiDung, loai });
@@ -100,6 +132,8 @@ function TongQuanQuanTri() {
         systemStatus: duLieuTraVe.systemStatus || [],
         recentJobs: duLieuTraVe.recentJobs || [],
       });
+
+      setThoiDiemCapNhat(new Date());
 
       if (hienToast) {
         hienThongBao("Đã cập nhật dữ liệu tổng quan.", "thanh-cong");
@@ -147,6 +181,42 @@ function TongQuanQuanTri() {
 
     return Math.max(...danhSachSoLuong, 1);
   }, [duLieuBieuDoBayNgay]);
+
+  const danhSachTrangThaiHeThong = useMemo(() => {
+    const trangThaiTuApi = Array.isArray(duLieuDashboard.systemStatus)
+      ? duLieuDashboard.systemStatus.map(tachTrangThaiHeThong)
+      : [];
+
+    const dichVuCanTheoDoi = [
+      "API Backend",
+      "PostgreSQL",
+      "Redis",
+      "Celery Worker",
+      "Celery Beat",
+    ];
+
+    return dichVuCanTheoDoi.map((tenDichVu) => {
+      const trangThaiDaCo = trangThaiTuApi.find(
+        (item) =>
+          item.tenDichVu.toLowerCase() === tenDichVu.toLowerCase()
+      );
+
+      return (
+        trangThaiDaCo || {
+          tenDichVu,
+          trangThai: "Chưa kiểm tra",
+        }
+      );
+    });
+  }, [duLieuDashboard.systemStatus]);
+
+  const soDichVuLoi = danhSachTrangThaiHeThong.filter(
+    (item) => layLoaiTrangThaiHeThong(item.trangThai) === "co-loi"
+  ).length;
+
+  const soDichVuChuaKiemTra = danhSachTrangThaiHeThong.filter(
+    (item) => layLoaiTrangThaiHeThong(item.trangThai) === "canh-bao"
+  ).length;
 
   return (
     <section className="trang-tong-quan-admin">
@@ -231,15 +301,68 @@ function TongQuanQuanTri() {
         </div>
 
         <div className="khung-trang-thai-admin">
-          <h2>Trạng thái hệ thống</h2>
+          <div className="dau-khung-trang-thai-admin">
+            <h2>Trạng thái hệ thống</h2>
+
+            <button
+              type="button"
+              className="nut-lam-moi-trang-thai-admin"
+              onClick={() => taiDashboard(true)}
+              disabled={dangTaiDuLieu}
+            >
+              {dangTaiDuLieu ? "Đang tải..." : "Làm mới"}
+            </button>
+          </div>
 
           <div className="danh-sach-trang-thai-admin">
-            {duLieuDashboard.systemStatus.length > 0 ? (
-              duLieuDashboard.systemStatus.map((item) => <p key={item}>{item}</p>)
-            ) : (
-              <p>Chưa có dữ liệu trạng thái hệ thống.</p>
-            )}
+            {danhSachTrangThaiHeThong.map((item) => {
+              const loaiTrangThai = layLoaiTrangThaiHeThong(item.trangThai);
+
+              return (
+                <div
+                  className="dong-trang-thai-he-thong-admin"
+                  key={item.tenDichVu}
+                >
+                  <span className="ten-dich-vu-he-thong-admin">
+                    <span
+                      className={`cham-trang-thai-he-thong-admin ${loaiTrangThai}`}
+                    />
+
+                    {item.tenDichVu}
+                  </span>
+
+                  <span
+                    className={`nhan-trang-thai-he-thong-admin ${loaiTrangThai}`}
+                  >
+                    {item.trangThai}
+                  </span>
+                </div>
+              );
+            })}
           </div>
+
+          <div
+            className={`canh-bao-he-thong-admin ${
+              soDichVuLoi > 0
+                ? "co-loi"
+                : soDichVuChuaKiemTra > 0
+                  ? "canh-bao"
+                  : "an-toan"
+            }`}
+          >
+            {soDichVuLoi > 0
+              ? `Có ${soDichVuLoi} dịch vụ đang gặp lỗi.`
+              : soDichVuChuaKiemTra > 0
+                ? `${soDichVuChuaKiemTra} dịch vụ chưa có dữ liệu kiểm tra.`
+                : "Tất cả dịch vụ đang hoạt động ổn định."}
+          </div>
+
+          <p className="thoi-diem-cap-nhat-he-thong-admin">
+            Cập nhật trạng thái:{" "}
+            {thoiDiemCapNhat
+              ? thoiDiemCapNhat.toLocaleString("vi-VN")
+              : "Chưa cập nhật"}
+          </p>
         </div>
       </div>
 

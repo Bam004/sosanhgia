@@ -32,6 +32,7 @@ def determine_standardized_status(total_sources: int, need_review: bool = False)
 def refresh_standardized_product_summary(
     db: Session,
     standardized_product: SanPhamChuanHoa,
+    text_matching_service: TextMatchingService | None = None,
 ) -> None:
     db.flush()
 
@@ -71,6 +72,59 @@ def refresh_standardized_product_summary(
     if representative_item and not standardized_product.hinhAnhChinh:
         standardized_product.hinhAnhChinh = representative_item.hinhAnh
 
+    # Phân loại lại sản phẩm từ tên chuẩn hóa.
+    matching_service = text_matching_service or TextMatchingService()
+
+    ten_de_phan_loai = (
+        standardized_product.tenChuan
+        or (
+            representative_item.tenSanPham
+            if representative_item
+            else ""
+        )
+    )
+
+    normalized_name = matching_service._normalize_text(
+        ten_de_phan_loai
+    )
+
+    brand = matching_service._extract_brand(
+        normalized_name
+    )
+
+    is_accessory = matching_service._is_accessory(
+        normalized_name
+    )
+
+    product_type = matching_service._classify_product_type(
+        normalized_name,
+        is_accessory,
+    )
+
+    for item in items:
+        item_name = item.tenSanPham or ""
+
+        item_normalized_name = matching_service._normalize_text(
+            item_name
+        )
+
+        item_is_accessory = matching_service._is_accessory(
+            item_normalized_name
+        )
+
+        item_product_type = matching_service._classify_product_type(
+            item_normalized_name,
+            item_is_accessory,
+        )
+
+        item_attributes = dict(item.attributes or {})
+        item_attributes["productType"] = item_product_type
+        item.attributes = item_attributes
+
+    standardized_product.productType = product_type
+    standardized_product.loai = product_type
+    standardized_product.thuongHieu = brand
+
 def refresh_all_standardized_product_summaries(
     db: Session,
     commit: bool = True,
@@ -81,11 +135,14 @@ def refresh_all_standardized_product_summaries(
         .all()
     )
 
+    text_matching_service = TextMatchingService()
+
     try:
         for standardized_product in standardized_products:
             refresh_standardized_product_summary(
                 db,
                 standardized_product,
+                text_matching_service=text_matching_service,
             )
 
         if commit:
@@ -160,6 +217,7 @@ def auto_group_ungrouped_products(
             standardized_product = SanPhamChuanHoa(
                 tenChuan=group.get("tenChuanHoa") or representative_item.get("tenSanPham"),
                 loai=group.get("productType"),
+                productType=group.get("productType"),
                 thuongHieu=group.get("thuongHieu"),
                 hinhAnhChinh=representative_item.get("hinhAnh"),
                 giaThapNhat=group.get("giaThapNhat"),

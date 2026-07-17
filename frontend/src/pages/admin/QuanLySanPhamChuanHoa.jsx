@@ -1,6 +1,39 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import api from "../../services/api";
 
+function hienThiLoaiSanPham(loai) {
+  const danhSachTenLoai = {
+    phone: "Điện thoại",
+    tablet: "Máy tính bảng",
+    laptop: "Laptop",
+    desktop: "Máy tính để bàn / PC",
+    computer_component: "Linh kiện máy tính",
+    monitor: "Màn hình máy tính",
+    printer: "Máy in / Máy scan",
+    network_device: "Thiết bị mạng",
+    accessory: "Phụ kiện",
+    headphone_speaker: "Tai nghe / Loa",
+    smartwatch: "Đồng hồ thông minh",
+    television: "Tivi",
+    camera: "Máy ảnh / Camera",
+    refrigerator: "Tủ lạnh",
+    air_conditioner: "Máy lạnh / Điều hòa",
+    washing_machine: "Máy giặt",
+    dryer: "Máy sấy",
+    fan: "Quạt",
+    air_cooler: "Quạt điều hòa",
+    air_purifier: "Máy lọc không khí",
+    vacuum_cleaner: "Máy hút bụi",
+    kitchen_appliance: "Thiết bị nhà bếp",
+    home_appliance: "Điện gia dụng",
+    personal_care: "Chăm sóc cá nhân",
+    repair_service: "Dịch vụ sửa chữa",
+    other: "Khác",
+  };
+
+  return danhSachTenLoai[loai] || loai || "Chưa phân loại";
+}
+
 function layClassTrangThaiSPCH(trangThai) {
   if (trangThai === "DU_NGUON" || trangThai === "Đủ nguồn") return "du-nguon";
   if (trangThai === "CHUA_DU_NGUON" || trangThai === "Chưa đủ nguồn") {
@@ -31,13 +64,6 @@ function hienThiTrangThaiSPCH(trangThai) {
   if (trangThai === "CHUA_DU_NGUON") return "Chưa đủ nguồn";
   if (trangThai === "CAN_KIEM_TRA") return "Cần kiểm tra";
   return trangThai || "Chưa xác định";
-}
-
-function hienThiLoaiSanPham(loai) {
-  if (loai === "phone") return "Điện thoại";
-  if (loai === "accessory") return "Phụ kiện";
-  if (loai === "repair_service") return "Dịch vụ sửa chữa";
-  return loai || "Chưa phân loại";
 }
 
 function taoDanhSachTrang(trangHienTai, tongSoTrang) {
@@ -194,7 +220,10 @@ function QuanLySanPhamChuanHoa() {
         (sanPham.tenChuan || "").toLowerCase().includes(tuKhoa.toLowerCase()) ||
         (sanPham.thuongHieu || "").toLowerCase().includes(tuKhoa.toLowerCase());
 
-      const khopLoai = loaiLoc === "Tất cả" || sanPham.loai === loaiLoc;
+      const loaiSanPham = sanPham.productType || sanPham.loai;
+
+      const khopLoai =
+        loaiLoc === "Tất cả" || loaiSanPham === loaiLoc;
 
       const khopThuongHieu =
         thuongHieuLoc === "Tất cả" || sanPham.thuongHieu === thuongHieuLoc;
@@ -214,6 +243,21 @@ function QuanLySanPhamChuanHoa() {
           .filter(Boolean)
       )
     ).sort();
+  }, [danhSachSanPhamChuanHoaTuApi]);
+
+  const danhSachLoaiSanPham = useMemo(() => {
+    return Array.from(
+      new Set(
+        danhSachSanPhamChuanHoaTuApi
+          .map((sanPham) => sanPham.productType || sanPham.loai)
+          .filter(Boolean)
+      )
+    ).sort((a, b) =>
+      hienThiLoaiSanPham(a).localeCompare(
+        hienThiLoaiSanPham(b),
+        "vi"
+      )
+    );
   }, [danhSachSanPhamChuanHoaTuApi]);
 
   const tongSoTrang = Math.max(
@@ -309,11 +353,17 @@ function QuanLySanPhamChuanHoa() {
         </div>
 
         <div className="select-boc-ngoai">
-          <select value={loaiLoc} onChange={(event) => setLoaiLoc(event.target.value)}>
+          <select
+            value={loaiLoc}
+            onChange={(event) => setLoaiLoc(event.target.value)}
+          >
             <option value="Tất cả">Tất cả loại SP</option>
-            <option value="phone">Điện thoại</option>
-            <option value="accessory">Phụ kiện</option>
-            <option value="repair_service">Dịch vụ sửa chữa</option>
+
+            {danhSachLoaiSanPham.map((loai) => (
+              <option value={loai} key={loai}>
+                {hienThiLoaiSanPham(loai)}
+              </option>
+            ))}
           </select>
           <span className="mui-ten-select">⌄</span>
         </div>
@@ -368,8 +418,13 @@ function QuanLySanPhamChuanHoa() {
               <th>Tên chuẩn hóa</th>
               <th>Loại</th>
               <th>Thương hiệu</th>
-              <th>Giá thấp nhất</th>
-              <th>Giá cao nhất</th>
+              <th className="tieu-de-cot-gia-san-pham-chuan-hoa">
+                Giá thấp nhất
+              </th>
+
+              <th className="tieu-de-cot-gia-san-pham-chuan-hoa">
+                Giá cao nhất
+              </th>
               <th>Nguồn bán</th>
               <th>Trạng thái</th>
               <th>Thao tác</th>
@@ -408,10 +463,19 @@ function QuanLySanPhamChuanHoa() {
                       {sanPham.tenChuan}
                     </div>
                   </td>
-                  <td>{hienThiLoaiSanPham(sanPham.loai)}</td>
+                  <td>
+                    {hienThiLoaiSanPham(
+                      sanPham.productType || sanPham.loai
+                    )}
+                  </td>
                   <td>{sanPham.thuongHieu || "Chưa xác định"}</td>
-                  <td>{dinhDangTien(sanPham.giaThapNhat)}</td>
-                  <td>{dinhDangTien(sanPham.giaCaoNhat)}</td>
+                  <td className="cot-gia-san-pham-chuan-hoa">
+                    {dinhDangTien(sanPham.giaThapNhat)}
+                  </td>
+
+                  <td className="cot-gia-san-pham-chuan-hoa">
+                    {dinhDangTien(sanPham.giaCaoNhat)}
+                  </td>
                   <td>{sanPham.soNguonBan}</td>
 
                   <td>
@@ -532,7 +596,9 @@ function QuanLySanPhamChuanHoa() {
 
                 <p>
                   <strong>Loại sản phẩm:</strong>{" "}
-                  {hienThiLoaiSanPham(sanPhamDangXem.loai)}
+                  {hienThiLoaiSanPham(
+                    sanPhamDangXem.productType || sanPhamDangXem.loai
+                  )}
                 </p>
 
                 <p>

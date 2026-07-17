@@ -89,102 +89,49 @@ function chuanHoaTenSan(sanTMDT) {
   return sanTMDT || "Không rõ";
 }
 
+function hienThiLoaiSanPham(loai) {
+  const danhSachTenLoai = {
+    phone: "Điện thoại",
+    tablet: "Máy tính bảng",
+    laptop: "Laptop",
+    desktop: "Máy tính để bàn / PC",
+    computer_component: "Linh kiện máy tính",
+    monitor: "Màn hình máy tính",
+    printer: "Máy in / Máy scan",
+    network_device: "Thiết bị mạng",
+    accessory: "Phụ kiện",
+    headphone_speaker: "Tai nghe / Loa",
+    smartwatch: "Đồng hồ thông minh",
+    television: "Tivi",
+    camera: "Máy ảnh / Camera",
+    refrigerator: "Tủ lạnh",
+    air_conditioner: "Máy lạnh / Điều hòa",
+    washing_machine: "Máy giặt",
+    dryer: "Máy sấy",
+    fan: "Quạt",
+    air_cooler: "Quạt điều hòa",
+    air_purifier: "Máy lọc không khí",
+    vacuum_cleaner: "Máy hút bụi",
+    kitchen_appliance: "Thiết bị nhà bếp",
+    home_appliance: "Điện gia dụng",
+    personal_care: "Chăm sóc cá nhân",
+    repair_service: "Dịch vụ sửa chữa",
+    other: "Khác",
+  };
+
+  return danhSachTenLoai[loai] || loai || "Chưa phân loại";
+}
+
 function xacDinhLoaiSanPham(sanPham) {
   const loaiTuApi =
+    sanPham.productType ||
+    sanPham.loai ||
+    sanPham.attributes?.productType ||
     sanPham.attributes?.loaiSP ||
     sanPham.attributes?.category ||
     sanPham.attributes?.loai;
 
-  const loaiDaChuanHoa = chuanHoaTuKhoaTimKiem(loaiTuApi);
-
-  const laLoaiKhongHopLe =
-    !loaiDaChuanHoa ||
-    loaiDaChuanHoa === "tim-kiem" ||
-    loaiDaChuanHoa.includes("graphql") ||
-    loaiDaChuanHoa.includes("advanced-search") ||
-    loaiDaChuanHoa.includes("advanced search");
-
-  if (!laLoaiKhongHopLe) {
-    if (loaiDaChuanHoa.includes("dien thoai")) return "Điện thoại";
-    if (loaiDaChuanHoa.includes("may tinh bang")) return "Máy tính bảng";
-    if (loaiDaChuanHoa.includes("tablet")) return "Máy tính bảng";
-    if (loaiDaChuanHoa.includes("laptop")) return "Laptop";
-    if (loaiDaChuanHoa.includes("phu kien")) return "Phụ kiện";
-    if (loaiDaChuanHoa.includes("tai nghe")) return "Phụ kiện";
-    if (loaiDaChuanHoa.includes("dong ho")) return "Đồng hồ";
-
-    return loaiTuApi;
-  }
-
-  const noiDungSanPham = chuanHoaTuKhoaTimKiem(
-    `${sanPham.tenSanPham || ""} ${sanPham.linkGoc || ""}`
-  );
-
-  const nhomTuKhoaLoaiSanPham = [
-  {
-    loai: "Phụ kiện",
-      tuKhoa: [
-        "tai nghe",
-        "airpods",
-        "chuot",
-        "ban phim",
-        "sac",
-        "cap",
-        "op lung",
-        "cuong luc",
-        "mieng dan",
-        "kinh cuong luc",
-        "bao da",
-        "day deo",
-        "adapter",
-        "cu sac",
-        "pin sac du phong",
-        "sac du phong",
-      ],
-    },
-    {
-      loai: "Máy tính bảng",
-      tuKhoa: ["ipad", "tablet", "may tinh bang"],
-    },
-    {
-      loai: "Laptop",
-      tuKhoa: [
-        "laptop",
-        "macbook",
-        "acer",
-        "asus",
-        "lenovo",
-        "dell",
-        "hp",
-      ],
-    },
-    {
-      loai: "Đồng hồ",
-      tuKhoa: ["apple watch", "smartwatch", "dong ho"],
-    },
-    {
-      loai: "Điện thoại",
-      tuKhoa: [
-        "iphone",
-        "samsung",
-        "galaxy",
-        "xiaomi",
-        "redmi",
-        "oppo",
-        "vivo",
-        "realme",
-        "nokia",
-        "dien thoai",
-        "smartphone",
-      ],
-    },
-  ];
-
-  const nhomTimThay = nhomTuKhoaLoaiSanPham.find((nhom) =>
-    nhom.tuKhoa.some((tuKhoa) => noiDungSanPham.includes(tuKhoa))
-  );
-
-  return nhomTimThay?.loai || "Chưa phân loại";
+  return hienThiLoaiSanPham(loaiTuApi);
 }
 
 function dinhDangNgayCapNhat(ngayCapNhat) {
