@@ -103,7 +103,12 @@ def check_price_alerts(db: Session):
                     stats["notified"] += 1
                 except Exception as e:
                     db.rollback()
-                    logger.error(f"Error committing notification status for maTheoDoi {alert.maTheoDoi}: {e}")
+                    logger.error(
+                        "Error committing notification status for maTheoDoi %s: %s",
+                        alert.maTheoDoi,
+                        e,
+                    )
+                    stats["email_failed"] += 1
             else:
                 stats["email_failed"] += 1
         else:

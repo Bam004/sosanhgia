@@ -134,3 +134,10 @@ celery -A backend.app.core.celery_app.celery_app worker --loglevel=info --pool=s
 # 5. Terminal 5:
 cd "C:\Workspace\SCHOOL\Đồ án tốt nghiệp 2026\Source\sosanhgia\frontend"
 npm run dev
+
+# 6. Terminal 6:
+cd "C:\Workspace\SCHOOL\Đồ án tốt nghiệp 2026\Source\sosanhgia"
+.\.venv\Scripts\Activate.ps1
+
+celery -A backend.app.core.celery_app.celery_app beat --loglevel=info
+

@@ -6,16 +6,178 @@ from typing import Any
 class TextMatchingService:
     # Khai báo thương hiệu và các tên gọi thường gặp để nhận diện brand.
     BRAND_ALIASES = {
-        "apple": ["apple", "iphone", "ipad", "macbook"],
-        "samsung": ["samsung", "galaxy"],
-        "xiaomi": ["xiaomi", "redmi", "poco"],
-        "oppo": ["oppo"],
-        "vivo": ["vivo"],
-        "realme": ["realme"],
-        "nokia": ["nokia"],
-        "honor": ["honor"],
-        "masstel": ["masstel"],
-    }
+    # Điện thoại, máy tính bảng, laptop
+    "apple": [
+        "apple",
+        "iphone",
+        "ipad",
+        "macbook",
+        "imac",
+    ],
+    "samsung": [
+        "samsung",
+        "galaxy",
+    ],
+    "xiaomi": [
+        "xiaomi",
+        "redmi",
+        "poco",
+    ],
+    "oppo": ["oppo"],
+    "vivo": ["vivo"],
+    "realme": ["realme"],
+    "nokia": ["nokia"],
+    "honor": ["honor"],
+    "masstel": ["masstel"],
+    "huawei": [
+        "huawei",
+        "matepad",
+        "matebook",
+    ],
+
+    # Laptop, PC, linh kiện
+    "asus": [
+        "asus",
+        "vivobook",
+        "zenbook",
+        "rog",
+    ],
+    "acer": [
+        "acer",
+        "aspire",
+        "predator",
+    ],
+    "lenovo": [
+        "lenovo",
+        "thinkpad",
+        "ideapad",
+        "legion",
+    ],
+    "dell": [
+        "dell",
+        "inspiron",
+        "latitude",
+        "optiplex",
+        "alienware",
+    ],
+    "hp": [
+        "hp",
+        "hewlett packard",
+        "pavilion",
+        "elitebook",
+        "probook",
+        "omen",
+    ],
+    "msi": ["msi"],
+    "gigabyte": ["gigabyte", "aorus"],
+    "intel": ["intel"],
+    "amd": ["amd", "ryzen", "radeon"],
+    "nvidia": [
+        "nvidia",
+        "geforce",
+        "rtx",
+        "gtx",
+    ],
+    "kingston": ["kingston"],
+    "corsair": ["corsair"],
+    "western digital": [
+        "western digital",
+        "wd",
+    ],
+    "seagate": ["seagate"],
+
+    # Màn hình, máy in
+    "canon": ["canon"],
+    "epson": ["epson"],
+    "brother": ["brother"],
+    "fujifilm": ["fujifilm", "fuji"],
+    "viewsonic": ["viewsonic"],
+    "benq": ["benq"],
+    "aoc": ["aoc"],
+
+    # Máy ảnh, camera
+    "sony": [
+        "sony",
+        "alpha",
+        "cybershot",
+    ],
+    "nikon": ["nikon"],
+    "gopro": ["gopro"],
+    "dahua": ["dahua"],
+    "hikvision": ["hikvision"],
+    "ezviz": ["ezviz"],
+    "imou": ["imou"],
+
+    # Điện lạnh, tivi, gia dụng
+    "lg": ["lg"],
+    "panasonic": ["panasonic"],
+    "toshiba": ["toshiba"],
+    "sharp": ["sharp"],
+    "aqua": ["aqua"],
+    "electrolux": ["electrolux"],
+    "hitachi": ["hitachi"],
+    "daikin": ["daikin"],
+    "mitsubishi": [
+        "mitsubishi",
+        "mitsubishi electric",
+        "mitsubishi heavy",
+    ],
+    "casper": ["casper"],
+    "midea": ["midea"],
+    "gree": ["gree"],
+    "funiki": ["funiki"],
+    "nagakawa": ["nagakawa"],
+    "hisense": ["hisense"],
+    "tcl": ["tcl"],
+    "coocaa": ["coocaa"],
+    "skyworth": ["skyworth"],
+
+    # Gia dụng và thiết bị nhà bếp
+    "philips": ["philips"],
+    "sunhouse": ["sunhouse"],
+    "kangaroo": ["kangaroo"],
+    "locknlock": [
+        "locknlock",
+        "lock and lock",
+        "lock&lock",
+    ],
+    "tefal": ["tefal"],
+    "bluestone": ["bluestone"],
+    "bear": ["bear"],
+    "hafele": ["hafele"],
+    "bosch": ["bosch"],
+    "cuckoo": ["cuckoo"],
+    "supor": ["supor"],
+    "comfee": ["comfee"],
+    "deerma": ["deerma"],
+    "dreame": ["dreame"],
+    "ecovacs": ["ecovacs"],
+    "roborock": ["roborock"],
+    "dyson": ["dyson"],
+
+    # Âm thanh và phụ kiện
+    "jbl": ["jbl"],
+    "marshall": ["marshall"],
+    "anker": ["anker", "soundcore"],
+    "baseus": ["baseus"],
+    "ugreen": ["ugreen"],
+    "logitech": ["logitech"],
+    "razer": ["razer"],
+    "hyperx": ["hyperx"],
+    "sennheiser": ["sennheiser"],
+    "bose": ["bose"],
+
+    # Thiết bị mạng
+    "tp-link": [
+        "tp link",
+        "tp-link",
+        "tplink",
+    ],
+    "tenda": ["tenda"],
+    "mercusys": ["mercusys"],
+    "totolink": ["totolink"],
+    "ubiquiti": ["ubiquiti"],
+}
 
     # Các từ ít giá trị khi so khớp tên sản phẩm.
     STOP_WORDS = {
@@ -735,9 +897,20 @@ class TextMatchingService:
 
     # Hàm này nhận diện thương hiệu từ tên sản phẩm.
     def _extract_brand(self, normalized_name: str) -> str | None:
+        # Loại bỏ đơn vị công suất máy lạnh như 1 HP, 1.5 HP, 2 HP
+        # để không nhận nhầm thành thương hiệu HP.
+        ten_de_nhan_dien = re.sub(
+            r"\b\d+(?:[.,]\d+)?\s*hp\b",
+            " ",
+            normalized_name,
+        )
+
         for brand, aliases in self.BRAND_ALIASES.items():
             for alias in aliases:
-                if re.search(rf"\b{re.escape(alias)}\b", normalized_name):
+                if re.search(
+                    rf"\b{re.escape(alias)}\b",
+                    ten_de_nhan_dien,
+                ):
                     return brand
 
         return None
@@ -760,24 +933,354 @@ class TextMatchingService:
         normalized_name: str,
         is_accessory: bool
     ) -> str:
+        """
+        Phân loại sản phẩm dựa trên tên đã được chuẩn hóa.
+
+        Thứ tự kiểm tra đi từ nhóm cụ thể đến nhóm tổng quát để hạn chế
+        phân loại nhầm, ví dụ:
+        - "quạt tản nhiệt laptop" phải là linh kiện/phụ kiện máy tính,
+        không phải quạt gia dụng.
+        - "tai nghe bluetooth" phải là thiết bị âm thanh,
+        không phải phụ kiện chung.
+        """
+
+        def khop_bat_ky(danh_sach_pattern: list[str]) -> bool:
+            return any(
+                re.search(pattern, normalized_name)
+                for pattern in danh_sach_pattern
+            )
+
+        # 1. Dịch vụ sửa chữa
         repair_patterns = [
+            r"\bdich\s+vu\s+sua\s+chua\b",
+            r"\bsua\s+chua\b",
             r"\bthay\s+man\s+hinh\b",
             r"\bthay\s+pin\b",
             r"\bthay\s+camera\b",
             r"\bthay\s+kinh\b",
+            r"\bthay\s+vo\b",
+            r"\bthay\s+loa\b",
             r"\bep\s+kinh\b",
-            r"\bsua\s+chua\b",
-            r"\boled\b",
-            r"\blcd\b",
+            r"\bsua\s+dien\s+thoai\b",
+            r"\bsua\s+laptop\b",
+            r"\bsua\s+may\s+tinh\b",
         ]
 
-        for pattern in repair_patterns:
-            if re.search(pattern, normalized_name):
-                return "repair_service"
+        if khop_bat_ky(repair_patterns):
+            return "repair_service"
 
-        if is_accessory:
-            return "accessory"
+        # 2. Máy tính bảng
+        tablet_patterns = [
+            r"\bipad\b",
+            r"\btablet\b",
+            r"\bmay\s+tinh\s+bang\b",
+            r"\bgalaxy\s+tab\b",
+            r"\bxiaomi\s+pad\b",
+            r"\boppo\s+pad\b",
+            r"\bhuawei\s+matepad\b",
+        ]
 
+        if khop_bat_ky(tablet_patterns):
+            return "tablet"
+
+        # 7. Linh kiện máy tính
+        computer_component_patterns = [
+            r"\bcard\s+man\s+hinh\b",
+            r"\bcard\s+do\s+hoa\b",
+            r"\bvga\b",
+            r"\bgpu\b",
+            r"\bcpu\b",
+            r"\bbo\s+vi\s+xu\s+ly\b",
+            r"\bmainboard\b",
+            r"\bmain\s+board\b",
+            r"\bbo\s+mach\s+chu\b",
+            r"\bram\b",
+            r"\bssd\b",
+            r"\bhdd\b",
+            r"\bo\s+cung\b",
+            r"\bnguon\s+may\s+tinh\b",
+            r"\bpower\s+supply\b",
+            r"\bcase\s+may\s+tinh\b",
+            r"\bvo\s+case\b",
+            r"\btan\s+nhiet\s+cpu\b",
+            r"\btan\s+nhiet\s+laptop\b",
+            r"\bquat\s+tan\s+nhiet\b",
+        ]
+
+        if khop_bat_ky(computer_component_patterns):
+            return "computer_component"
+
+        # 3. Laptop
+        laptop_patterns = [
+            r"\blaptop\b",
+            r"\bnotebook\b",
+            r"\bmacbook\b",
+            r"\bultrabook\b",
+            r"\bchromebook\b",
+            r"\bvivobook\b",
+            r"\bzenbook\b",
+            r"\bthinkpad\b",
+            r"\bideapad\b",
+            r"\baspire\b",
+            r"\bpredator\s+helios\b",
+            r"\brog\s+strix\b",
+        ]
+
+        if khop_bat_ky(laptop_patterns):
+            return "laptop"
+
+        # 4. Máy tính để bàn / PC
+        desktop_patterns = [
+            r"\bdesktop\b",
+            r"\bmay\s+tinh\s+de\s+ban\b",
+            r"\bmay\s+bo\b",
+            r"\bpc\s+gaming\b",
+            r"\bpc\s+van\s+phong\b",
+            r"\bmini\s+pc\b",
+            r"\bimac\b",
+            r"\bworkstation\b",
+            r"\ball\s+in\s+one\b",
+        ]
+
+        if khop_bat_ky(desktop_patterns):
+            return "desktop"
+
+        # 5. Màn hình máy tính
+        monitor_patterns = [
+            r"\bman\s+hinh\s+may\s+tinh\b",
+            r"\bmonitor\b",
+            r"\bman\s+hinh\s+gaming\b",
+            r"\bman\s+hinh\s+cong\b",
+        ]
+
+        if khop_bat_ky(monitor_patterns):
+            return "monitor"
+
+        # 6. Máy in / Máy scan
+        printer_patterns = [
+            r"\bmay\s+in\b",
+            r"\bprinter\b",
+            r"\bmay\s+scan\b",
+            r"\bscanner\b",
+            r"\bmay\s+photocopy\b",
+            r"\bmay\s+in\s+hoa\s+don\b",
+            r"\bmay\s+in\s+nhiet\b",
+        ]
+
+        if khop_bat_ky(printer_patterns):
+            return "printer"
+
+
+        # 8. Thiết bị mạng
+        network_patterns = [
+            r"\brouter\b",
+            r"\bmodem\b",
+            r"\bbo\s+phat\s+wifi\b",
+            r"\bbo\s+kich\s+song\s+wifi\b",
+            r"\bmesh\s+wifi\b",
+            r"\bswitch\s+mang\b",
+            r"\baccess\s+point\b",
+            r"\bcard\s+mang\b",
+        ]
+
+        if khop_bat_ky(network_patterns):
+            return "network_device"
+
+        # 9. Tivi
+        television_patterns = [
+            r"\btivi\b",
+            r"\bsmart\s+tv\b",
+            r"\bsmart\s+tivi\b",
+            r"\bgoogle\s+tv\b",
+            r"\bandroid\s+tv\b",
+            r"\bqled\s+tv\b",
+            r"\boled\s+tv\b",
+            r"\bmini\s+led\s+tv\b",
+        ]
+
+        if khop_bat_ky(television_patterns):
+            return "television"
+
+        # 10. Máy ảnh / Camera
+        camera_patterns = [
+            r"\bmay\s+anh\b",
+            r"\bcamera\s+hanh\s+trinh\b",
+            r"\bcamera\s+giam\s+sat\b",
+            r"\bcamera\s+an\s+ninh\b",
+            r"\bcamera\s+ip\b",
+            r"\bwebcam\b",
+            r"\baction\s+camera\b",
+            r"\bgopro\b",
+            r"\bong\s+kinh\s+may\s+anh\b",
+        ]
+
+        if khop_bat_ky(camera_patterns):
+            return "camera"
+
+        # 11. Đồng hồ thông minh
+        smartwatch_patterns = [
+            r"\bsmartwatch\b",
+            r"\bsmart\s+watch\b",
+            r"\bapple\s+watch\b",
+            r"\bgalaxy\s+watch\b",
+            r"\bdong\s+ho\s+thong\s+minh\b",
+            r"\bvong\s+deo\s+thong\s+minh\b",
+            r"\bsmartband\b",
+        ]
+
+        if khop_bat_ky(smartwatch_patterns):
+            return "smartwatch"
+
+        # 12. Tai nghe / Loa
+        audio_patterns = [
+            r"\btai\s+nghe\b",
+            r"\bheadphone\b",
+            r"\bheadset\b",
+            r"\bearphone\b",
+            r"\bearbuds\b",
+            r"\bairpods\b",
+            r"\bloa\s+bluetooth\b",
+            r"\bloa\s+soundbar\b",
+            r"\bsoundbar\b",
+            r"\bloa\s+keo\b",
+            r"\bloa\s+may\s+tinh\b",
+            r"\bmicro\s+karaoke\b",
+        ]
+
+        if khop_bat_ky(audio_patterns):
+            return "headphone_speaker"
+
+        # 13. Tủ lạnh
+        refrigerator_patterns = [
+            r"\btu\s+lanh\b",
+            r"\btu\s+dong\b",
+            r"\btu\s+mat\b",
+            r"\btu\s+bao\s+quan\b",
+            r"\bmini\s+fridge\b",
+            r"\brefrigerator\b",
+        ]
+
+        if khop_bat_ky(refrigerator_patterns):
+            return "refrigerator"
+
+
+        # 17. Quạt điều hòa
+        air_cooler_patterns = [
+            r"\bquat\s+dieu\s+hoa\b",
+            r"\bmay\s+lam\s+mat\s+khong\s+khi\b",
+            r"\bair\s+cooler\b",
+        ]
+
+        if khop_bat_ky(air_cooler_patterns):
+            return "air_cooler"
+
+
+        # 14. Máy lạnh / Điều hòa
+        air_conditioner_patterns = [
+            r"\bmay\s+lanh\b",
+            r"\bdieu\s+hoa\b",
+            r"\bair\s+conditioner\b",
+            r"\bmay\s+dieu\s+hoa\b",
+        ]
+
+        if khop_bat_ky(air_conditioner_patterns):
+            return "air_conditioner"
+
+        # 15. Máy giặt
+        washing_machine_patterns = [
+            r"\bmay\s+giat\b",
+            r"\bmay\s+giat\s+cua\s+truoc\b",
+            r"\bmay\s+giat\s+cua\s+tren\b",
+            r"\bwasher\b",
+        ]
+
+        if khop_bat_ky(washing_machine_patterns):
+            return "washing_machine"
+
+        # 16. Máy sấy
+        dryer_patterns = [
+            r"\bmay\s+say\s+quan\s+ao\b",
+            r"\bmay\s+say\s+bom\s+nhiet\b",
+            r"\btu\s+say\s+quan\s+ao\b",
+            r"\bdryer\b",
+        ]
+
+        if khop_bat_ky(dryer_patterns):
+            return "dryer"
+
+        # 18. Quạt gia dụng
+        fan_patterns = [
+            r"\bquat\s+dien\b",
+            r"\bquat\s+may\b",
+            r"\bquat\s+dung\b",
+            r"\bquat\s+treo\s+tuong\b",
+            r"\bquat\s+tran\b",
+            r"\bquat\s+hop\b",
+            r"\bquat\s+thap\b",
+            r"\bquat\s+tich\s+dien\b",
+        ]
+
+        if khop_bat_ky(fan_patterns):
+            return "fan"
+
+        # 19. Máy lọc không khí
+        air_purifier_patterns = [
+            r"\bmay\s+loc\s+khong\s+khi\b",
+            r"\bair\s+purifier\b",
+            r"\bmay\s+hut\s+am\b",
+            r"\bmay\s+tao\s+am\b",
+        ]
+
+        if khop_bat_ky(air_purifier_patterns):
+            return "air_purifier"
+
+        # 20. Máy hút bụi
+        vacuum_patterns = [
+            r"\bmay\s+hut\s+bui\b",
+            r"\brobot\s+hut\s+bui\b",
+            r"\brobot\s+lau\s+nha\b",
+            r"\bvacuum\b",
+        ]
+
+        if khop_bat_ky(vacuum_patterns):
+            return "vacuum_cleaner"
+
+        # 21. Thiết bị nhà bếp
+        kitchen_patterns = [
+            r"\bnoi\s+com\s+dien\b",
+            r"\bnoi\s+chien\s+khong\s+dau\b",
+            r"\bbep\s+tu\b",
+            r"\bbep\s+hồng\s+ngoai\b",
+            r"\bbep\s+hong\s+ngoai\b",
+            r"\blo\s+vi\s+song\b",
+            r"\blo\s+nuong\b",
+            r"\bmay\s+xay\s+sinh\s+to\b",
+            r"\bmay\s+ep\s+cham\b",
+            r"\bmay\s+pha\s+ca\s+phe\b",
+            r"\bam\s+sieu\s+toc\b",
+            r"\bmay\s+rua\s+chen\b",
+            r"\bmay\s+rua\s+bat\b",
+            r"\bmay\s+hut\s+mui\b",
+        ]
+
+        if khop_bat_ky(kitchen_patterns):
+            return "kitchen_appliance"
+
+        # 22. Thiết bị chăm sóc cá nhân
+        personal_care_patterns = [
+            r"\bmay\s+say\s+toc\b",
+            r"\bmay\s+cao\s+rau\b",
+            r"\bban\s+chai\s+dien\b",
+            r"\bmay\s+rua\s+mat\b",
+            r"\bmay\s+massage\b",
+            r"\bmay\s+tam\s+nuoc\b",
+            r"\bmay\s+tri\s+lieu\b",
+        ]
+
+        if khop_bat_ky(personal_care_patterns):
+            return "personal_care"
+
+        # 23. Điện thoại
         phone_patterns = [
             r"\biphone\s+(se|\d{1,2}e?|\d{1,2})\b",
             r"\bsamsung\s+galaxy\s+[a-z0-9]+\b",
@@ -790,14 +1293,26 @@ class TextMatchingService:
             r"\brealme\s+[a-z0-9]+\b",
             r"\bhonor\s+[a-z0-9]+\b",
             r"\bnokia\s+[a-z0-9]+\b",
+            r"\bdien\s+thoai\b",
+            r"\bsmartphone\b",
         ]
 
-        for pattern in phone_patterns:
-            if re.search(pattern, normalized_name):
-                return "phone"
-
-        if "dien thoai" in normalized_name or "smartphone" in normalized_name:
+        if khop_bat_ky(phone_patterns):
             return "phone"
+
+        # 24. Phụ kiện chung
+        if is_accessory:
+            return "accessory"
+
+        # 25. Nhóm gia dụng tổng quát
+        home_appliance_patterns = [
+            r"\bgia\s+dung\b",
+            r"\bdien\s+gia\s+dung\b",
+            r"\bthiet\s+bi\s+gia\s+dinh\b",
+        ]
+
+        if khop_bat_ky(home_appliance_patterns):
+            return "home_appliance"
 
         return "other"
 

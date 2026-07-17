@@ -133,7 +133,7 @@ export default function KetQuaTimKiem() {
     };
 
     const pollSearchJob = async (jobId) => {
-      for (let attempt = 0; attempt < 60; attempt += 1) {
+      for (let attempt = 0; attempt < 150; attempt += 1) {
         if (isCancelled) return null;
 
         const statusRes = await productService.layTrangThaiSearchJob(jobId);
@@ -473,7 +473,7 @@ export default function KetQuaTimKiem() {
                 fontSize: '14px'
               }}
             >
-              Đang kiểm tra và cập nhật thêm dữ liệu mới từ các nguồn.
+              Đang cập nhật thêm dữ liệu mới từ các sàn TMĐT. Bạn vẫn có thể xem kết quả đã lưu.
             </div>
           )}
 
@@ -492,7 +492,7 @@ export default function KetQuaTimKiem() {
             <>
               <div className="search-loading" style={{ textAlign: 'center', marginBottom: '20px' }}>
                 <p style={{ color: '#64748b', fontSize: '15px' }}>
-                  Đang thu thập và tổng hợp dữ liệu mới từ các nguồn bán. Quá trình này có thể mất vài giây ...
+                  Đang thu thập dữ liệu mới từ các sàn TMĐT. Quá trình này có thể mất khoảng 30–60 giây.
                 </p>
               </div>
               <div className="product-offer-grid">

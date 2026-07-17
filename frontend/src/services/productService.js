@@ -126,50 +126,91 @@ export const productService = {
   laySanPhamNoiBat: async () => {
     try {
       const response = await api.get('/products/standardized');
-      const rawProducts = extractData(response);
+      const extractedData = extractData(response);
+
+      // Hỗ trợ cả API trả mảng trực tiếp và API có phân trang.
+      const rawProducts = Array.isArray(extractedData)
+        ? extractedData
+        : extractedData?.items || extractedData?.products || [];
 
       if (!Array.isArray(rawProducts)) {
         throw new Error('Danh sách sản phẩm không hợp lệ.');
       }
 
-      const candidates = rawProducts.filter(
-        (product) =>
-          product.maSPCH &&
-          Number(product.giaThapNhat) > 0,
-      );
+      const candidates = rawProducts.filter((product) => {
+        const productId = Number(product?.maSPCH);
+        const minimumPrice = Number(product?.giaThapNhat);
 
-      // Fisher–Yates shuffle để mỗi lần vào trang chủ có danh sách khác nhau.
-      for (let index = candidates.length - 1; index > 0; index -= 1) {
+        return (
+          Number.isInteger(productId) &&
+          productId > 0 &&
+          Number.isFinite(minimumPrice) &&
+          minimumPrice > 0
+        );
+      });
+
+      if (candidates.length === 0) {
+        return {
+          data: [],
+          errorMessage: null,
+        };
+      }
+
+      // Tạo mảng mới để không thay đổi dữ liệu gốc.
+      const shuffledProducts = [...candidates];
+
+      // Fisher–Yates shuffle.
+      for (
+        let index = shuffledProducts.length - 1;
+        index > 0;
+        index -= 1
+      ) {
         const randomIndex = Math.floor(Math.random() * (index + 1));
 
-        [candidates[index], candidates[randomIndex]] = [
-          candidates[randomIndex],
-          candidates[index],
+        [shuffledProducts[index], shuffledProducts[randomIndex]] = [
+          shuffledProducts[randomIndex],
+          shuffledProducts[index],
         ];
       }
 
-      const selectedProducts = candidates.slice(0, 6);
+      /*
+      * Lấy nhiều hơn 6 ứng viên để dự phòng trường hợp
+      * một vài sản phẩm bị lỗi khi tải API chi tiết.
+      */
+      const selectedCandidates = shuffledProducts.slice(0, 12);
 
-      // Tải chi tiết song song để có ảnh, giá và các nguồn bán.
-      const detailResults = await Promise.all(
-        selectedProducts.map((product) =>
+      /*
+      * Promise.allSettled giúp một sản phẩm lỗi
+      * không làm mất toàn bộ danh sách.
+      */
+      const detailResults = await Promise.allSettled(
+        selectedCandidates.map((product) =>
           productService.layChiTietSanPham(product.maSPCH),
         ),
       );
 
+      const featuredProducts = detailResults
+        .filter((result) => result.status === 'fulfilled')
+        .map((result) => result.value?.data)
+        .filter(Boolean)
+        .slice(0, 6);
+
       return {
-        data: detailResults
-          .map((result) => result.data)
-          .filter(Boolean),
+        data: featuredProducts,
         errorMessage: null,
       };
     } catch (error) {
-      console.warn('Load featured products failed:', error.message);
+      console.warn(
+        'Load featured products failed:',
+        error?.response?.data || error?.message || error,
+      );
 
       return {
         data: [],
         errorMessage:
-          error.message || 'Không thể tải sản phẩm nổi bật.',
+          error?.response?.data?.detail ||
+          error?.message ||
+          'Không thể tải sản phẩm nổi bật.',
       };
     }
   },

@@ -2,13 +2,30 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
-import SidebarTaiKhoan from '../../components/user/SidebarTaiKhoan';
 import { theoDoiGiaService } from '../../services/theoDoiGiaService';
 import { dinhDangTien } from '../../utils/dinhDangTien';
 
 export default function SanPhamTheoDoi() {
   const navigate = useNavigate();
   const token = localStorage.getItem('accessToken');
+  const userStr = localStorage.getItem('user');
+
+  let user = null;
+
+  try {
+    user = userStr ? JSON.parse(userStr) : null;
+  } catch {
+    user = null;
+  }
+
+  const xuLyDangXuat = () => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('user');
+
+    toast.success('Đăng xuất thành công');
+
+    navigate('/dang-nhap');
+  };
 
   const [danhSach, setDanhSach] = useState([]);
   const [loading, setLoading] = useState(Boolean(token));
@@ -16,6 +33,12 @@ export default function SanPhamTheoDoi() {
   const [dangXuLyId, setDangXuLyId] = useState(null);
   const [chinhSuaId, setChinhSuaId] = useState(null);
   const [giaMoi, setGiaMoi] = useState('');
+  const [trangHienTai, setTrangHienTai] = useState(1);
+  const soSanPhamMoiTrang = 5;
+  const [popupHuyTheoDoi, setPopupHuyTheoDoi] = useState({
+    open: false,
+    item: null
+  });
 
   const layDanhSachTheoDoi = async () => {
     if (!token) return;
@@ -44,9 +67,56 @@ export default function SanPhamTheoDoi() {
     layDanhSachTheoDoi();
   }, []);
 
-  const xuLyHuyTheoDoi = async (maTheoDoi) => {
-    const dongY = window.confirm('Bạn có chắc muốn hủy theo dõi sản phẩm này không?');
-    if (!dongY) return;
+  const tongSoTrang = Math.max(
+    1,
+    Math.ceil(danhSach.length / soSanPhamMoiTrang)
+  );
+
+  const viTriBatDau = (trangHienTai - 1) * soSanPhamMoiTrang;
+
+  const danhSachTheoTrang = danhSach.slice(
+    viTriBatDau,
+    viTriBatDau + soSanPhamMoiTrang
+  );
+
+  useEffect(() => {
+    if (trangHienTai > tongSoTrang) {
+      setTrangHienTai(tongSoTrang);
+    }
+  }, [trangHienTai, tongSoTrang]);
+
+  const xuLyChuyenTrang = (trangMoi) => {
+    if (trangMoi < 1 || trangMoi > tongSoTrang) return;
+
+    setTrangHienTai(trangMoi);
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
+
+  const moPopupHuyTheoDoi = (item) => {
+    setPopupHuyTheoDoi({
+      open: true,
+      item
+    });
+  };
+
+  const dongPopupHuyTheoDoi = () => {
+    if (dangXuLyId !== null) return;
+
+    setPopupHuyTheoDoi({
+      open: false,
+      item: null
+    });
+  };
+
+  const xuLyHuyTheoDoi = async () => {
+    const itemCanHuy = popupHuyTheoDoi.item;
+
+    if (!itemCanHuy) return;
+
+    const maTheoDoi = itemCanHuy.maTheoDoi;
 
     setDangXuLyId(maTheoDoi);
 
@@ -54,8 +124,16 @@ export default function SanPhamTheoDoi() {
       const res = await theoDoiGiaService.huyTheoDoi(maTheoDoi);
 
       if (res.success) {
-        setDanhSach((prev) => prev.filter((item) => item.maTheoDoi !== maTheoDoi));
+        setDanhSach((prev) =>
+          prev.filter((item) => item.maTheoDoi !== maTheoDoi)
+        );
+
         toast.success(res.message || 'Đã hủy theo dõi sản phẩm');
+
+        setPopupHuyTheoDoi({
+          open: false,
+          item: null
+        });
       } else {
         toast.error(res.message || 'Không thể hủy theo dõi sản phẩm');
       }
@@ -65,6 +143,14 @@ export default function SanPhamTheoDoi() {
     } finally {
       setDangXuLyId(null);
     }
+  };
+
+  const dinhDangGiaNhap = (giaTri) => {
+    const chiGiuSo = String(giaTri || '').replace(/\D/g, '');
+
+    if (!chiGiuSo) return '';
+
+    return Number(chiGiuSo).toLocaleString('vi-VN');
   };
 
   const xuLyBatDauChinhGia = (item) => {
@@ -78,10 +164,22 @@ const xuLyHuyChinhGia = () => {
 };
 
   const xuLyLuuGiaMongMuon = async (item) => {
-    const giaMoiNumber = giaMoi ? Number(giaMoi) : null;
+    const giaMoiDaChuanHoa = giaMoi.trim();
 
-    if (giaMoi && (Number.isNaN(giaMoiNumber) || giaMoiNumber <= 0)) {
-      toast.info('Giá mong muốn phải là số lớn hơn 0');
+    if (!giaMoiDaChuanHoa) {
+      toast.info('Vui lòng nhập giá mong muốn');
+      return;
+    }
+
+    if (!/^\d+$/.test(giaMoiDaChuanHoa)) {
+      toast.info('Giá mong muốn chỉ được chứa chữ số');
+      return;
+    }
+
+    const giaMoiNumber = Number(giaMoiDaChuanHoa);
+
+    if (!Number.isSafeInteger(giaMoiNumber) || giaMoiNumber <= 0) {
+      toast.info('Giá mong muốn phải là số nguyên lớn hơn 0');
       return;
     }
 
@@ -129,15 +227,19 @@ const xuLyHuyChinhGia = () => {
         Bạn cần đăng nhập để xem danh sách sản phẩm đang theo dõi.
       </p>
       <Link
-        to="/dang-nhap"
+        to={`/san-pham/${item.maSPCH}`}
+        title={item.tenChuanHoa}
         style={{
-          display: 'inline-block',
-          background: 'var(--color-primary)',
-          color: '#fff',
-          padding: '10px 24px',
-          borderRadius: '6px',
+          color: '#0f172a',
+          fontSize: '18px',
+          fontWeight: '700',
           textDecoration: 'none',
-          fontWeight: '500'
+          marginBottom: '8px',
+          lineHeight: '1.35',
+          display: '-webkit-box',
+          WebkitBoxOrient: 'vertical',
+          WebkitLineClamp: 2,
+          overflow: 'hidden'
         }}
       >
         Đăng nhập
@@ -229,42 +331,45 @@ const xuLyHuyChinhGia = () => {
 
   const renderList = () => (
     <div style={{ width: '100%' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '24px' }}>
+      <div className="watchlist-header">
         <div>
-          <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#334155', marginBottom: '8px' }}>
-            Sản phẩm theo dõi
-          </h2>
-          <p style={{ color: '#64748b', margin: 0 }}>
+          <span className="watchlist-header__eyebrow">
+            QUẢN LÝ THEO DÕI
+          </span>
+
+          <h2>Sản phẩm theo dõi</h2>
+
+          <p>
             Bạn đang theo dõi {danhSach.length} sản phẩm.
           </p>
         </div>
+
         <Link
           to="/"
-          style={{
-            background: '#f1f5f9',
-            color: '#334155',
-            padding: '10px 16px',
-            borderRadius: '8px',
-            textDecoration: 'none',
-            fontWeight: '500'
-          }}
+          className="watchlist-header__action"
         >
           Tìm thêm sản phẩm
         </Link>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {danhSach.map((item) => (
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px'
+        }}
+      >
+        {danhSachTheoTrang.map((item) => (
           <article
             key={item.maTheoDoi}
             style={{
               display: 'grid',
-              gridTemplateColumns: '96px 1fr auto',
-              gap: '16px',
+              gridTemplateColumns: '96px minmax(0, 1fr) 190px',
+              gap: '18px',
               alignItems: 'center',
-              padding: '16px',
+              padding: '18px',
               border: '1px solid #e2e8f0',
-              borderRadius: '12px',
+              borderRadius: '14px',
               background: '#fff'
             }}
           >
@@ -277,197 +382,369 @@ const xuLyHuyChinhGia = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                border: '1px solid #e2e8f0'
               }}
             >
               {item.anhDaiDien ? (
                 <img
                   src={item.anhDaiDien}
                   alt={item.tenChuanHoa}
-                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain'
+                  }}
                 />
               ) : (
-                <span style={{ color: '#94a3b8', fontSize: '13px' }}>No image</span>
+                <span
+                  style={{
+                    color: '#94a3b8',
+                    fontSize: '13px'
+                  }}
+                >
+                  Không có ảnh
+                </span>
               )}
             </div>
 
-            <div>
+            <div style={{ minWidth: 0 }}>
               <Link
                 to={`/san-pham/${item.maSPCH}`}
+                title={item.tenChuanHoa}
                 style={{
-                  display: 'inline-block',
                   color: '#0f172a',
                   fontSize: '18px',
                   fontWeight: '700',
                   textDecoration: 'none',
-                  marginBottom: '8px'
+                  marginBottom: '8px',
+                  lineHeight: '1.35',
+                  display: '-webkit-box',
+                  WebkitBoxOrient: 'vertical',
+                  WebkitLineClamp: 2,
+                  overflow: 'hidden'
                 }}
               >
                 {item.tenChuanHoa}
               </Link>
-              
+
               <div style={{ marginBottom: '10px' }}>
                 {item.trangThaiHienThi === 'chua_dat_gia_mong_muon' && (
-                  <span style={{ background: '#fef2f2', color: '#991b1b', padding: '4px 8px', borderRadius: '4px', fontSize: '13px', fontWeight: '600' }}>Chưa đặt giá mong muốn</span>
+                  <span
+                    style={{
+                      background: '#fef2f2',
+                      color: '#991b1b',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      fontSize: '13px',
+                      fontWeight: '600'
+                    }}
+                  >
+                    Chưa đặt giá mong muốn
+                  </span>
                 )}
+
                 {item.trangThaiHienThi === 'dang_theo_doi' && (
-                  <span style={{ background: '#eff6ff', color: '#1e40af', padding: '4px 8px', borderRadius: '4px', fontSize: '13px', fontWeight: '600' }}>Đang theo dõi</span>
+                  <span
+                    style={{
+                      background: '#eff6ff',
+                      color: '#1e40af',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      fontSize: '13px',
+                      fontWeight: '600'
+                    }}
+                  >
+                    Đang theo dõi
+                  </span>
                 )}
+
                 {item.trangThaiHienThi === 'da_dat_gia' && (
-                  <span style={{ background: '#fef3c7', color: '#92400e', padding: '4px 8px', borderRadius: '4px', fontSize: '13px', fontWeight: '600' }}>Đã đạt giá mong muốn</span>
+                  <span
+                    style={{
+                      background: '#fef3c7',
+                      color: '#92400e',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      fontSize: '13px',
+                      fontWeight: '600'
+                    }}
+                  >
+                    Đã đạt giá mong muốn
+                  </span>
                 )}
+
                 {item.trangThaiHienThi === 'da_thong_bao' && (
-                  <span style={{ background: '#dcfce7', color: '#166534', padding: '4px 8px', borderRadius: '4px', fontSize: '13px', fontWeight: '600' }}>Đã gửi thông báo{item.ngayThongBao ? ` (${new Date(item.ngayThongBao).toLocaleDateString('vi-VN')})` : ''}</span>
+                  <span
+                    style={{
+                      background: '#dcfce7',
+                      color: '#166534',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      fontSize: '13px',
+                      fontWeight: '600'
+                    }}
+                  >
+                    Đã gửi thông báo
+                    {item.ngayThongBao
+                      ? ` (${new Date(item.ngayThongBao).toLocaleDateString(
+                          'vi-VN'
+                        )})`
+                      : ''}
+                  </span>
                 )}
               </div>
 
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', color: '#64748b', fontSize: '14px', marginBottom: '8px' }}>
-                {item.thuongHieu && <span>Thương hiệu: {item.thuongHieu}</span>}
-                {item.dungLuong && <span>Dung lượng: {item.dungLuong}</span>}
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '10px',
+                  color: '#64748b',
+                  fontSize: '14px',
+                  marginBottom: '8px'
+                }}
+              >
+                {item.thuongHieu && (
+                  <span>Thương hiệu: {item.thuongHieu}</span>
+                )}
+
+                {item.dungLuong && (
+                  <span>Dung lượng: {item.dungLuong}</span>
+                )}
               </div>
 
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center' }}>
-                <span style={{ color: '#16a34a', fontWeight: '700' }}>
-                  Giá thấp nhất: {item.giaThapNhat ? dinhDangTien(item.giaThapNhat) : 'Chưa có giá'}
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '14px',
+                  alignItems: 'center'
+                }}
+              >
+                <span
+                  style={{
+                    color: '#16a34a',
+                    fontWeight: '700'
+                  }}
+                >
+                  Giá thấp nhất:{' '}
+                  {item.giaThapNhat
+                    ? dinhDangTien(item.giaThapNhat)
+                    : 'Chưa có giá'}
                 </span>
+
                 {item.giaCaoNhat && (
                   <span style={{ color: '#64748b' }}>
                     Giá cao nhất: {dinhDangTien(item.giaCaoNhat)}
                   </span>
                 )}
+
                 {item.giaMongMuon && (
-                  <span style={{ color: '#2563eb', fontWeight: '700' }}>
-                     Giá mong muốn: {item.giaMongMuon ? dinhDangTien(item.giaMongMuon) : 'Chưa đặt'}
+                  <span
+                    style={{
+                      color: '#2563eb',
+                      fontWeight: '700'
+                    }}
+                  >
+                    Giá mong muốn: {dinhDangTien(item.giaMongMuon)}
                   </span>
                 )}
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: '190px' }}>
-  {chinhSuaId === item.maTheoDoi ? (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '8px',
-        padding: '10px',
-        border: '1px solid #bfdbfe',
-        borderRadius: '10px',
-        background: '#eff6ff'
-      }}
-    >
-      <label style={{ color: '#1e3a8a', fontSize: '13px', fontWeight: '700' }}>
-        Giá mong muốn mới
-      </label>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                minWidth: '190px'
+              }}
+            >
+              {chinhSuaId === item.maTheoDoi ? (
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    padding: '10px',
+                    border: '1px solid #bfdbfe',
+                    borderRadius: '10px',
+                    background: '#eff6ff'
+                  }}
+                >
+                  <label
+                    style={{
+                      color: '#1e3a8a',
+                      fontSize: '13px',
+                      fontWeight: '700'
+                    }}
+                  >
+                    Giá mong muốn mới
+                  </label>
 
-      <input
-        type="number"
-        value={giaMoi}
-        onChange={(event) => setGiaMoi(event.target.value)}
-        placeholder="VD: 22000000"
-        min="0"
-        style={{
-          padding: '9px 10px',
-          border: '1px solid #93c5fd',
-          borderRadius: '8px',
-          outline: 'none'
-        }}
-      />
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={dinhDangGiaNhap(giaMoi)}
+                    onChange={(event) => {
+                      const giaTriSo = event.target.value.replace(/\D/g, '');
+                      setGiaMoi(giaTriSo);
+                    }}
+                    onPaste={(event) => {
+                      event.preventDefault();
 
-      <button
-        type="button"
-        disabled={dangXuLyId === item.maTheoDoi}
-        onClick={() => xuLyLuuGiaMongMuon(item)}
-        style={{
-          background: 'var(--color-primary)',
-          color: '#fff',
-          border: 'none',
-          padding: '9px 14px',
-          borderRadius: '8px',
-          cursor: dangXuLyId === item.maTheoDoi ? 'not-allowed' : 'pointer',
-          fontWeight: '700',
-          whiteSpace: 'nowrap',
-          opacity: dangXuLyId === item.maTheoDoi ? 0.7 : 1
-        }}
-      >
-        {dangXuLyId === item.maTheoDoi ? 'Đang lưu...' : 'Lưu giá'}
-      </button>
+                      const noiDung = event.clipboardData
+                        .getData('text')
+                        .replace(/\D/g, '');
 
-      <button
-        type="button"
-        onClick={xuLyHuyChinhGia}
-        style={{
-          background: '#fff',
-          color: '#334155',
-          border: '1px solid #cbd5e1',
-          padding: '8px 14px',
-          borderRadius: '8px',
-          cursor: 'pointer',
-          fontWeight: '600',
-          whiteSpace: 'nowrap'
-        }}
-      >
-        Hủy sửa
-      </button>
-    </div>
-  ) : (
-    <button
-      type="button"
-      onClick={() => xuLyBatDauChinhGia(item)}
-      style={{
-        background: 'var(--color-primary)',
-        color: '#fff',
-        border: 'none',
-        padding: '9px 14px',
-        borderRadius: '8px',
-        cursor: 'pointer',
-        fontWeight: '700',
-        whiteSpace: 'nowrap'
-      }}
-    >
-      Chỉnh giá mong muốn
-    </button>
-  )}
+                      if (!noiDung) {
+                        toast.info('Giá mong muốn phải chứa chữ số');
+                        return;
+                      }
 
-  <button
-    type="button"
-    onClick={() => navigate('/theo-doi-gia')}
-    style={{
-      background: '#f8fafc',
-      color: '#2563eb',
-      border: '1px solid #bfdbfe',
-      padding: '9px 14px',
-      borderRadius: '8px',
-      cursor: 'pointer',
-      fontWeight: '600',
-      whiteSpace: 'nowrap'
-    }}
-  >
-    Đổi sản phẩm
-  </button>
+                      setGiaMoi(noiDung);
+                    }}
+                    placeholder="VD: 22.000.000"
+                    style={{
+                      padding: '9px 10px',
+                      border: '1px solid #93c5fd',
+                      borderRadius: '8px',
+                      outline: 'none'
+                    }}
+                  />
 
-  <button
-    type="button"
-    disabled={dangXuLyId === item.maTheoDoi}
-    onClick={() => xuLyHuyTheoDoi(item.maTheoDoi)}
-    style={{
-      background: '#fff',
-      color: '#dc2626',
-      border: '1px solid #fecaca',
-      padding: '9px 14px',
-      borderRadius: '8px',
-      cursor: dangXuLyId === item.maTheoDoi ? 'not-allowed' : 'pointer',
-      fontWeight: '600',
-      whiteSpace: 'nowrap',
-      opacity: dangXuLyId === item.maTheoDoi ? 0.7 : 1
-    }}
-  >
-    {dangXuLyId === item.maTheoDoi ? 'Đang hủy...' : 'Hủy theo dõi'}
-  </button>
-</div>
+                  <button
+                    type="button"
+                    disabled={dangXuLyId === item.maTheoDoi}
+                    onClick={() => xuLyLuuGiaMongMuon(item)}
+                    style={{
+                      background: 'var(--color-primary)',
+                      color: '#fff',
+                      border: 'none',
+                      padding: '9px 14px',
+                      borderRadius: '8px',
+                      cursor:
+                        dangXuLyId === item.maTheoDoi
+                          ? 'not-allowed'
+                          : 'pointer',
+                      fontWeight: '700',
+                      whiteSpace: 'nowrap',
+                      opacity:
+                        dangXuLyId === item.maTheoDoi ? 0.7 : 1
+                    }}
+                  >
+                    {dangXuLyId === item.maTheoDoi
+                      ? 'Đang lưu...'
+                      : 'Lưu giá'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={xuLyHuyChinhGia}
+                    style={{
+                      background: '#fff',
+                      color: '#334155',
+                      border: '1px solid #cbd5e1',
+                      padding: '8px 14px',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    Hủy sửa
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => xuLyBatDauChinhGia(item)}
+                  style={{
+                    background: 'var(--color-primary)',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '9px 14px',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: '700',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  Chỉnh giá mong muốn
+                </button>
+              )}
+
+              <button
+                type="button"
+                disabled={dangXuLyId === item.maTheoDoi}
+                onClick={() => moPopupHuyTheoDoi(item)}
+                style={{
+                  background: '#fff',
+                  color: '#dc2626',
+                  border: '1px solid #fecaca',
+                  padding: '9px 14px',
+                  borderRadius: '8px',
+                  cursor:
+                    dangXuLyId === item.maTheoDoi
+                      ? 'not-allowed'
+                      : 'pointer',
+                  fontWeight: '600',
+                  whiteSpace: 'nowrap',
+                  opacity:
+                    dangXuLyId === item.maTheoDoi ? 0.7 : 1
+                }}
+              >
+                {dangXuLyId === item.maTheoDoi
+                  ? 'Đang hủy...'
+                  : 'Hủy theo dõi'}
+              </button>
+            </div>
           </article>
         ))}
       </div>
+
+      {tongSoTrang > 1 && (
+        <div
+          className="phan-trang-admin"
+          style={{ marginTop: '24px' }}
+        >
+          <button
+            type="button"
+            disabled={trangHienTai === 1}
+            onClick={() => xuLyChuyenTrang(trangHienTai - 1)}
+          >
+            Trước
+          </button>
+
+          {Array.from(
+            { length: tongSoTrang },
+            (_, index) => index + 1
+          ).map((soTrang) => (
+            <button
+              key={soTrang}
+              type="button"
+              className={
+                trangHienTai === soTrang
+                  ? 'trang-dang-chon'
+                  : ''
+              }
+              onClick={() => xuLyChuyenTrang(soTrang)}
+            >
+              {soTrang}
+            </button>
+          ))}
+
+          <button
+            type="button"
+            disabled={trangHienTai === tongSoTrang}
+            onClick={() => xuLyChuyenTrang(trangHienTai + 1)}
+          >
+            Sau
+          </button>
+        </div>
+      )}
     </div>
   );
 
@@ -486,26 +763,118 @@ const xuLyHuyChinhGia = () => {
   }
 
   return (
-    <main className="user-page" style={{ padding: '60px 20px', background: '#f8fafc', minHeight: '60vh' }}>
-      <div className="user-container account-layout">
-        <SidebarTaiKhoan pathHienTai="/tai-khoan/san-pham-theo-doi" />
-        <section
-          className="account-content"
-          style={{
-            background: '#fff',
-            padding: '32px',
-            borderRadius: '12px',
-            boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)',
-            minHeight: '400px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: danhSach.length > 0 ? 'stretch' : 'center',
-            justifyContent: danhSach.length > 0 ? 'flex-start' : 'center'
-          }}
-        >
-          {content}
-        </section>
+    <main className="user-page account-page">
+      <div className="user-container">
+        <div className="account-shell">
+          <aside className="account-sidebar">
+            <div className="account-sidebar__card">
+              <div className="account-sidebar__user">
+                <div className="account-sidebar__avatar">
+                  {(user?.hoTen || user?.email || "U").charAt(0).toUpperCase()}
+                </div>
+
+                <div className="account-sidebar__user-info">
+                  <h2>{user?.hoTen || "Người dùng"}</h2>
+                  <p>{user?.email || "Chưa có email"}</p>
+                  <span className="account-role-badge">
+                    {user?.vaiTro === "admin" ? "Quản trị viên" : "Người dùng"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="account-sidebar__menu">
+                <Link to="/tai-khoan" className="account-menu__item">
+                  <span>👤</span>
+                  <span>Thông tin tài khoản</span>
+                </Link>
+
+                <Link
+                  to="/tai-khoan/san-pham-theo-doi"
+                  className="account-menu__item is-active"
+                >
+                  <span>🔔</span>
+                  <span>Sản phẩm đang theo dõi</span>
+                </Link>
+
+                <button
+                  type="button"
+                  className="account-menu__item account-menu__item--danger"
+                  onClick={xuLyDangXuat}
+                >
+                  <span>↪</span>
+                  <span>Đăng xuất</span>
+                </button>
+              </div>
+            </div>
+          </aside>
+
+          <section className="account-content">
+            <div
+              className="account-content__card"
+              style={{
+                minHeight: "400px",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: danhSach.length > 0 ? "stretch" : "center",
+                justifyContent: danhSach.length > 0 ? "flex-start" : "center"
+              }}
+            >
+              {content}
+            </div>
+          </section>
+        </div>
       </div>
+
+      {popupHuyTheoDoi.open && (
+        <div
+          className="confirm-popup-overlay"
+          onClick={dongPopupHuyTheoDoi}
+        >
+          <div
+            className="confirm-popup"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirm-popup-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="confirm-popup__icon">!</div>
+
+            <h3 id="confirm-popup-title">
+              Xác nhận hủy theo dõi
+            </h3>
+
+            <p>
+              Bạn có chắc muốn hủy theo dõi sản phẩm{' '}
+              <strong>
+                {popupHuyTheoDoi.item?.tenChuanHoa || ''}
+              </strong>
+              ?
+            </p>
+
+            <div className="confirm-popup__actions">
+              <button
+                type="button"
+                className="confirm-popup__btn confirm-popup__btn--secondary"
+                onClick={dongPopupHuyTheoDoi}
+                disabled={dangXuLyId !== null}
+              >
+                Giữ theo dõi
+              </button>
+
+              <button
+                type="button"
+                className="confirm-popup__btn confirm-popup__btn--danger"
+                onClick={xuLyHuyTheoDoi}
+                disabled={dangXuLyId !== null}
+              >
+                {dangXuLyId !== null
+                  ? 'Đang hủy...'
+                  : 'Xác nhận hủy'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

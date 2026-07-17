@@ -239,3 +239,6 @@ backend/.venv/
 !frontend/package.json
 !frontend/package-lock.json
 backups/
+
+# Celery Beat local schedule files
+celerybeat-schedule*

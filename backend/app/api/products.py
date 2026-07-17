@@ -10,7 +10,10 @@ from sqlalchemy.orm import Session
 from backend.app.core.database import get_db
 from backend.app.models import LichSuGia, SanPhamChuanHoa, SanPhamTho
 from backend.app.schemas import SanPhamChuanHoaResponse, SanPhamThoResponse
-from backend.app.services.product_grouping_service import auto_group_ungrouped_products
+from backend.app.services.product_grouping_service import (
+    auto_group_ungrouped_products,
+    refresh_all_standardized_product_summaries,
+)
 from backend.app.services.text_matching_service import TextMatchingService
 
 
@@ -171,6 +174,31 @@ def auto_group_standardized_products(db: Session = Depends(get_db)):
             },
         )
 
+@router.post("/standardized/refresh-summary")
+def refresh_standardized_products_summary(
+    db: Session = Depends(get_db),
+):
+    try:
+        result = refresh_all_standardized_product_summaries(db)
+
+        return {
+            "success": True,
+            "message": result["message"],
+            "data": {
+                "updated_groups": result["updated_groups"],
+            },
+        }
+
+    except SQLAlchemyError as error:
+        db.rollback()
+
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "success": False,
+                "error": f"Database error: {str(error)}",
+            },
+        )
 
 @router.get("/compare/{product_id}")
 def compare_product_prices(

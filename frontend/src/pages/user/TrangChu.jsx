@@ -14,9 +14,9 @@ export default function TrangChu() {
     const fetchFeatured = async () => {
       try {
         const res = await productService.laySanPhamNoiBat();
-        if (res.data) {
-          setSanPhamNoiBat(res.data.slice(0, 6)); // Lấy 6 sản phẩm đầu tiên
-        }
+        setSanPhamNoiBat(
+          Array.isArray(res?.data) ? res.data : [],
+        );
       } catch (error) {
         console.error('Lỗi khi tải sản phẩm nổi bật:', error);
       } finally {

@@ -1,7 +1,11 @@
 from datetime import datetime, timedelta
 import unicodedata
 from decimal import Decimal
+from zoneinfo import ZoneInfo
+from pathlib import Path
+import time
 
+import redis
 from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
@@ -10,6 +14,8 @@ from sqlalchemy.orm import Session
 from backend.app.core.database import get_db
 from backend.app.models.san_pham_tho import SanPhamTho
 from backend.app.models.san_pham_chuan_hoa import SanPhamChuanHoa
+from backend.app.core.celery_app import celery_app
+from backend.app.core.config import settings
 
 from backend.app.core.datetime_utils import utc_now_naive
 router = APIRouter(
@@ -492,8 +498,8 @@ def get_scraping_jobs(db: Session = Depends(get_db)):
 CAU_HINH_NGUON_CAO = {
     "Lazada": {
         "website": "lazada.vn",
-        "congCu": "Playwright",
-        "tanSuat": "6 giờ/lần",
+        "congCu": "Scrapy + Playwright",
+        "tanSuat": "12 giờ/lần",
         "userAgent": "Chrome Windows",
         "delayRequest": "2 - 5 giây",
         "xuLyJavascript": "Có",
@@ -501,7 +507,7 @@ CAU_HINH_NGUON_CAO = {
     "Tiki": {
         "website": "tiki.vn",
         "congCu": "Scrapy",
-        "tanSuat": "8 giờ/lần",
+        "tanSuat": "12 giờ/lần",
         "userAgent": "Chrome Windows",
         "delayRequest": "3 - 6 giây",
         "xuLyJavascript": "Không",
@@ -516,11 +522,11 @@ CAU_HINH_NGUON_CAO = {
     },
     "CellphoneS": {
         "website": "cellphones.com.vn",
-        "congCu": "Playwright",
+        "congCu": "Scrapy",
         "tanSuat": "12 giờ/lần",
         "userAgent": "Chrome Windows",
         "delayRequest": "4 - 7 giây",
-        "xuLyJavascript": "Có",
+        "xuLyJavascript": "Không",
     },
     "Hoang Ha Mobile": {
         "website": "hoanghamobile.com",
@@ -612,23 +618,33 @@ def get_scraping_sources(db: Session = Depends(get_db)):
         )
 
 TEN_THU_TRONG_TUAN = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
-
+MUI_GIO_VIET_NAM = ZoneInfo("Asia/Ho_Chi_Minh")
+MUI_GIO_UTC = ZoneInfo("UTC")
 
 def lay_ngay_tu_gia_tri(gia_tri):
     if not gia_tri:
         return None
 
-    if isinstance(gia_tri, datetime):
-        return gia_tri.date()
-
     try:
-        return datetime.fromisoformat(str(gia_tri).replace("Z", "+00:00")).date()
-    except ValueError:
+        if isinstance(gia_tri, datetime):
+            thoi_gian = gia_tri
+        else:
+            thoi_gian = datetime.fromisoformat(
+                str(gia_tri).replace("Z", "+00:00")
+            )
+
+        # Các cột DateTime hiện tại lưu UTC dạng naive.
+        if thoi_gian.tzinfo is None:
+            thoi_gian = thoi_gian.replace(tzinfo=MUI_GIO_UTC)
+
+        return thoi_gian.astimezone(MUI_GIO_VIET_NAM).date()
+
+    except (TypeError, ValueError):
         return None
 
 
 def tao_bieu_do_san_pham_tuan(danh_sach_san_pham):
-    hom_nay = datetime.now().date()
+    hom_nay = datetime.now(MUI_GIO_VIET_NAM).date()
     ngay_bat_dau = hom_nay - timedelta(days=6)
 
     thong_ke_theo_ngay = {}
@@ -682,6 +698,60 @@ def tao_danh_sach_nguon_cao_dashboard(danh_sach_san_pham):
 
     return danh_sach_nguon_cao
 
+def kiem_tra_redis():
+    try:
+        redis_client = redis.Redis.from_url(
+            settings.CELERY_BROKER_URL,
+            socket_connect_timeout=1,
+            socket_timeout=1,
+        )
+
+        return redis_client.ping() is True
+    except Exception:
+        return False
+
+
+def kiem_tra_celery_worker():
+    try:
+        inspector = celery_app.control.inspect(timeout=1)
+        ket_qua_ping = inspector.ping()
+
+        return bool(ket_qua_ping)
+    except Exception:
+        return False
+
+
+def kiem_tra_celery_beat():
+    try:
+        thu_muc_du_an = Path.cwd()
+
+        danh_sach_file_lich = list(
+            thu_muc_du_an.glob("celerybeat-schedule*")
+        )
+
+        if not danh_sach_file_lich:
+            return False
+
+        thoi_gian_hien_tai = time.time()
+
+        thoi_gian_cap_nhat_moi_nhat = max(
+            file_lich.stat().st_mtime
+            for file_lich in danh_sach_file_lich
+            if file_lich.is_file()
+        )
+
+        # Beat đang chạy nếu file lịch được cập nhật trong vòng 10 phút.
+        return (
+            thoi_gian_hien_tai - thoi_gian_cap_nhat_moi_nhat
+            <= 600
+        )
+    except Exception:
+        return False
+
+
+def tao_trang_thai_dich_vu(ten_dich_vu, dang_hoat_dong):
+    trang_thai = "Hoạt động" if dang_hoat_dong else "Có lỗi"
+    return f"{ten_dich_vu}: {trang_thai}"
 
 @router.get("/dashboard")
 def get_scraping_dashboard(db: Session = Depends(get_db)):
@@ -730,12 +800,25 @@ def get_scraping_dashboard(db: Session = Depends(get_db)):
             },
         ]
 
+        redis_dang_hoat_dong = kiem_tra_redis()
+        celery_worker_dang_hoat_dong = kiem_tra_celery_worker()
+        celery_beat_dang_hoat_dong = kiem_tra_celery_beat()
+
         trang_thai_he_thong = [
             "API Backend: Hoạt động",
             "PostgreSQL: Hoạt động",
-            f"Nguồn cào hoạt động: {len(danh_sach_nguon_hoat_dong)}/{len(danh_sach_nguon_cao)}",
-            f"Sản phẩm thô: {tong_san_pham_tho}",
-            f"Lỗi dữ liệu: {len(danh_sach_loi)}",
+            tao_trang_thai_dich_vu(
+                "Redis",
+                redis_dang_hoat_dong,
+            ),
+            tao_trang_thai_dich_vu(
+                "Celery Worker",
+                celery_worker_dang_hoat_dong,
+            ),
+            tao_trang_thai_dich_vu(
+                "Celery Beat",
+                celery_beat_dang_hoat_dong,
+            ),
         ]
 
         tien_trinh_gan_day = [

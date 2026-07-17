@@ -1,3 +1,5 @@
+import logging
+
 from backend.app.core.datetime_utils import utc_now_naive
 # -*- coding: utf-8 -*-
 from datetime import datetime
@@ -12,12 +14,14 @@ from backend.app.api.auth import get_current_user
 from backend.app.core.database import get_db
 from backend.app.models import SanPhamChuanHoa, SanPhamTho, TaiKhoan, TheoDoiGia
 from backend.app.schemas.theo_doi_gia import TheoDoiGiaCreate, TheoDoiGiaUpdate
+from backend.app.tasks.price_alerts import check_price_alerts_task
 
 router = APIRouter(
     prefix="/api/theo-doi-gia",
     tags=["Theo dõi giá"]
 )
 
+logger = logging.getLogger(__name__)
 
 @router.post("", status_code=status.HTTP_201_CREATED)
 def create_theo_doi_gia(
@@ -78,6 +82,14 @@ def create_theo_doi_gia(
         db.add(new_follow)
         db.commit()
         db.refresh(new_follow)
+
+        try:
+            check_price_alerts_task.delay()
+        except Exception:
+            logger.exception(
+                "Không thể đưa task kiểm tra cảnh báo giá vào hàng đợi"
+            )
+
     except IntegrityError:
         db.rollback()
         return JSONResponse(
@@ -253,6 +265,13 @@ def update_theo_doi_gia(
 
     db.commit()
     db.refresh(follow)
+
+    try:
+        check_price_alerts_task.delay()
+    except Exception:
+        logger.exception(
+            "Không thể đưa task kiểm tra cảnh báo giá vào hàng đợi"
+        )
 
     return {
         "success": True,

@@ -145,7 +145,20 @@ export default function TheoDoiGia() {
     }
 
     if (sanPham.giaThapNhat && giaNumber >= sanPham.giaThapNhat) {
-      toast.warning('Mức giá mong muốn đã đạt hoặc cao hơn giá hiện tại!');
+      const tenDayDu =
+        sanPham.tenChuanHoa ||
+        sanPham.tenChuan ||
+        sanPham.tenSanPham ||
+        'Sản phẩm';
+
+      const tenRutGon =
+        tenDayDu.length > 32
+          ? `${tenDayDu.slice(0, 32).trim()}...`
+          : tenDayDu;
+
+      toast.warning(
+        `Giá "${tenRutGon}" đã đạt mức mong muốn.`
+      );
     }
 
     setDangTheoDoi(true);
@@ -266,8 +279,8 @@ export default function TheoDoiGia() {
                     <line x1="12" y1="8" x2="12.01" y2="8"></line>
                   </svg>
                   <span style={{ color: '#0369a1', fontSize: '14px' }}>
-                    {giaCu === null 
-                      ? 'Sản phẩm này đã được theo dõi từ trước nhưng chưa có giá mong muốn (dữ liệu cũ). Vui lòng cập nhật giá.' 
+                    {giaCu === null
+                      ? 'Sản phẩm này đã được theo dõi từ trước nhưng chưa có giá mong muốn (dữ liệu cũ). Vui lòng cập nhật giá.'
                       : 'Bạn đã theo dõi sản phẩm này. Cập nhật giá mong muốn bên dưới.'}
                   </span>
                 </div>

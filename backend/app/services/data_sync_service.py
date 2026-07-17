@@ -4,6 +4,9 @@ from sqlalchemy.orm import Session
 from backend.app.models.san_pham_chuan_hoa import SanPhamChuanHoa
 from backend.app.models.san_pham_tho import SanPhamTho
 from backend.app.models.lich_su_gia import LichSuGia
+from backend.app.services.product_grouping_service import (
+    refresh_standardized_product_summary,
+)
 
 class DataSyncService:
     def __init__(self, db: Session):
@@ -98,9 +101,20 @@ class DataSyncService:
                             updated_count += 1
 
                             if price_changed and clean_price > 0:
-                                lich_su = LichSuGia(maSPTho=sp_tho.maSPTho, gia=clean_price)
+                                lich_su = LichSuGia(
+                                    maSPTho=sp_tho.maSPTho,
+                                    gia=clean_price,
+                                )
                                 self.db.add(lich_su)
                                 history_inserted_count += 1
+
+                            # Đẩy thay đổi của sản phẩm thô xuống session trước khi tính lại SPCH.
+                            self.db.flush()
+
+                            refresh_standardized_product_summary(
+                                self.db,
+                                spch,
+                            )
 
                             self.db.commit()
                         else:
@@ -116,8 +130,17 @@ class DataSyncService:
                                 soLuongDanhGia=so_luong_danh_gia
                             )
                             self.db.add(sp_tho)
-                            self.db.commit()
+
+                            # Cần flush để lấy maSPTho và đưa bản ghi mới vào session.
+                            self.db.flush()
                             self.db.refresh(sp_tho)
+
+                            refresh_standardized_product_summary(
+                                self.db,
+                                spch,
+                            )
+
+                            self.db.commit()
                             inserted_count += 1
 
                             # Initial price history
