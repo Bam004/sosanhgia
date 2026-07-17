@@ -35,6 +35,10 @@ export default function SanPhamTheoDoi() {
   const [giaMoi, setGiaMoi] = useState('');
   const [trangHienTai, setTrangHienTai] = useState(1);
   const soSanPhamMoiTrang = 5;
+  const [popupHuyTheoDoi, setPopupHuyTheoDoi] = useState({
+    open: false,
+    item: null
+  });
 
   const layDanhSachTheoDoi = async () => {
     if (!token) return;
@@ -91,9 +95,28 @@ export default function SanPhamTheoDoi() {
     });
   };
 
-  const xuLyHuyTheoDoi = async (maTheoDoi) => {
-    const dongY = window.confirm('Bạn có chắc muốn hủy theo dõi sản phẩm này không?');
-    if (!dongY) return;
+  const moPopupHuyTheoDoi = (item) => {
+    setPopupHuyTheoDoi({
+      open: true,
+      item
+    });
+  };
+
+  const dongPopupHuyTheoDoi = () => {
+    if (dangXuLyId !== null) return;
+
+    setPopupHuyTheoDoi({
+      open: false,
+      item: null
+    });
+  };
+
+  const xuLyHuyTheoDoi = async () => {
+    const itemCanHuy = popupHuyTheoDoi.item;
+
+    if (!itemCanHuy) return;
+
+    const maTheoDoi = itemCanHuy.maTheoDoi;
 
     setDangXuLyId(maTheoDoi);
 
@@ -101,8 +124,16 @@ export default function SanPhamTheoDoi() {
       const res = await theoDoiGiaService.huyTheoDoi(maTheoDoi);
 
       if (res.success) {
-        setDanhSach((prev) => prev.filter((item) => item.maTheoDoi !== maTheoDoi));
+        setDanhSach((prev) =>
+          prev.filter((item) => item.maTheoDoi !== maTheoDoi)
+        );
+
         toast.success(res.message || 'Đã hủy theo dõi sản phẩm');
+
+        setPopupHuyTheoDoi({
+          open: false,
+          item: null
+        });
       } else {
         toast.error(res.message || 'Không thể hủy theo dõi sản phẩm');
       }
@@ -112,6 +143,14 @@ export default function SanPhamTheoDoi() {
     } finally {
       setDangXuLyId(null);
     }
+  };
+
+  const dinhDangGiaNhap = (giaTri) => {
+    const chiGiuSo = String(giaTri || '').replace(/\D/g, '');
+
+    if (!chiGiuSo) return '';
+
+    return Number(chiGiuSo).toLocaleString('vi-VN');
   };
 
   const xuLyBatDauChinhGia = (item) => {
@@ -125,10 +164,22 @@ const xuLyHuyChinhGia = () => {
 };
 
   const xuLyLuuGiaMongMuon = async (item) => {
-    const giaMoiNumber = giaMoi ? Number(giaMoi) : null;
+    const giaMoiDaChuanHoa = giaMoi.trim();
 
-    if (giaMoi && (Number.isNaN(giaMoiNumber) || giaMoiNumber <= 0)) {
-      toast.info('Giá mong muốn phải là số lớn hơn 0');
+    if (!giaMoiDaChuanHoa) {
+      toast.info('Vui lòng nhập giá mong muốn');
+      return;
+    }
+
+    if (!/^\d+$/.test(giaMoiDaChuanHoa)) {
+      toast.info('Giá mong muốn chỉ được chứa chữ số');
+      return;
+    }
+
+    const giaMoiNumber = Number(giaMoiDaChuanHoa);
+
+    if (!Number.isSafeInteger(giaMoiNumber) || giaMoiNumber <= 0) {
+      toast.info('Giá mong muốn phải là số nguyên lớn hơn 0');
       return;
     }
 
@@ -280,43 +331,22 @@ const xuLyHuyChinhGia = () => {
 
   const renderList = () => (
     <div style={{ width: '100%' }}>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '16px',
-          marginBottom: '24px'
-        }}
-      >
+      <div className="watchlist-header">
         <div>
-          <h2
-            style={{
-              fontSize: '24px',
-              fontWeight: 'bold',
-              color: '#334155',
-              marginBottom: '8px'
-            }}
-          >
-            Sản phẩm theo dõi
-          </h2>
+          <span className="watchlist-header__eyebrow">
+            QUẢN LÝ THEO DÕI
+          </span>
 
-          <p style={{ color: '#64748b', margin: 0 }}>
+          <h2>Sản phẩm theo dõi</h2>
+
+          <p>
             Bạn đang theo dõi {danhSach.length} sản phẩm.
           </p>
         </div>
 
         <Link
           to="/"
-          style={{
-            background: '#f1f5f9',
-            color: '#334155',
-            padding: '10px 16px',
-            borderRadius: '8px',
-            textDecoration: 'none',
-            fontWeight: '500',
-            whiteSpace: 'nowrap'
-          }}
+          className="watchlist-header__action"
         >
           Tìm thêm sản phẩm
         </Link>
@@ -554,11 +584,29 @@ const xuLyHuyChinhGia = () => {
                   </label>
 
                   <input
-                    type="number"
-                    value={giaMoi}
-                    onChange={(event) => setGiaMoi(event.target.value)}
-                    placeholder="VD: 22000000"
-                    min="0"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={dinhDangGiaNhap(giaMoi)}
+                    onChange={(event) => {
+                      const giaTriSo = event.target.value.replace(/\D/g, '');
+                      setGiaMoi(giaTriSo);
+                    }}
+                    onPaste={(event) => {
+                      event.preventDefault();
+
+                      const noiDung = event.clipboardData
+                        .getData('text')
+                        .replace(/\D/g, '');
+
+                      if (!noiDung) {
+                        toast.info('Giá mong muốn phải chứa chữ số');
+                        return;
+                      }
+
+                      setGiaMoi(noiDung);
+                    }}
+                    placeholder="VD: 22.000.000"
                     style={{
                       padding: '9px 10px',
                       border: '1px solid #93c5fd',
@@ -631,7 +679,7 @@ const xuLyHuyChinhGia = () => {
               <button
                 type="button"
                 disabled={dangXuLyId === item.maTheoDoi}
-                onClick={() => xuLyHuyTheoDoi(item.maTheoDoi)}
+                onClick={() => moPopupHuyTheoDoi(item)}
                 style={{
                   background: '#fff',
                   color: '#dc2626',
@@ -776,6 +824,57 @@ const xuLyHuyChinhGia = () => {
           </section>
         </div>
       </div>
+
+      {popupHuyTheoDoi.open && (
+        <div
+          className="confirm-popup-overlay"
+          onClick={dongPopupHuyTheoDoi}
+        >
+          <div
+            className="confirm-popup"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirm-popup-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="confirm-popup__icon">!</div>
+
+            <h3 id="confirm-popup-title">
+              Xác nhận hủy theo dõi
+            </h3>
+
+            <p>
+              Bạn có chắc muốn hủy theo dõi sản phẩm{' '}
+              <strong>
+                {popupHuyTheoDoi.item?.tenChuanHoa || ''}
+              </strong>
+              ?
+            </p>
+
+            <div className="confirm-popup__actions">
+              <button
+                type="button"
+                className="confirm-popup__btn confirm-popup__btn--secondary"
+                onClick={dongPopupHuyTheoDoi}
+                disabled={dangXuLyId !== null}
+              >
+                Giữ theo dõi
+              </button>
+
+              <button
+                type="button"
+                className="confirm-popup__btn confirm-popup__btn--danger"
+                onClick={xuLyHuyTheoDoi}
+                disabled={dangXuLyId !== null}
+              >
+                {dangXuLyId !== null
+                  ? 'Đang hủy...'
+                  : 'Xác nhận hủy'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
