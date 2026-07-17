@@ -118,7 +118,12 @@ a {
 
 .thanh-ben-quan-tri {
   width: 240px;
-  min-height: calc(100vh - 72px);
+  min-width: 240px;
+  height: calc(100vh - 72px);
+  position: sticky;
+  top: 72px;
+  align-self: flex-start;
+  overflow-y: auto;
   background: #ffffff;
   border-left: 1px solid #111827;
   border-right: 1px solid #111827;
