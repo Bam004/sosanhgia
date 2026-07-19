@@ -245,3 +245,5 @@ celerybeat-schedule*
 
 sosanhgia_local_data.backup
 sosanhgia_restore_list.txt
+
+!frontend/vercel.json
