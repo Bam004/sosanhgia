@@ -51,6 +51,7 @@ class Settings:
     SMTP_FROM_EMAIL: str | None = os.getenv("SMTP_FROM_EMAIL", None)
     SMTP_USE_TLS: bool = os.getenv("SMTP_USE_TLS", "True").lower() == "true"
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "")
 
 
 settings = Settings()

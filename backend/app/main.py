@@ -15,6 +15,7 @@ from backend.app.services.scheduled_scraping_runner import (
     bat_scheduler_cao_dinh_ky,
     tat_scheduler_cao_dinh_ky,
 )
+from backend.app.core.config import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -32,12 +33,28 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-allowed_origins = [
+default_origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:5174",
     "http://127.0.0.1:5174",
 ]
+
+environment_origins = [
+    origin.strip().rstrip("/")
+    for origin in settings.CORS_ORIGINS.split(",")
+    if origin.strip()
+]
+
+frontend_origin = settings.FRONTEND_URL.strip().rstrip("/")
+
+allowed_origins = list(
+    dict.fromkeys(
+        default_origins
+        + environment_origins
+        + ([frontend_origin] if frontend_origin else [])
+    )
+)
 
 app.add_middleware(
     CORSMiddleware,
