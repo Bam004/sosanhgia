@@ -361,31 +361,10 @@ const xuLyHuyChinhGia = () => {
       >
         {danhSachTheoTrang.map((item) => (
           <article
-            key={item.maTheoDoi}
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '96px minmax(0, 1fr) 190px',
-              gap: '18px',
-              alignItems: 'center',
-              padding: '18px',
-              border: '1px solid #e2e8f0',
-              borderRadius: '14px',
-              background: '#fff'
-            }}
-          >
-            <div
-              style={{
-                width: '96px',
-                height: '96px',
-                borderRadius: '10px',
-                background: '#f8fafc',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                overflow: 'hidden',
-                border: '1px solid #e2e8f0'
-              }}
+              key={item.maTheoDoi}
+              className="watchlist-product-card"
             >
+            <div className="watchlist-product-card__image">
               {item.anhDaiDien ? (
                 <img
                   src={item.anhDaiDien}
@@ -408,7 +387,7 @@ const xuLyHuyChinhGia = () => {
               )}
             </div>
 
-            <div style={{ minWidth: 0 }}>
+            <div className="watchlist-product-card__content">
               <Link
                 to={`/san-pham/${item.maSPCH}`}
                 title={item.tenChuanHoa}
@@ -553,14 +532,7 @@ const xuLyHuyChinhGia = () => {
               </div>
             </div>
 
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-                minWidth: '190px'
-              }}
-            >
+            <div className="watchlist-product-card__actions">
               {chinhSuaId === item.maTheoDoi ? (
                 <div
                   style={{

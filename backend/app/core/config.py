@@ -15,11 +15,24 @@ class Settings:
     DB_USER: str = os.getenv("DB_USER", "postgres")
     DB_PASSWORD: str = os.getenv("DB_PASSWORD", "")
 
-    DATABASE_URL: str = (
+    _local_database_url = (
         f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}"
         f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     )
-    
+
+    DATABASE_URL: str = os.getenv(
+        "DATABASE_URL",
+        _local_database_url,
+    )
+
+    # Chuẩn hóa URI PostgreSQL cho SQLAlchemy + psycopg2.
+    if DATABASE_URL.startswith("postgresql://"):
+        DATABASE_URL = DATABASE_URL.replace(
+            "postgresql://",
+            "postgresql+psycopg2://",
+            1,
+        )
+
     JWT_SECRET: str = os.getenv("JWT_SECRET", "")
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
     ACCESS_TOKEN_EXPIRE_DAYS: int = int(
@@ -38,6 +51,7 @@ class Settings:
     SMTP_FROM_EMAIL: str | None = os.getenv("SMTP_FROM_EMAIL", None)
     SMTP_USE_TLS: bool = os.getenv("SMTP_USE_TLS", "True").lower() == "true"
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "")
 
 
 settings = Settings()

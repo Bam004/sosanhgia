@@ -16,6 +16,7 @@ export default function BoLocSanPham({ onFilterChange, danhSachGoc = [] }) {
   const [giaMax, setGiaMax] = useState('');
 
   const [danhGia, setDanhGia] = useState(null);
+  const [moBoLoc, setMoBoLoc] = useState(false);
 
   // Normalize text for brand keys
   const normalizeText = (str) => {
@@ -78,7 +79,7 @@ export default function BoLocSanPham({ onFilterChange, danhSachGoc = [] }) {
         if (sp.offers) sp.offers.forEach(o => addSource(o.sanTMDT));
       }
     });
-    
+
     return Array.from(sourceSet.entries()).map(([key, label]) => ({ key, label }));
   };
 
@@ -91,7 +92,7 @@ export default function BoLocSanPham({ onFilterChange, danhSachGoc = [] }) {
       newThuongHieu[b.key] = thuongHieu[b.key] || false;
     });
     setThuongHieu(newThuongHieu);
-    
+
     const newSan = {};
     availableSources.forEach(s => {
       newSan[s.key] = san[s.key] || false;
@@ -124,13 +125,41 @@ export default function BoLocSanPham({ onFilterChange, danhSachGoc = [] }) {
         danhGia,
       });
     }
+
+    setMoBoLoc(false);
   };
 
   return (
-    <aside className="product-filter">
-      <div className="product-filter__title">Bộ lọc tìm kiếm</div>
+    <aside
+      className={`product-filter ${
+        moBoLoc ? 'product-filter--open' : ''
+      }`}
+    >
+      <button
+        type="button"
+        className="product-filter__toggle"
+        onClick={() => setMoBoLoc((prev) => !prev)}
+        aria-expanded={moBoLoc}
+        aria-controls="product-filter-form"
+      >
+        <span>Bộ lọc tìm kiếm</span>
 
-      <form onSubmit={handleApply}>
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+
+      <form id="product-filter-form" onSubmit={handleApply}>
         {/* Sàn TMĐT */}
         <div className="product-filter__section">
           <h4>Sàn TMĐT</h4>

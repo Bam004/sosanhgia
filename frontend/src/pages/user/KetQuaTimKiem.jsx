@@ -462,21 +462,6 @@ export default function KetQuaTimKiem() {
             )}
           </div>
 
-          {dangCapNhat && danhSachHienThi.length > 0 && (
-            <div
-              style={{
-                margin: '0 0 16px',
-                padding: '10px 12px',
-                borderRadius: '8px',
-                background: '#eff6ff',
-                color: '#1d4ed8',
-                fontSize: '14px'
-              }}
-            >
-              Đang cập nhật thêm dữ liệu mới từ các sàn TMĐT. Bạn vẫn có thể xem kết quả đã lưu.
-            </div>
-          )}
-
           {error && danhSachHienThi.length === 0 ? (
             <div className="search-results__error" style={{ textAlign: 'center', padding: '40px 20px' }}>
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.5" style={{ marginBottom: '16px' }}>
