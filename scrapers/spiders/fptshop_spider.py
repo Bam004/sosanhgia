@@ -523,8 +523,13 @@ class FptshopSpider(scrapy.Spider):
 
                     price = int(price_match.group(1))
 
-                    if price > 0:
-                        return price
+                    # Loại các giá trị nhỏ không thể là giá bán thực tế.
+                    # Một số trường "price" trong __NEXT_DATA__ có thể chỉ là
+                    # chỉ số, thứ tự hoặc dữ liệu phụ chứ không phải giá sản phẩm.
+                    if price < 1000:
+                        continue
+
+                    return price
 
         return None
 

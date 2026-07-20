@@ -59,14 +59,27 @@ export default function BieuDoLichSuGia() {
                 if (p.price < minP) minP = p.price;
                 if (p.price > maxP) maxP = p.price;
 
-                const dateObj = new Date(p.date);
-                const dateStr = dateObj.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+              const dateObj = new Date(p.date);
 
-                if (!groupedByDate[dateStr]) {
-                  groupedByDate[dateStr] = { name: dateStr, _timestamp: dateObj.getTime() };
-                }
+              const dateLabel = dateObj.toLocaleString('vi-VN', {
+                day: '2-digit',
+                month: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+              });
 
-                groupedByDate[dateStr][s.sourceName] = p.price;
+              const timestamp = dateObj.getTime();
+              const pointKey = String(timestamp);
+
+              if (!groupedByDate[pointKey]) {
+                groupedByDate[pointKey] = {
+                  name: dateLabel,
+                  _timestamp: timestamp,
+                };
+              }
+
+              groupedByDate[pointKey][s.sourceName] = p.price;
              });
           });
 

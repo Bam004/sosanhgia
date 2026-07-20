@@ -1280,7 +1280,15 @@ class TextMatchingService:
         if khop_bat_ky(personal_care_patterns):
             return "personal_care"
 
-        # 23. Điện thoại
+        # 23. Phụ kiện điện thoại và thiết bị.
+        #
+        # Phải kiểm tra phụ kiện trước điện thoại vì các tên như
+        # "Ốp lưng iPhone 15 Pro Max" vẫn chứa model điện thoại và sẽ
+        # khớp phone_patterns nếu kiểm tra điện thoại trước.
+        if is_accessory:
+            return "accessory"
+
+        # 24. Điện thoại
         phone_patterns = [
             r"\biphone\s+(se|\d{1,2}e?|\d{1,2})\b",
             r"\bsamsung\s+galaxy\s+[a-z0-9]+\b",
@@ -1299,10 +1307,6 @@ class TextMatchingService:
 
         if khop_bat_ky(phone_patterns):
             return "phone"
-
-        # 24. Phụ kiện chung
-        if is_accessory:
-            return "accessory"
 
         # 25. Nhóm gia dụng tổng quát
         home_appliance_patterns = [
