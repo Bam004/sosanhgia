@@ -122,13 +122,12 @@ const hienThiDanhMuc = (productType) => {
 
 
 export const productService = {
-  // Lấy sản phẩm nổi bật cho trang chủ
+  // Lấy sản phẩm gợi ý cho trang chủ
   laySanPhamNoiBat: async () => {
     try {
       const response = await api.get('/products/standardized');
       const extractedData = extractData(response);
 
-      // Hỗ trợ cả API trả mảng trực tiếp và API có phân trang.
       const rawProducts = Array.isArray(extractedData)
         ? extractedData
         : extractedData?.items || extractedData?.products || [];
@@ -137,66 +136,67 @@ export const productService = {
         throw new Error('Danh sách sản phẩm không hợp lệ.');
       }
 
-      const candidates = rawProducts.filter((product) => {
-        const productId = Number(product?.maSPCH);
-        const minimumPrice = Number(product?.giaThapNhat);
+      const candidates = rawProducts
+        .filter((product) => {
+          const productId = Number(product?.maSPCH);
+          const minimumPrice = Number(product?.giaThapNhat);
 
-        return (
-          Number.isInteger(productId) &&
-          productId > 0 &&
-          Number.isFinite(minimumPrice) &&
-          minimumPrice > 0
-        );
-      });
+          return (
+            Number.isInteger(productId) &&
+            productId > 0 &&
+            Number.isFinite(minimumPrice) &&
+            minimumPrice > 0
+          );
+        })
+        .map((product) => ({
+          ...product,
 
-      if (candidates.length === 0) {
-        return {
-          data: [],
-          errorMessage: null,
-        };
-      }
+          // Ánh xạ dữ liệu API danh sách sang field component đang sử dụng.
+          tenSanPham:
+            product.tenSanPham ||
+            product.tenChuanHoa ||
+            product.tenChuan ||
+            'Sản phẩm',
 
-      // Tạo mảng mới để không thay đổi dữ liệu gốc.
-      const shuffledProducts = [...candidates];
+          tenChuanHoa:
+            product.tenChuanHoa ||
+            product.tenChuan ||
+            product.tenSanPham ||
+            'Sản phẩm',
 
-      // Fisher–Yates shuffle.
-      for (
-        let index = shuffledProducts.length - 1;
-        index > 0;
-        index -= 1
-      ) {
+          hinhAnh:
+            product.hinhAnh ||
+            product.hinhAnhChinh ||
+            product.anhDaiDien ||
+            '',
+
+          soNoiBan:
+            Number(
+              product.soNoiBan ??
+              product.soNguonBan ??
+              product.soSanPhamTho ??
+              0
+            ),
+
+          danhMuc:
+            product.danhMuc ||
+            product.productType ||
+            product.loai ||
+            'Điện thoại',
+        }));
+
+      // Trộn ngẫu nhiên ngay trên dữ liệu danh sách.
+      for (let index = candidates.length - 1; index > 0; index -= 1) {
         const randomIndex = Math.floor(Math.random() * (index + 1));
 
-        [shuffledProducts[index], shuffledProducts[randomIndex]] = [
-          shuffledProducts[randomIndex],
-          shuffledProducts[index],
+        [candidates[index], candidates[randomIndex]] = [
+          candidates[randomIndex],
+          candidates[index],
         ];
       }
 
-      /*
-      * Lấy nhiều hơn 6 ứng viên để dự phòng trường hợp
-      * một vài sản phẩm bị lỗi khi tải API chi tiết.
-      */
-      const selectedCandidates = shuffledProducts.slice(0, 12);
-
-      /*
-      * Promise.allSettled giúp một sản phẩm lỗi
-      * không làm mất toàn bộ danh sách.
-      */
-      const detailResults = await Promise.allSettled(
-        selectedCandidates.map((product) =>
-          productService.layChiTietSanPham(product.maSPCH),
-        ),
-      );
-
-      const featuredProducts = detailResults
-        .filter((result) => result.status === 'fulfilled')
-        .map((result) => result.value?.data)
-        .filter(Boolean)
-        .slice(0, 6);
-
       return {
-        data: featuredProducts,
+        data: candidates.slice(0, 6),
         errorMessage: null,
       };
     } catch (error) {

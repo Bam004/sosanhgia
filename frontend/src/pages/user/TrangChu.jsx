@@ -11,19 +11,32 @@ export default function TrangChu() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    let daHuy = false;
+
     const fetchFeatured = async () => {
       try {
         const res = await productService.laySanPhamNoiBat();
-        setSanPhamNoiBat(
-          Array.isArray(res?.data) ? res.data : [],
-        );
+
+        if (daHuy) return;
+
+        const danhSach = Array.isArray(res?.data) ? res.data : [];
+        setSanPhamNoiBat(danhSach);
       } catch (error) {
-        console.error('Lỗi khi tải sản phẩm nổi bật:', error);
+        if (!daHuy) {
+          console.error('Lỗi khi tải sản phẩm nổi bật:', error);
+        }
       } finally {
-        setLoading(false);
+        if (!daHuy) {
+          setLoading(false);
+        }
       }
     };
+
     fetchFeatured();
+
+    return () => {
+      daHuy = true;
+    };
   }, []);
 
   const xuLyTimKiem = (event) => {
@@ -116,7 +129,10 @@ export default function TrangChu() {
           ) : sanPhamNoiBat.length > 0 ? (
             <div className="product-offer-grid">
               {sanPhamNoiBat.map((sp) => (
-                <TheSanPhamOffer key={sp.id} sanPham={sp} />
+                <TheSanPhamOffer
+                  key={sp.maSPCH ?? sp.id}
+                  sanPham={sp}
+                />
               ))}
             </div>
           ) : (
