@@ -20,6 +20,11 @@ const danhSachMenu = [
     bieuTuong: "🔔",
   },
   {
+    nhan: "Nhật ký email",
+    duongDan: "/admin/nhat-ky-email",
+    bieuTuong: "✉️",
+  },
+  {
     nhan: "Nguồn cào dữ liệu",
     duongDan: "/admin/nguon-cao",
     bieuTuong: "🌐",

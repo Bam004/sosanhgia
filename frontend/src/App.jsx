@@ -50,6 +50,9 @@ const QuanLyTaiKhoan = lazy(
 const QuanLyTheoDoiGia = lazy(
   () => import("./pages/admin/QuanLyTheoDoiGia")
 );
+const NhatKyEmail = lazy(
+  () => import("./pages/admin/NhatKyEmail")
+);
 
 export default function App() {
   return (
@@ -125,6 +128,11 @@ export default function App() {
           <Route
             path="theo-doi-gia"
             element={<QuanLyTheoDoiGia />}
+          />
+
+          <Route
+            path="nhat-ky-email"
+            element={<NhatKyEmail />}
           />
 
           <Route
