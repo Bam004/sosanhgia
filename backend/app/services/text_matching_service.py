@@ -1351,6 +1351,7 @@ class TextMatchingService:
             r"\bop\s+dien\s+thoai\b",
             r"\bop\s+iphone\b",
             r"\bop\s+da\b",
+            r"\bop\s+deo\b",
             r"\bdan\s+kinh\b",
             r"\bdan\s+da\b",
             r"\bkinh\s+dan\b",
