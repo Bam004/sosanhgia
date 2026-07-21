@@ -17,6 +17,9 @@ from backend.app.services.scheduled_scraping_runner import (
 )
 from backend.app.core.config import settings
 from backend.app.api.admin_accounts import router as admin_accounts_router
+from backend.app.api.admin_price_tracking import (
+    router as admin_price_tracking_router,
+)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -87,6 +90,7 @@ app.include_router(scrape_router)
 app.include_router(auth_router)
 app.include_router(theo_doi_gia_router)
 app.include_router(admin_accounts_router)
+app.include_router(admin_price_tracking_router)
 
 @app.get("/")
 def root():

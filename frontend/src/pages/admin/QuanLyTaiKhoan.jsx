@@ -140,6 +140,42 @@ function QuanLyTaiKhoan() {
     [trangHienTai, trangThai, tuKhoa, vaiTro]
   );
 
+  function taoDanhSachTrang(trangHienTai, tongSoTrang) {
+    if (tongSoTrang <= 7) {
+      return Array.from(
+        { length: tongSoTrang },
+        (_, index) => index + 1
+      );
+    }
+
+    const danhSachTrang = [1];
+    const trangBatDau = Math.max(2, trangHienTai - 2);
+    const trangKetThuc = Math.min(
+      tongSoTrang - 1,
+      trangHienTai + 2
+    );
+
+    if (trangBatDau > 2) {
+      danhSachTrang.push("...");
+    }
+
+    for (
+      let trang = trangBatDau;
+      trang <= trangKetThuc;
+      trang += 1
+    ) {
+      danhSachTrang.push(trang);
+    }
+
+    if (trangKetThuc < tongSoTrang - 1) {
+      danhSachTrang.push("...");
+    }
+
+    danhSachTrang.push(tongSoTrang);
+
+    return danhSachTrang;
+  }
+
   useEffect(() => {
     taiDanhSachTaiKhoan();
   }, [taiDanhSachTaiKhoan]);
@@ -412,25 +448,65 @@ function QuanLyTaiKhoan() {
         </div>
 
         {phanTrang.tongSoTrang > 1 && (
-          <div className="phan-trang-tai-khoan-admin">
+          <div className="phan-trang-admin">
             <button
               type="button"
-              onClick={() => chuyenTrang(trangHienTai - 1)}
-              disabled={trangHienTai <= 1}
+              onClick={() =>
+                setTrangHienTai((trang) =>
+                  Math.max(1, trang - 1)
+                )
+              }
+              disabled={trangHienTai === 1}
             >
-              Trước
+              ‹
             </button>
 
-            <span>
-              Trang {trangHienTai} / {phanTrang.tongSoTrang}
-            </span>
+            {taoDanhSachTrang(
+              trangHienTai,
+              phanTrang.tongSoTrang
+            ).map((item, index) => {
+              if (item === "...") {
+                return (
+                  <span
+                    className="dau-ba-cham-phan-trang"
+                    key={`ellipsis-${index}`}
+                  >
+                    ...
+                  </span>
+                );
+              }
+
+              return (
+                <button
+                  type="button"
+                  key={item}
+                  className={
+                    trangHienTai === item
+                      ? "trang-dang-chon"
+                      : ""
+                  }
+                  onClick={() => setTrangHienTai(item)}
+                >
+                  {item}
+                </button>
+              );
+            })}
 
             <button
               type="button"
-              onClick={() => chuyenTrang(trangHienTai + 1)}
-              disabled={trangHienTai >= phanTrang.tongSoTrang}
+              onClick={() =>
+                setTrangHienTai((trang) =>
+                  Math.min(
+                    phanTrang.tongSoTrang,
+                    trang + 1
+                  )
+                )
+              }
+              disabled={
+                trangHienTai === phanTrang.tongSoTrang
+              }
             >
-              Sau
+              ›
             </button>
           </div>
         )}

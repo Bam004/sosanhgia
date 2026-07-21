@@ -47,6 +47,9 @@ const QuanLyGomNhomSanPham = lazy(
 const QuanLyTaiKhoan = lazy(
   () => import("./pages/admin/QuanLyTaiKhoan")
 );
+const QuanLyTheoDoiGia = lazy(
+  () => import("./pages/admin/QuanLyTheoDoiGia")
+);
 
 export default function App() {
   return (
@@ -117,6 +120,11 @@ export default function App() {
           <Route
             path="tai-khoan"
             element={<QuanLyTaiKhoan />}
+          />
+
+          <Route
+            path="theo-doi-gia"
+            element={<QuanLyTheoDoiGia />}
           />
 
           <Route

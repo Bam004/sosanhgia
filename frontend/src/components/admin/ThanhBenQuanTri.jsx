@@ -15,6 +15,11 @@ const danhSachMenu = [
     bieuTuong: "👤",
   },
   {
+    nhan: "Quản lý theo dõi giá",
+    duongDan: "/admin/theo-doi-gia",
+    bieuTuong: "🔔",
+  },
+  {
     nhan: "Nguồn cào dữ liệu",
     duongDan: "/admin/nguon-cao",
     bieuTuong: "🌐",
