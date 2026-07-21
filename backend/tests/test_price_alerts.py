@@ -1,10 +1,15 @@
 from uuid import uuid4
 import pytest
-from datetime import datetime
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from backend.app.core.database import SessionLocal
-from backend.app.models import TaiKhoan, TheoDoiGia, SanPhamChuanHoa, SanPhamTho
+from backend.app.models import (
+    EmailNotificationLog,
+    SanPhamChuanHoa,
+    SanPhamTho,
+    TaiKhoan,
+    TheoDoiGia,
+)
 from backend.app.services.price_alert_service import check_price_alerts
 
 @pytest.fixture
@@ -40,10 +45,32 @@ def setup_data():
             "db": db
         }
     finally:
-        db.query(SanPhamTho).filter(SanPhamTho.maSPCH == p1.maSPCH).delete(synchronize_session=False)
-        db.query(TheoDoiGia).filter(TheoDoiGia.maTaiKhoan.in_([u1.maTaiKhoan, u2.maTaiKhoan])).delete(synchronize_session=False)
-        db.query(SanPhamChuanHoa).filter(SanPhamChuanHoa.maSPCH == p1.maSPCH).delete(synchronize_session=False)
-        db.query(TaiKhoan).filter(TaiKhoan.maTaiKhoan.in_([u1.maTaiKhoan, u2.maTaiKhoan])).delete(synchronize_session=False)
+        db.query(EmailNotificationLog).filter(
+            EmailNotificationLog.maTaiKhoan.in_(
+                [u1.maTaiKhoan, u2.maTaiKhoan]
+            )
+        ).delete(synchronize_session=False)
+
+        db.query(SanPhamTho).filter(
+            SanPhamTho.maSPCH == p1.maSPCH
+        ).delete(synchronize_session=False)
+
+        db.query(TheoDoiGia).filter(
+            TheoDoiGia.maTaiKhoan.in_(
+                [u1.maTaiKhoan, u2.maTaiKhoan]
+            )
+        ).delete(synchronize_session=False)
+
+        db.query(SanPhamChuanHoa).filter(
+            SanPhamChuanHoa.maSPCH == p1.maSPCH
+        ).delete(synchronize_session=False)
+
+        db.query(TaiKhoan).filter(
+            TaiKhoan.maTaiKhoan.in_(
+                [u1.maTaiKhoan, u2.maTaiKhoan]
+            )
+        ).delete(synchronize_session=False)
+
         db.commit()
         db.close()
 
@@ -83,6 +110,25 @@ def test_price_equal_to_target(mock_send_email, setup_data):
     assert t.ngayThongBao is not None
     assert t.giaLucThongBao == 10000000
 
+    nhat_ky = (
+        db.query(EmailNotificationLog)
+        .filter(
+            EmailNotificationLog.maTheoDoi
+            == t.maTheoDoi
+        )
+        .order_by(
+            EmailNotificationLog.maNhatKyEmail.desc()
+        )
+        .first()
+    )
+
+    assert nhat_ky is not None
+    assert nhat_ky.trangThai == "sent"
+    assert nhat_ky.emailNhan == setup_data["u1"].email
+    assert nhat_ky.ngayGui is not None
+    assert nhat_ky.loiGanNhat is None
+    assert nhat_ky.soLanThu == 1
+
 @patch('backend.app.services.price_alert_service.send_price_alert_email')
 def test_price_lower_than_target(mock_send_email, setup_data):
     mock_send_email.return_value = True
@@ -98,7 +144,7 @@ def test_price_lower_than_target(mock_send_email, setup_data):
 
     # Run again, should not send for THIS record
     initial_call_count = mock_send_email.call_count
-    stats2 = check_price_alerts(db)
+    check_price_alerts(db)
     assert mock_send_email.call_count == initial_call_count
 
 @patch('backend.app.services.price_alert_service.send_price_alert_email')
@@ -116,6 +162,24 @@ def test_email_failure_does_not_mark_notified(mock_send_email, setup_data):
 
     db.refresh(t)
     assert t.daThongBao is False # Should be allowed to retry
+
+    nhat_ky = (
+        db.query(EmailNotificationLog)
+        .filter(
+            EmailNotificationLog.maTheoDoi
+            == t.maTheoDoi
+        )
+        .order_by(
+            EmailNotificationLog.maNhatKyEmail.desc()
+        )
+        .first()
+    )
+
+    assert nhat_ky is not None
+    assert nhat_ky.trangThai == "failed"
+    assert nhat_ky.ngayGui is None
+    assert nhat_ky.soLanThu == 1
+    assert nhat_ky.loiGanNhat == "Không gửi được email."
 
 @patch('backend.app.services.price_alert_service.send_price_alert_email')
 def test_legacy_null_target(mock_send_email, setup_data):
