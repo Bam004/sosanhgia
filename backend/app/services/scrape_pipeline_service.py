@@ -1,5 +1,9 @@
 ﻿import re
 import unicodedata
+
+import logging
+import time
+
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Callable
 
@@ -9,6 +13,7 @@ from backend.app.services.scraper_service import ScraperService
 from backend.app.services.text_matching_service import TextMatchingService
 from backend.app.services.data_sync_service import DataSyncService
 
+logger = logging.getLogger(__name__)
 
 SOURCE_CONFIGS = [
     {
@@ -113,12 +118,27 @@ def is_item_from_source(
 def run_source_scraper(
     source_name: str,
     search_func: Callable[[str], list[dict[str, Any]]],
-    keyword: str
+    keyword: str,
 ) -> dict[str, Any]:
     source_config = get_source_config_by_name(source_name)
+    started_at = time.perf_counter()
+
+    logger.info(
+        "[Scraper %s] Bắt đầu với từ khóa: %s",
+        source_config["name"],
+        keyword,
+    )
 
     try:
         items = search_func(keyword) or []
+        elapsed = time.perf_counter() - started_at
+
+        logger.info(
+            "[Scraper %s] Hoàn tất sau %.2f giây, thu được %d sản phẩm",
+            source_config["name"],
+            elapsed,
+            len(items),
+        )
 
         return {
             "source": source_config["name"],
@@ -132,6 +152,14 @@ def run_source_scraper(
         }
 
     except Exception as error:
+        elapsed = time.perf_counter() - started_at
+
+        logger.exception(
+            "[Scraper %s] Thất bại sau %.2f giây",
+            source_config["name"],
+            elapsed,
+        )
+
         return {
             "source": source_config["name"],
             "source_code": source_config["code"],
@@ -145,7 +173,13 @@ def run_source_scraper(
 
 
 def scrape_and_sync_keyword(keyword: str, db: Session):
+    pipeline_started_at = time.perf_counter()
     keyword = " ".join(keyword.strip().split())
+
+    logger.info(
+        "[Pipeline] Bắt đầu xử lý từ khóa: %s",
+        keyword,
+    )
 
     scraper_service = ScraperService()
 
@@ -164,14 +198,34 @@ def scrape_and_sync_keyword(keyword: str, db: Session):
 
     source_results = []
 
+    scrape_started_at = time.perf_counter()
+
     with ThreadPoolExecutor(max_workers=len(source_jobs)) as executor:
         future_to_source = {
-            executor.submit(run_source_scraper, source_name, search_func, keyword): source_name
+            executor.submit(
+                run_source_scraper,
+                source_name,
+                search_func,
+                keyword,
+            ): source_name
             for source_name, search_func in source_jobs
         }
 
         for future in as_completed(future_to_source):
-            source_results.append(future.result())
+            source_name = future_to_source[future]
+
+            try:
+                source_results.append(future.result())
+            except Exception:
+                logger.exception(
+                    "[Pipeline] Future của nguồn %s bị lỗi",
+                    source_name,
+                )
+
+    logger.info(
+        "[Pipeline] Tất cả scraper hoàn tất sau %.2f giây",
+        time.perf_counter() - scrape_started_at,
+    )
 
     source_results.sort(
         key=lambda result: source_order.get(result["source"], 999)
@@ -194,12 +248,43 @@ def scrape_and_sync_keyword(keyword: str, db: Session):
             "error": result.get("error"),
         })
 
+    logger.info(
+        "[Pipeline] Tổng dữ liệu thô: %d sản phẩm",
+        len(raw_items),
+    )
+
     text_matching_service = TextMatchingService()
-    filtered_items = text_matching_service.filter_relevant_items(raw_items, keyword)
+
+    filter_started_at = time.perf_counter()
+
+    filtered_items = text_matching_service.filter_relevant_items(
+        raw_items,
+        keyword,
+    )
+
+    logger.info(
+        "[Pipeline] Lọc dữ liệu hoàn tất sau %.2f giây: %d/%d sản phẩm",
+        time.perf_counter() - filter_started_at,
+        len(filtered_items),
+        len(raw_items),
+    )
+
+    grouping_started_at = time.perf_counter()
+
     groups = text_matching_service.group_products(filtered_items)
 
+    logger.info(
+        "[Pipeline] Gom nhóm hoàn tất sau %.2f giây: %d nhóm",
+        time.perf_counter() - grouping_started_at,
+        len(groups),
+    )
+
+    status_started_at = time.perf_counter()
+
     for status_item in source_status:
-        source_config = get_source_config_by_name(status_item["source"])
+        source_config = get_source_config_by_name(
+            status_item["source"],
+        )
 
         matched_count = sum(
             1
@@ -209,8 +294,25 @@ def scrape_and_sync_keyword(keyword: str, db: Session):
 
         status_item["matched_count"] = matched_count
 
+    logger.info(
+        "[Pipeline] Thống kê theo nguồn hoàn tất sau %.2f giây",
+        time.perf_counter() - status_started_at,
+    )
+
+    sync_started_at = time.perf_counter()
+
     data_sync_service = DataSyncService(db)
     sync_result = data_sync_service.sync_groups(groups)
+
+    logger.info(
+        "[Pipeline] Đồng bộ database hoàn tất sau %.2f giây",
+        time.perf_counter() - sync_started_at,
+    )
+
+    logger.info(
+        "[Pipeline] Hoàn tất toàn bộ sau %.2f giây",
+        time.perf_counter() - pipeline_started_at,
+    )
 
     return {
         "keyword": keyword,
