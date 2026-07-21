@@ -10,6 +10,11 @@ const danhSachMenu = [
     end: true,
   },
   {
+    nhan: "Quản lý tài khoản",
+    duongDan: "/admin/tai-khoan",
+    bieuTuong: "👤",
+  },
+  {
     nhan: "Nguồn cào dữ liệu",
     duongDan: "/admin/nguon-cao",
     bieuTuong: "🌐",

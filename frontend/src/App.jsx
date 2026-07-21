@@ -44,6 +44,9 @@ const QuanLySanPhamChuanHoa = lazy(
 const QuanLyGomNhomSanPham = lazy(
   () => import("./pages/admin/QuanLyGomNhomSanPham")
 );
+const QuanLyTaiKhoan = lazy(
+  () => import("./pages/admin/QuanLyTaiKhoan")
+);
 
 export default function App() {
   return (
@@ -110,6 +113,11 @@ export default function App() {
           }
         >
           <Route index element={<TongQuanQuanTri />} />
+
+          <Route
+            path="tai-khoan"
+            element={<QuanLyTaiKhoan />}
+          />
 
           <Route
             path="nguon-cao"
