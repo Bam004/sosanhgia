@@ -372,7 +372,7 @@ def get_product_price_history(
             if source_code not in source_data:
                 source_data[source_code] = {
                     "sourceName": source_name,
-                    "daily_min": {},
+                    "points_by_time": {},
                 }
 
             history_records = (
@@ -411,25 +411,30 @@ def get_product_price_history(
                 if range_low is None or gia < range_low:
                     range_low = gia
 
-                date_str = record.ngayGhiNhan.strftime("%Y-%m-%d")
-                current_min = source_data[source_code]["daily_min"].get(date_str)
+                timestamp_str = (
+                    record.ngayGhiNhan
+                    .replace(microsecond=0)
+                    .isoformat()
+                    + "Z"
+                )
 
-                if current_min is None or gia < current_min:
-                    source_data[source_code]["daily_min"][date_str] = gia
+                source_data[source_code]["points_by_time"][
+                    timestamp_str
+                ] = gia
 
         series = []
 
         for source_code, source_info in source_data.items():
-            daily_min_dict = source_info["daily_min"]
+            points_by_time = source_info["points_by_time"]
 
-            if not daily_min_dict:
+            if not points_by_time:
                 continue
 
             points = []
-            for date_str in sorted(daily_min_dict.keys()):
+            for timestamp_str in sorted(points_by_time.keys()):
                 points.append({
-                    "date": date_str,
-                    "price": daily_min_dict[date_str],
+                    "date": timestamp_str,
+                    "price": points_by_time[timestamp_str],
                 })
                 total_points += 1
 
