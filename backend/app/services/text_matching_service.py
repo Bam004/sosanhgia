@@ -1335,6 +1335,7 @@ class TextMatchingService:
         tokens = set(normalized_name.split())
 
         strong_accessory_tokens = {
+            "op",
             "oplung",
             "miengdan",
             "case",
